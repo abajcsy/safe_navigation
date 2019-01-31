@@ -1,4 +1,4 @@
-%% Run the exploration & planning procedure. 
+%% Run the safety & planning procedure. 
 % DONE:
 % - [done] assume sensing radius is square + obstacles are square -- compute 
 %   intersection of the two to get new square that becomes a l(x)
@@ -44,7 +44,7 @@ N = [31;31;21];
 dt = 0.05;
 
 % Initial condition.
-x_init = [2.0; 2.5; pi/2];
+xinit = [2.0; 2.5; pi/2];
 
 % Goal position.
 xgoal = [8.5; 2.5; -pi/2];
@@ -57,7 +57,7 @@ plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
 % get the sensing radius (circle) 
 senseShape = 'circle';
 senseRad = 1.5;
-senseData = [[x_init(1);x_init(2)], [senseRad;senseRad]];
+senseData = [[xinit(1);xinit(2)], [senseRad;senseRad]];
 
 %% Compute first safe set based on sensing. 
 
@@ -69,7 +69,7 @@ saveValueFuns = false;
 
 % Setup avoid set object and compute first set.
 currTime = 1;
-setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, N, dt, warmStart, saveValueFuns, x_init);
+setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, N, dt, warmStart, saveValueFuns, xinit);
 setObj.computeAvoidSet(senseData, senseShape, currTime);
 
 %% Plot initial conditions, sensing, and safe set.
@@ -80,13 +80,13 @@ hold on
 visSet = false;
 cmapHot = 'hot';
 cmapBone = 'bone';
-valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), x_init(3), visSet, [1,0,0], cmapHot);
+valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(3), visSet, [1,0,0], cmapHot);
 %beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0.5,0.5,0.5], cmapBone);
 
 % Plot environment, car, and sensing.
 envHandle = plt.plotEnvironment();
-senseVis = plt.plotSensing(x_init, senseRad, senseShape);
-carVis = plt.plotCar(x_init);
+senseVis = plt.plotSensing(xinit, senseRad, senseShape);
+carVis = plt.plotCar(xinit);
 
 % --- VIDEO MAKING --- %
 %plt.plotSetToCostFun(setObj.grid, setObj.lCurr, x(3), [0.5,0.5,0.5]);
@@ -111,8 +111,6 @@ for t=1:T
     % Apply control to dynamics.
     setObj.dynSys.updateState(u, dt, setObj.dynSys.x);
     x = setObj.dynSys.x;
-%     dx = dynamics(setObj.dynSys,t,x,u);
-%     x = x + dx*dt;
     
     % get the sensing radius (circle)
     senseData = [[x(1);x(2)],[senseRad;senseRad]];    

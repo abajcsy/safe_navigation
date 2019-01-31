@@ -135,7 +135,12 @@ classdef AvoidSet < handle
             obj.valueFunCellArr = [];
             
             % Grab the ground truth value functions over time
-            load('groundTruthValueFuns.mat', 'valueFunCellArr');
+            % If we haven't already loaded this variable, do it.
+            if exist('valueFunCellArr')==0
+                repo = what('safe_navigation');
+                valFunPath = strcat(repo.path, '/data/groundTruthValueFuns.mat');
+                load(valFunPath, 'valueFunCellArr');
+            end
             obj.valueFunCellArr = valueFunCellArr;
         end
         
