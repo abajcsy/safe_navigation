@@ -24,24 +24,31 @@ classdef AvoidSet < handle
         timeDisc        % Discretized time vector          
         schemeData      % Used to specify dyn, grid, etc. for HJIPDE_solve()
         HJIextraArgs    % Specifies extra args to HJIPDE_solve()
+        updateEpsilon   % (float) value change threshold used in local update rule
         warmStart       % (bool) if we want to warm start with prior V(x)
         firstCompute    % (bool) flag to see if this is the first time we have done computation
-        uMode           
-        dMode
-        saveValueFuns 
-        valueFunCellArr
+        uMode           % (string) is control max or min-ing l(x)? 
+        dMode           % (string) is disturbance max or min-ing l(x)? 
+        saveValueFuns   % (bool) flag to save out sequence of V(x) and l(x)
+        runComparison   % (bool) flag to run computational comparisons
+        valueFunCellArr % (cell arr) stores sequence of V(x) 
+        lxCellArr       % (cell arr) stores sequence of l(x)
+        boundLow        % (arr) lower limit of boundary padding
+        boundUp         % (arr) upper limit of boundary padding 
     end
     
     methods
         %% Constructor. 
         % NOTE: Assumes DubinsCar dynamics!
         function obj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, ...
-                obsShape, N, dt, warmStart, saveValueFuns, x_init)
+                obsShape, xinit, N, dt, updateEpsilon, ...
+                warmStart, saveValueFuns, runComparison)
             obj.gridLow = gridLow;  
             obj.gridUp = gridUp;    
             obj.N = N;      
             obj.pdDims = 3;      % 3rd dimension is periodic for dubins
             obj.dt = dt;
+            obj.updateEpsilon = updateEpsilon;
             obj.grid = createGrid(obj.gridLow, obj.gridUp, obj.N, obj.pdDims);
             obj.computeTimes = [];
             
@@ -65,11 +72,11 @@ classdef AvoidSet < handle
             % edge of the compute grid. 
             offsetX = (gridUp(1) - gridLow(1))/N(1);
             offsetY = (gridUp(2) - gridLow(2))/N(2);
-            boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, -inf];
-            boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, inf];
+            obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, -inf];
+            obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, inf];
             % NOTE: need to negate the default shape function to make sure
             %       compute region is assigned (+) and boundary obstacle is (-)
-            lBoundary = -shapeRectangleByCorners(obj.grid,boundLow,boundUp);
+            lBoundary = -shapeRectangleByCorners(obj.grid,obj.boundLow,obj.boundUp);
             
             % Incorporate boundary obstacle into the ground-truth obstacle
             obj.lReal = shapeUnion(obj.lReal, lBoundary);
@@ -98,7 +105,7 @@ classdef AvoidSet < handle
 
             % Define dynamic system.            
             % Create dubins car where u = [v, w]
-            obj.dynSys = Plane(x_init, wMax, vrange, dMax);
+            obj.dynSys = Plane(xinit, wMax, vrange, dMax);
             
             % Time vector.
             t0 = 0;
@@ -116,31 +123,27 @@ classdef AvoidSet < handle
             obj.schemeData.dMode = obj.dMode;
 
             % Convergence information
-            obj.HJIextraArgs.stopConverge = 0;
-            % obj.HJIextraArgs.convergeThreshold = .02;  %NOT USED IN LOCAL UPDATE
+            obj.HJIextraArgs.stopConverge = 1;
+            obj.HJIextraArgs.convergeThreshold = .005;  %NOT USED IN LOCAL UPDATE
             % since we have a finite compute grid, we can't trust values
             % near the boundary of grid
             obj.HJIextraArgs.ignoreBoundary = 1; 
             
-            % Built-in plotting information
-            %obj.HJIextraArgs.visualize.valueSet = 1;
-            %obj.HJIextraArgs.visualize.initialValueSet = 1;
-            %obj.HJIextraArgs.visualize.figNum = 1; %set figure number
-            %obj.HJIextraArgs.visualize.deleteLastPlot = true; %delete previous plot as you update
-            
             % Save out sequence of value functions as system moves through
-            % space. 
+            % space as well as the cost functions. 
             obj.saveValueFuns = saveValueFuns;
             obj.valueFunCellArr = [];
+            obj.lxCellArr = [];
             
             % Grab the ground truth value functions over time
-            % If we haven't already loaded this variable, do it.
-            if exist('valueFunCellArr')==0
+            obj.runComparison = runComparison;
+            if obj.runComparison
                 repo = what('safe_navigation');
                 valFunPath = strcat(repo.path, '/data/groundTruthValueFuns.mat');
                 load(valFunPath, 'valueFunCellArr');
+                obj.valueFunCellArr = valueFunCellArr;
             end
-            obj.valueFunCellArr = valueFunCellArr;
+            
         end
         
         %% Computes avoid set. 
@@ -203,42 +206,42 @@ classdef AvoidSet < handle
 
             obj.HJIextraArgs.targets = obj.lCurr;
             
-            % We can use min with target regardless of if we are warm
-            % starting. 
-            minWith = 'minVWithTarget';
-            
-            % --- DEBUGGING --- %
-            %times = obj.timeDisc;
-            %scheme = obj.schemeData;
-            %extra = obj.HJIextraArgs;
-            %lx = obj.lCurr;
-            % ----------------- %
+            % We can use min with l regardless of if we are warm
+            % starting (but we need to set targets = l!) 
+            minWith = 'minVWithL';
             
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
-                dataOut = obj.valueFunCellArr{1};
-                tau = obj.timeDisc; % this is incorrect but doesn't matter first run...
+                % (option 1) load offline-computed infinite-horizon safe set
+                repo = what('safe_navigation');
+                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                load(pathToInitialVx);
                 
-                % normal update
+                % (option 2) run the full, standard Vx computation
                 %[dataOut, tau, extraOuts] = ...
-                %  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, minWith, obj.HJIextraArgs);
+                %  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
+                %   minWith, obj.HJIextraArgs);
             else
                 % local update
-                updateEpsilon = 0.01;
                 [dataOut, tau, extraOuts] = ...
                   HJIPDE_solve_local(data0, lxOld, obj.lCurr, ...
-                    updateEpsilon, obj.timeDisc, obj.schemeData, minWith, obj.HJIextraArgs);
-                
+                    obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
+                    minWith, obj.HJIextraArgs);
+            end
+            
+            % --- compare solution with ground truth --- %
+            if obj.runComparison
                 % Grab the ground truth update at same timestep for comparison.
                 groundTruth = obj.valueFunCellArr{currTime};
-              
+
                 % Compare the local update to the ground-truth.
                 obj.compareSolutions(dataOut(:,:,:,end), groundTruth(:,:,:,end));
             end
-            
+
             % --- save out computed value function --- %
             if obj.saveValueFuns 
                 obj.valueFunCellArr{end+1} = dataOut;
+                obj.lxCellArr{end+1} = obj.lCurr;
             end
             
             % Update internal variables.

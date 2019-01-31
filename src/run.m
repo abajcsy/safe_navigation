@@ -1,15 +1,4 @@
 %% Run the safety & planning procedure. 
-% DONE:
-% - [done] assume sensing radius is square + obstacles are square -- compute 
-%   intersection of the two to get new square that becomes a l(x)
-% - [done] try to plot different perspectives to verify the computation 
-% - [done] compute solution IF YOU KNEW ENTIRE ENVIRONMENT *beforehand*
-% - [done] plot the final V(x) that we got after execution is done
-% - [done] put in discounting (?) --> THIS DOESN'T CONVERGE
-% - [done] put in warm-starting based on updated sensor measurements (?)
-% - [done] look at Kene's temporal differencing work --> this may be better
-%   than the warm-starting ...
-
 % TODO:
 % - implement planner and optimal controller scheme
 % - what if we knew some prior info about environment and other stuff we didnt?
@@ -65,15 +54,22 @@ senseData = [[xinit(1);xinit(2)], [senseRad;senseRad]];
 warmStart = true;
 
 % If we want to save the sequence of value functions.
-saveValueFuns = false;
+saveValueFuns = true;
+filename = 'localVxLxE005.mat';
+
+% If we want to load data for any numerical comparisons. 
+runComparison = false;
+
+% Update epislon -- used in HJIPDE_solve_local()
+updateEpsilon = 0.005;
 
 % Setup avoid set object and compute first set.
 currTime = 1;
-setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, N, dt, warmStart, saveValueFuns, xinit);
+setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
+    xinit, N, dt, updateEpsilon, warmStart, saveValueFuns, runComparison);
 setObj.computeAvoidSet(senseData, senseShape, currTime);
 
 %% Plot initial conditions, sensing, and safe set.
-
 hold on
 
 % Plot l(x) and V(x).
@@ -87,9 +83,7 @@ valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(
 envHandle = plt.plotEnvironment();
 senseVis = plt.plotSensing(xinit, senseRad, senseShape);
 carVis = plt.plotCar(xinit);
-
-% --- VIDEO MAKING --- %
-%plt.plotSetToCostFun(setObj.grid, setObj.lCurr, x(3), [0.5,0.5,0.5]);
+plt.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
 
 %% Simulate dubins car moving around environment and the safe set changing
 
@@ -154,5 +148,8 @@ end
 if saveValueFuns 
     % Save out the sequence of value functions.
     valueFunCellArr = setObj.valueFunCellArr; 
-    save('groundTruthValueFuns.mat', 'valueFunCellArr');
+    lxCellArr = setObj.lxCellArr; 
+    repo = what('safe_navigation');
+    savePath = strcat(repo.path, '/data/', filename);
+    save(savePath, 'valueFunCellArr', 'lxCellArr');
 end

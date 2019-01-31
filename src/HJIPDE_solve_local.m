@@ -798,7 +798,7 @@ for i = istart:length(tau)
     %% Main integration loop to get to the next tau(i)  
     % Stop updates if either converged AND have no more states to update. 
     while tNow < tau(i) - small && ~isempty(Q)
-        size(Q)
+        fprintf('Q size: %f\n', size(Q));
         
         % Save previous data if needed
         if strcmp(compMethod, 'minVOverTime') || ...

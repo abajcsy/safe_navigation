@@ -158,6 +158,15 @@ classdef Plotter
            end
         end
         
+        %% Plots the 1-grid-cell-sized padding around the compute grid.
+        %  (used for sanity checking)
+        function plotBoundaryPadding(obj, boundLow, boundUp)
+            width = boundUp(1) - boundLow(1);
+            height = boundUp(2) - boundLow(2);
+            boundCoord = [boundLow(1), boundLow(2), width, height];
+            rectangle('Position', boundCoord, 'Linewidth', 1.0, 'LineStyle', ':'); 
+        end
+        
         %% Plots how a set becomes a cost function function.
         function plotSetToCostFun(obj, g, func, theta, edgeColor)
              % Grab slice at theta.
@@ -171,9 +180,9 @@ classdef Plotter
             h = visSetIm(gPlot, -dataPlot, edgeColor, 0, extraArgs);
             zlim([-3,3]);
             
-            
             % Set up video
-            path = '/home/abajcsy/hybrid_ws/src/planning_sandbox/imgs/lab_mtg_imgs/';
+            repo = what('safe_navigation');
+            path = strcat(repo.path, '/imgs/lab_mtg_imgs/');
             video_filename = [path datestr(now,'YYYYMMDD_hhmmss') '.avi'];
             vout = VideoWriter(video_filename,'Uncompressed AVI');
 
