@@ -77,7 +77,7 @@ setObj.computeAvoidSet(senseData, senseShape, currTime);
 hold on
 
 % Plot l(x) and V(x).
-visSet = false;
+visSet = true;
 cmapHot = 'hot';
 cmapBone = 'bone';
 valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(3), visSet, [1,0,0], cmapHot);
@@ -112,7 +112,7 @@ for t=1:T
     setObj.dynSys.updateState(u, dt, setObj.dynSys.x);
     x = setObj.dynSys.x;
     
-    % get the sensing radius (circle)
+    % Get the new sensing radius (circle).
     senseData = [[x(1);x(2)],[senseRad;senseRad]];    
     
 	% -------------------- DEBUGGING -------------------- %
@@ -123,7 +123,7 @@ for t=1:T
     %end
     % --------------------------------------------------- %
     
-    % update l(x) and the avoid set.
+    % Update l(x) and the avoid set.
     setObj.computeAvoidSet(senseData, senseShape, t+1);
     
     % -------------- Plotting -------------- %

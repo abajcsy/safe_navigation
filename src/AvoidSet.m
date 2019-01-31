@@ -19,7 +19,6 @@ classdef AvoidSet < handle
         lowRealObs      % (x,y) lower left corner of obstacle
         upRealObs       % (x,y) upper right corner of obstacle
         lReal           % cost function representing TRUE environment
-        lRealMask       % bitmap representing cost function lReal
         lCurr           % current cost function representation (constructed from measurements)
         valueFun        % Stores most recent converged value function 
         timeDisc        % Discretized time vector          
@@ -27,7 +26,7 @@ classdef AvoidSet < handle
         HJIextraArgs    % Specifies extra args to HJIPDE_solve()
         warmStart       % (bool) if we want to warm start with prior V(x)
         firstCompute    % (bool) flag to see if this is the first time we have done computation
-        uMode
+        uMode           
         dMode
         saveValueFuns 
         valueFunCellArr
@@ -62,18 +61,18 @@ classdef AvoidSet < handle
             end
             
             
-            % For numerics -- add a small obstacle along the edge of the 
-            % compute grid. 
-            boundLow = [gridLow(1)+1, gridLow(2)+1, gridLow(3)];
-            boundUp = [gridLow(1)-1, gridLow(2)-1, gridLow(3)];
-            lBoundary = shapeRectangleByCorners(obj.grid,boundLow,boundUp);
+            % For numerics -- add a 1-grid-cell-sized obstacle along the 
+            % edge of the compute grid. 
+            offsetX = (gridUp(1) - gridLow(1))/N(1);
+            offsetY = (gridUp(2) - gridLow(2))/N(2);
+            boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, -inf];
+            boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, inf];
+            % NOTE: need to negate the default shape function to make sure
+            %       compute region is assigned (+) and boundary obstacle is (-)
+            lBoundary = -shapeRectangleByCorners(obj.grid,boundLow,boundUp);
             
-            % Create bitmask representing 'ground-truth' cost function.
-            mask = obj.lReal;
-            mask(mask == 0) = -0.1; % THIS IS A HACK!
-            mask(mask > 0.0) = 0.0;
-            mask(mask < 0.0) = 1.0;
-            obj.lRealMask = mask;
+            % Incorporate boundary obstacle into the ground-truth obstacle
+            obj.lReal = shapeUnion(obj.lReal, lBoundary);
             
             % Store the current estimate of the cost function (from
             % sensing).
