@@ -123,8 +123,8 @@ classdef AvoidSet < handle
             obj.schemeData.dMode = obj.dMode;
 
             % Convergence information
-            obj.HJIextraArgs.stopConverge = 1;
-            obj.HJIextraArgs.convergeThreshold = .005;  %NOT USED IN LOCAL UPDATE
+            obj.HJIextraArgs.stopConverge = 0;
+            %obj.HJIextraArgs.convergeThreshold = .005;  %NOT USED IN LOCAL UPDATE
             % since we have a finite compute grid, we can't trust values
             % near the boundary of grid
             obj.HJIextraArgs.ignoreBoundary = 1; 

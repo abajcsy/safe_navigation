@@ -54,7 +54,7 @@ senseData = [[xinit(1);xinit(2)], [senseRad;senseRad]];
 warmStart = true;
 
 % If we want to save the sequence of value functions.
-saveValueFuns = true;
+saveValueFuns = false;
 filename = 'localVxLxE005.mat';
 
 % If we want to load data for any numerical comparisons. 
