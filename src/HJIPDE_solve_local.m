@@ -711,7 +711,9 @@ startTime = cputime;
 Q = find((lxOld <= 0).*(lx > 0));
 
 % Set values that need updating to l(x) value
-data0(Q) = lx(Q);
+newRegion = shapeUnion(lx, -lxOld);
+data0 = shapeIntersection(data0, newRegion);
+%data0(Q) = lx(Q);
 
 % Store initial value function for computing how much a one-step 
 % update affected the values.
@@ -803,25 +805,25 @@ for i = istart:length(tau)
         fprintf('Q size: %f\n', sz);
         fprintf('\n');
         stuck = false;
-        if sz == 45.0
-            % --------- DEBUGGING ---------- %
-            % plot which states we are going to be updating
-            [Ix, Iy, It] = ind2sub(size(data0), Q);
-            xVals = [g.min(1) : g.dx(1) : g.max(1)];
-            yVals = [g.min(2) : g.dx(2) : g.max(2)];
-            thetaVals = [g.min(3) : g.dx(3) : g.max(3)];
-            % need to map 3D matrix indicies into 'real' values that
-            % the grid is defined over.
-            hand = scatter3(xVals(Ix), yVals(Iy), thetaVals(It), 'MarkerEdgeColor',[0 .5 .5],...
-              'MarkerFaceColor',[0 .7 .7]);
-            % ----------------------------- %
-            
-            plt.plotEnvironment();
-            grid off
-
-            fprintf("made it!");
-            stuck = true;
-        end
+%         if sz == 45.0
+%             % --------- DEBUGGING ---------- %
+%             % plot which states we are going to be updating
+%             [Ix, Iy, It] = ind2sub(size(data0), Q);
+%             xVals = [g.min(1) : g.dx(1) : g.max(1)];
+%             yVals = [g.min(2) : g.dx(2) : g.max(2)];
+%             thetaVals = [g.min(3) : g.dx(3) : g.max(3)];
+%             % need to map 3D matrix indicies into 'real' values that
+%             % the grid is defined over.
+%             hand = scatter3(xVals(Ix), yVals(Iy), thetaVals(It), 'MarkerEdgeColor',[0 .5 .5],...
+%               'MarkerFaceColor',[0 .7 .7]);
+%             % ----------------------------- %
+%             
+%             plt.plotEnvironment();
+%             grid off
+% 
+%             fprintf("made it!");
+%             stuck = true;
+%         end
         
         % Save previous data if needed
         if strcmp(compMethod, 'minVOverTime') || ...
@@ -901,33 +903,33 @@ for i = istart:length(tau)
         % Remove the unchanged states from the list of states to update.
         Q(unchangedIndicies) = [];
         
-        [sz,~] = size(Q);
-        if stuck
-            % --------- DEBUGGING ---------- %
-            % plot which states we are going to be updating
-            [Ix, Iy, It] = ind2sub(size(data0), Q);
-            xVals = [g.min(1) : g.dx(1) : g.max(1)];
-            yVals = [g.min(2) : g.dx(2) : g.max(2)];
-            thetaVals = [g.min(3) : g.dx(3) : g.max(3)];
-            % need to map 3D matrix indicies into 'real' values that
-            % the grid is defined over.
-            hand = scatter3(xVals(Ix), yVals(Iy), thetaVals(It), 'MarkerEdgeColor',[0 .5 .5],...
-              'MarkerFaceColor',[0 .7 .7]);
-            % ----------------------------- %
-            
-            plt.plotEnvironment();
-            grid off
-            
-            currVx = reshape(y, g.shape);
-            deriv = computeGradients(g, currVx);
-            xState = xVals(Ix);
-            yState = yVals(Iy);
-            tState = thetaVals(It);
-            for i=1:3
-                currDeriv = eval_u(g, deriv, [xState; yState; tState])
-            end
-            fprintf("made it!");
-        end
+%         [sz,~] = size(Q);
+%         if stuck
+%             % --------- DEBUGGING ---------- %
+%             % plot which states we are going to be updating
+%             [Ix, Iy, It] = ind2sub(size(data0), Q);
+%             xVals = [g.min(1) : g.dx(1) : g.max(1)];
+%             yVals = [g.min(2) : g.dx(2) : g.max(2)];
+%             thetaVals = [g.min(3) : g.dx(3) : g.max(3)];
+%             % need to map 3D matrix indicies into 'real' values that
+%             % the grid is defined over.
+%             hand = scatter3(xVals(Ix), yVals(Iy), thetaVals(It), 'MarkerEdgeColor',[0 .5 .5],...
+%               'MarkerFaceColor',[0 .7 .7]);
+%             % ----------------------------- %
+%             
+%             plt.plotEnvironment();
+%             grid off
+%             
+%             currVx = reshape(y, g.shape);
+%             deriv = computeGradients(g, currVx);
+%             xState = xVals(Ix);
+%             yState = yVals(Iy);
+%             tState = thetaVals(It);
+%             for i=1:3
+%                 currDeriv = eval_u(g, deriv, [xState; yState; tState])
+%             end
+%             fprintf("made it!");
+%         end
         % ----------------------------------------------------------- %
         
         % --- Add neighbors of the states that still remain in Q. --- %

@@ -16,8 +16,11 @@ upEnv = [10;7];
 obsShape = 'rectangle';
 if strcmp(obsShape, 'rectangle')
     % Create lower and upper bounds on rectangle.
-    lowRealObs = [4;1];
-    upRealObs = [7;4];
+    %lowRealObs = [4;1];
+    %upRealObs = [7;4];
+    % Create lower and upper bounds on rectangle.
+    lowRealObs = [5;1];
+    upRealObs = [6;3];
 else
     % Setup circular obstacle.
     lowRealObs = [5.5;2.5]; % center of circle

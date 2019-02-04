@@ -58,8 +58,8 @@ classdef AvoidSet < handle
             
             % Create the 'ground-truth' cost function from obstacle.
             if strcmp(obsShape, 'rectangle')
-                lowObs = [lowRealObs;-inf];
-                upObs = [upRealObs;inf];
+                lowObs = [lowRealObs;gridLow(3)];
+                upObs = [upRealObs;gridUp(3)];
                 obj.lReal = shapeRectangleByCorners(obj.grid,lowObs,upObs);
             else % if circular obstacle
                 center = lowRealObs;
@@ -67,13 +67,12 @@ classdef AvoidSet < handle
                 obj.lReal = shapeCylinder(obj.grid, 3, center, radius);
             end
             
-            
             % For numerics -- add a 1-grid-cell-sized obstacle along the 
             % edge of the compute grid. 
             offsetX = (gridUp(1) - gridLow(1))/N(1);
             offsetY = (gridUp(2) - gridLow(2))/N(2);
-            obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, -inf];
-            obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, inf];
+            obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, gridLow(3)];
+            obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, gridUp(3)];
             % NOTE: need to negate the default shape function to make sure
             %       compute region is assigned (+) and boundary obstacle is (-)
             lBoundary = -shapeRectangleByCorners(obj.grid,obj.boundLow,obj.boundUp);
@@ -168,8 +167,8 @@ classdef AvoidSet < handle
             if strcmp(senseShape, 'rectangle')
                 lowSenseXY = senseData(:,1);
                 upSenseXY = senseData(:,2);
-                lowObs = [lowSenseXY;-inf];
-                upObs = [upSenseXY;inf];
+                lowObs = [lowSenseXY;obj.gridLow(3)];
+                upObs = [upSenseXY;obj.gridUp(3)];
                 sensingShape = -shapeRectangleByCorners(obj.grid,lowObs,upObs);
             else % if circular sensing region
                 center = senseData(:,1);
@@ -177,13 +176,14 @@ classdef AvoidSet < handle
                 sensingShape = -shapeCylinder(obj.grid, 3, center, radius);
             end
             
-            % --- DEBUGGING --- % 
+            % --- LOCAL UPDATE --- % 
             % store old cost function
             lxOld = obj.lCurr;
-            % ----------------- %
+            % -------------------- %
             
             % Union the sensed region with the actual obstacle.
             unionL = shapeUnion(sensingShape, obj.lReal);
+            
             if isnan(obj.lCurr)
                 obj.lCurr = unionL;
             else
