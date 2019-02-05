@@ -16,11 +16,11 @@ upEnv = [10;7];
 obsShape = 'rectangle';
 if strcmp(obsShape, 'rectangle')
     % Create lower and upper bounds on rectangle.
-    %lowRealObs = [4;1];
-    %upRealObs = [7;4];
+    lowRealObs = [4;1];
+    upRealObs = [7;4];
     % Create lower and upper bounds on rectangle.
-    lowRealObs = [5;1];
-    upRealObs = [6;3];
+%     lowRealObs = [5;1];
+%     upRealObs = [6;3];
 else
     % Setup circular obstacle.
     lowRealObs = [5.5;2.5]; % center of circle
@@ -57,7 +57,7 @@ senseData = [[xinit(1);xinit(2)], [senseRad;senseRad]];
 warmStart = true;
 
 % If we want to save the sequence of value functions.
-saveValueFuns = false;
+saveValueFuns = true;
 filename = 'localVxLxE005.mat';
 
 % If we want to load data for any numerical comparisons. 
@@ -98,12 +98,12 @@ for t=1:T
     % Get the current control.
     u = getControl(t);
     
-    % Check if we are on boundary of safe set. If we are, apply safety 
-    % controller instead. 
-    [uOpt, onBoundary] = setObj.checkAndGetSafetyControl(x);
-    if onBoundary
-       u = uOpt;
-    end
+%     % Check if we are on boundary of safe set. If we are, apply safety 
+%     % controller instead. 
+%     [uOpt, onBoundary] = setObj.checkAndGetSafetyControl(x);
+%     if onBoundary
+%        u = uOpt;
+%     end
 
     % Apply control to dynamics.
     setObj.dynSys.updateState(u, dt, setObj.dynSys.x);

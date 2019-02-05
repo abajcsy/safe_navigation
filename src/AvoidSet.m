@@ -35,6 +35,7 @@ classdef AvoidSet < handle
         lxCellArr       % (cell arr) stores sequence of l(x)
         boundLow        % (arr) lower limit of boundary padding
         boundUp         % (arr) upper limit of boundary padding 
+        maxQSize        % (arr) Maximum queue size achieved for each timestep
     end
     
     methods
@@ -126,7 +127,10 @@ classdef AvoidSet < handle
             %obj.HJIextraArgs.convergeThreshold = .005;  %NOT USED IN LOCAL UPDATE
             % since we have a finite compute grid, we can't trust values
             % near the boundary of grid
-            obj.HJIextraArgs.ignoreBoundary = 1; 
+            obj.HJIextraArgs.ignoreBoundary = 0; 
+            
+            % Store the maximum queue size
+            obj.maxQSize = [];
             
             % Save out sequence of value functions as system moves through
             % space as well as the cost functions. 
@@ -213,8 +217,9 @@ classdef AvoidSet < handle
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                repo = what('safe_navigation');
-                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+%                 repo = what('safe_navigation');
+%                 pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                pathToInitialVx = '../data/initialVx.mat';
                 load(pathToInitialVx);
                 
                 % (option 2) run the full, standard Vx computation
@@ -248,6 +253,11 @@ classdef AvoidSet < handle
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
             obj.firstCompute = false;
+            if exist('extraOuts', 'var')
+              obj.maxQSize = [obj.maxQSize, extraOuts.maxQSize];
+            else
+              obj.maxQSize = [obj.maxQSize, 0];
+            end
         end
         
         %% Compare normal and local update solution

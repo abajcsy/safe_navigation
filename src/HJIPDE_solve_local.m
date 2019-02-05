@@ -710,15 +710,36 @@ startTime = cputime;
 % function has changed (i.e. we sensed free-space). 
 Q = find((lxOld <= 0).*(lx > 0));
 
+% Vector that helps us convert from 3D to linear indicies.
+[nX, nY, nTheta] = size(data0);
+stride = [1, nX, nX*nY];
+maxLinIdx = nX*nY*nTheta;
+numNeighs = 3;
+
+% Get neighbors for all states in Q in each dimension (x,y,theta)
+neighbors = [];
+for dim=1:3
+	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
+  neighbors = [neighbors; neighList];
+end
+Q = vertcat(Q, neighbors(:));
+Q = unique(Q);
+
 % Set values that need updating to l(x) value
-newRegion = shapeUnion(lx, -lxOld);
-data0 = shapeIntersection(data0, newRegion);
-%data0(Q) = lx(Q);
+% newRegion = shapeUnion(lx, -lxOld);
+% data0 = shapeIntersection(data0, newRegion);
+data0(Q) = lx(Q);
 
 % Store initial value function for computing how much a one-step 
 % update affected the values.
-Vold = data0; 
+Vold = data0(:); 
 % ------------------------------------------------------------ %
+
+extraOuts.maxQSize = 0;
+Qold = [];
+
+% Q = [18890; 18891];
+% Vold = data0(:);
 
 %% Initialize PDE solution
 data0size = size(data0);
@@ -799,11 +820,16 @@ for i = istart:length(tau)
     
     %% Main integration loop to get to the next tau(i)  
     % Stop updates if either converged AND have no more states to update. 
-    while tNow < tau(i) - small && ~isempty(Q)
+    while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
         fprintf('\n');
         [sz,~] = size(Q);
         fprintf('Q size: %f\n', sz);
         fprintf('\n');
+        
+        if sz > extraOuts.maxQSize
+          extraOuts.maxQSize = sz;
+        end
+        
         stuck = false;
 %         if sz == 45.0
 %             % --------- DEBUGGING ---------- %
@@ -894,14 +920,27 @@ for i = istart:length(tau)
         
         % Set new value function to have only the changes for states in Q.
         y = Vold;
-        % ---------------------------------------------------------- %
         
         % --- Remove states from Q where Vx has not changed enough. --- %
         % Grab the states whose value wasn't affected enough by the update.
         unchangedIndicies = find(abs(VxError) < updateEpsilon);
         
         % Remove the unchanged states from the list of states to update.
+        Qold = Q;
         Q(unchangedIndicies) = [];
+        
+%         if Q == 19943
+%           fprintf('Old value is %f \n', Vold(Q));
+%           fprintf('New value is %f \n', y(Q));
+%           fprintf('The difference in value is %f \n', VxError);
+%         end
+%         
+%         % Change the old values at the states in Q. 
+%         Vold(Q) = y(Q);
+%         
+%         % Set new value function to have only the changes for states in Q.
+%         y = Vold;
+        % ---------------------------------------------------------- %
         
 %         [sz,~] = size(Q);
 %         if stuck
@@ -940,18 +979,18 @@ for i = istart:length(tau)
         %.  e.g. add 3+ and 3- from theta state, and same for x and y.
         
         % Vector that helps us convert from 3D to linear indicies.
-        [nX, nY, nTheta] = size(data0);
-        stride = [1, nX, nX*nY];
-        maxLinIdx = nX*nY*nTheta;
-        numNeighs = 3;
+        %[nX, nY, nTheta] = size(data0);
+        %stride = [1, nX, nX*nY];
+        %maxLinIdx = nX*nY*nTheta;
+        %numNeighs = 3;
         
         % Get neighbors for all states in Q in each dimension (x,y,theta)
         neighbors = [];
         for dim=1:3
-            neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx);
-            neighbors = [neighbors, neighList];
+            neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
+            neighbors = [neighbors; neighList];
         end
-        Q = vertcat(Q, transpose(neighbors));
+        Q = vertcat(Q, neighbors(:));
         Q = unique(Q);
         % ---------------------------------------------------------- %
         
@@ -1369,7 +1408,7 @@ end
 %                   direction.
 %   stride       -- list containing size of each state
 %   maxLinIdx    -- maximum linear idx value
-function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx)
+function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, grid, periodicDim)
 	[~,sz] = size(stride);
     
     % Check that the dimension is valid.
@@ -1378,21 +1417,75 @@ function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx)
     end
 
     neighList = [];
-    for i = 1:numel(linIndicies)
-        linIdx = linIndicies(i);
-        for n=1:numNeighs
-            % Get right and left neighbors that are n gridcells away.
-            rightNeigh = linIdx + stride(dim)*n;
-            leftNeigh = linIdx - stride(dim)*n;
+%     for i = 1:numel(linIndicies)
+%         linIdx = linIndicies(i);
+%         for n=1:numNeighs
+%             % Get right and left neighbors that are n gridcells away.
+%             [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIdx);
+%             subIndicies = [subInd1; subInd2; subInd3];
+%             rightNeigh = subIndicies;
+%             leftNeigh = subIndicies;
+%             rightNeigh(dim) = rightNeigh(dim) + n;
+%             leftNeigh(dim) = leftNeigh(dim) - n;
+% %             rightNeigh = linIdx + stride(dim)*n;
+% %             leftNeigh = linIdx - stride(dim)*n;
+%             
+%             % Take into account periodic boundaries
+%             if dim == periodicDim
+%               if leftNeigh(dim) <= 0
+%                 leftNeigh(dim) = leftNeigh(dim) - 1;
+%               end
+%               rightNeigh(dim) = mod(rightNeigh(dim)-1, grid.shape(dim)) + 1;
+%               leftNeigh(dim) = mod(leftNeigh(dim)-1, grid.shape(dim)) + 1;
+%             end
+% 
+% %             % Make sure we don't return neighbors that are outside of our
+% %             % computation grid.
+% %             if rightNeigh <= maxLinIdx && rightNeigh > 0
+% %                 neighList = [neighList, rightNeigh];
+% %             end
+% %             if leftNeigh <= maxLinIdx && leftNeigh > 0
+% %                 neighList = [neighList, leftNeigh];
+% %             end
+%             
+%             % Make sure we don't return neighbors that are outside of our
+%             % computation grid.
+%             if rightNeigh(dim) <= grid.shape(dim) && rightNeigh(dim) > 0
+%                 rightNeigh = sub2ind(grid.shape, rightNeigh(1), rightNeigh(2), rightNeigh(3));
+%                 neighList = [neighList, rightNeigh];
+%             end
+%             if leftNeigh(dim) <= grid.shape(dim) && leftNeigh(dim) > 0
+%                 leftNeigh = sub2ind(grid.shape, leftNeigh(1), leftNeigh(2), leftNeigh(3));
+%                 neighList = [neighList, leftNeigh];
+%             end
+%         end
+%     end
 
-            % Make sure we don't return neighbors that are outside of our
-            % computation grid.
-            if rightNeigh <= maxLinIdx && rightNeigh > 0
-                neighList = [neighList, rightNeigh];
-            end
-            if leftNeigh <= maxLinIdx && leftNeigh > 0
-                neighList = [neighList, leftNeigh];
-            end
-        end
-    end
+      for n=1:numNeighs
+          % Get right and left neighbors that are n gridcells away.
+          [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIndicies);
+          subIndicies = [subInd1, subInd2, subInd3];
+          rightNeigh = subIndicies;
+          leftNeigh = subIndicies;
+          rightNeigh(:, dim) = rightNeigh(:, dim) + n;
+          leftNeigh(:, dim) = leftNeigh(:, dim) - n;
+
+          % Take into account periodic boundaries
+          if dim == periodicDim
+            zero_indicies = find(leftNeigh(:, dim) <= 0);
+            leftNeigh(zero_indicies, dim) = leftNeigh(zero_indicies) - 1;
+            rightNeigh(:, dim) = mod(rightNeigh(:, dim)-1, grid.shape(dim)) + 1;
+            leftNeigh(:, dim) = mod(leftNeigh(:, dim)-1, grid.shape(dim)) + 1;
+          end
+
+          % Make sure we don't return neighbors that are outside of our
+          % computation grid.
+          valid_indicies = find((rightNeigh(:, dim) <= grid.shape(dim)) .* (rightNeigh(:, dim) > 0));
+          rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3));
+          neighList = [neighList; rightNeigh(:)];
+          
+          valid_indicies = find((leftNeigh(:, dim) <= grid.shape(dim)) .* (leftNeigh(:, dim) > 0));
+          leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3));
+          neighList = [neighList; leftNeigh(:)];
+      end
 end
