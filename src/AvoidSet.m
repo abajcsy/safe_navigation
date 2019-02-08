@@ -217,15 +217,15 @@ classdef AvoidSet < handle
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-%                 repo = what('safe_navigation');
-%                 pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
-%                 pathToInitialVx = '../data/initialVx.mat';
-%                 load(pathToInitialVx);
+                repo = what('safe_navigation');
+                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                pathToInitialVx = '../data/initialVx.mat';
+                load(pathToInitialVx);
                 
-                % (option 2) run the full, standard Vx computation
-                [dataOut, tau, extraOuts] = ...
-                 HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
-                  minWith, obj.HJIextraArgs);
+%                 % (option 2) run the full, standard Vx computation
+%                 [dataOut, tau, extraOuts] = ...
+%                  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
+%                   minWith, obj.HJIextraArgs);
             else
                 % local update
                 [dataOut, tau, extraOuts] = ...

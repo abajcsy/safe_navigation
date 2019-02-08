@@ -30,7 +30,7 @@ end
 % Setup lower and upper computation domains and discretization.
 gridLow = [lowEnv;-pi];
 gridUp = [upEnv;pi];
-N = [101;101;41];
+N = [31;31;21];
 
 % Timestep for computation and simulation.
 dt = 0.05;
