@@ -8,33 +8,42 @@ classdef AvoidSet < handle
     %           L = {x : l(x) <= 0}
     
     properties
-        gridLow         % Lower corner of computation domain
-        gridUp          % Upper corner of computation domain
-        N               % Number of grid points per dimension
-        grid            % Computation grid struct
-        dt              % Timestep in discretization
-        computeTimes    % Stores the computation times
-        dynSys          % Dynamical system (dubins car)
-        pdDims          % Which dimension is periodic?
-        lowRealObs      % (x,y) lower left corner of obstacle
-        upRealObs       % (x,y) upper right corner of obstacle
-        lReal           % cost function representing TRUE environment
-        lCurr           % current cost function representation (constructed from measurements)
-        valueFun        % Stores most recent converged value function 
-        timeDisc        % Discretized time vector          
-        schemeData      % Used to specify dyn, grid, etc. for HJIPDE_solve()
-        HJIextraArgs    % Specifies extra args to HJIPDE_solve()
-        updateEpsilon   % (float) value change threshold used in local update rule
-        warmStart       % (bool) if we want to warm start with prior V(x)
-        firstCompute    % (bool) flag to see if this is the first time we have done computation
+        % Computation grid & dynamics
+        gridLow         % (float arr) Lower corner of computation domain
+        gridUp          % (float arr) Upper corner of computation domain
+        N               % (int arr) Number of grid points per dimension
+        grid            % (obj) Computation grid struct
+        dt              % (float) Timestep in discretization
+        computeTimes    % (float arr) Stores the computation times
+        dynSys          % (obj) Dynamical system (dubins car)
+        pdDims          % (int) Which dimension is periodic?
         uMode           % (string) is control max or min-ing l(x)? 
         dMode           % (string) is disturbance max or min-ing l(x)? 
+        boundLow        % (arr) lower limit of boundary padding
+        boundUp         % (arr) upper limit of boundary padding 
+        
+        % Environment information
+        lowRealObs      % (float arr) (x,y) lower left corner of obstacle
+        upRealObs       % (float arr) (x,y) upper right corner of obstacle
+        lReal           % (float arr) Cost function representing TRUE environment
+        lCurr           % (float arr) Current cost function representation
+                        %             (constructed from measurements)
+                        
+        % Value function computation information
+        valueFun        % (float arr) Stores most recent converged value function 
+        timeDisc        % (float arr) Discretized time vector          
+        schemeData      % (struct) Used to specify dyn, grid, etc. for HJIPDE_solve()
+        HJIextraArgs    % (struct) Specifies extra args to HJIPDE_solve()
+        updateEpsilon   % (float) Value change threshold used in local update rule
+        warmStart       % (bool) if we want to warm start with prior V(x)
+        firstCompute    % (bool) flag to see if this is the first time we have done computation
+        updateMethod    % (string) what kind of solution method to use
+        
+        % Utility variables and flags
         saveValueFuns   % (bool) flag to save out sequence of V(x) and l(x)
         runComparison   % (bool) flag to run computational comparisons
         valueFunCellArr % (cell arr) stores sequence of V(x) 
         lxCellArr       % (cell arr) stores sequence of l(x)
-        boundLow        % (arr) lower limit of boundary padding
-        boundUp         % (arr) upper limit of boundary padding 
         maxQSize        % (arr) Maximum queue size achieved for each timestep
         occup
         gFMM            % Computation grid struct for FMM
@@ -46,7 +55,7 @@ classdef AvoidSet < handle
         % NOTE: Assumes DubinsCar dynamics!
         function obj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, ...
                 obsShape, xinit, N, dt, updateEpsilon, ...
-                warmStart, saveValueFuns, runComparison)
+                warmStart, saveValueFuns, runComparison, updateMethod)
             obj.gridLow = gridLow;  
             obj.gridUp = gridUp;    
             obj.N = N;      
@@ -141,6 +150,35 @@ classdef AvoidSet < handle
             obj.valueFunCellArr = [];
             obj.lxCellArr = [];
             
+             % sanity check that warm starting is turned on if we are using
+            % method that needs warm-starting. 
+            if contains(updateMethod, 'warm') && ~warmStart
+                msg = strcat('Your update method: ', updateMethod, ... 
+                    ' requires warm-starting. Setting warmStart = true.');
+                warning(msg);
+                obj.warmStart = true;
+            elseif ~contains(updateMethod, 'warm') && warmStart
+                msg = strcat('Your update method: ', updateMethod, ... 
+                    ' does not support warm-starting. Setting warmStart = false.');
+                warning(msg);
+                obj.warmStart = false;
+            end
+            
+            % sanity check that valid update methods are being chosen.
+            if strcmp(updateMethod, 'HJI') || strcmp(updateMethod, 'warmHJI')
+                msg = strcat('Your update method: ', updateMethod, ... 
+                    ' stopConverge to be true and convergence threshold. Setting these.');
+                warning(msg);
+                obj.HJIextraArgs.stopConverge = 1;
+                obj.HJIextraArgs.convergeThreshold = obj.updateEpsilon;
+            elseif strcmp(updateMethod, 'warmGlobalQ') || strcmp(updateMethod, 'warmLocalQ')
+                obj.HJIextraArgs.stopConverge = 0;
+            else
+                msg = strcat('Your update method: ', updateMethod, ... 
+                    'is not a valid option.');
+                error(msg);
+            end
+            
             % Grab the ground truth value functions over time
             obj.runComparison = runComparison;
             if obj.runComparison
@@ -154,16 +192,17 @@ classdef AvoidSet < handle
         
         %% Computes avoid set. 
         % Inputs:
-        %   senseData [vector] - if rectangle sensing region, 
-        %                        (x,y) coords of lower left sensing box and
-        %                        (x,y) coords of upper right sensing box.
-        %                        if circle sensing region, 
-        %                        (x,y) coords of center and radius
-        %   senseShape [string] - either 'rectangle' or 'circle'
-        %   currTime [int]      - current timestep (in simulation) 
+        %   senseData [vector]      - if rectangle sensing region, 
+        %                           (x,y) coords of lower left sensing box and
+        %                           (x,y) coords of upper right sensing box.
+        %                           if circle sensing region, 
+        %                           (x,y) coords of center and radius
+        %   senseShape [string]     - either 'rectangle' or 'circle'
+        %   currTime [int]          - current timestep (in simulation) 
         % Outputs:
         %   dataOut             - infinite-horizon (converged) value function 
-        function dataOut = computeAvoidSet(obj, senseData, senseShape, currTime)
+        function dataOut = computeAvoidSet(obj, senseData, senseShape, ...
+                currTime)
             
             % ---------- START CONSTRUCT l(x) ---------- %
             
@@ -235,6 +274,7 @@ classdef AvoidSet < handle
             % ------------- CONSTRUCT V(x) ----------- %
             if obj.firstCompute
                 % First time we are doing computation, set data0 to lcurr
+                % no matter our update method. 
                 data0 = obj.lCurr;
             else
                 if obj.warmStart
@@ -246,6 +286,8 @@ classdef AvoidSet < handle
                 end
             end
 
+            % Make sure that we store the true cost function 
+            % so we can do min with L.
             obj.HJIextraArgs.targets = obj.lCurr;
             
             % We can use min with l regardless of if we are warm
@@ -255,8 +297,8 @@ classdef AvoidSet < handle
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-%                 repo = what('safe_navigation');
-%                 pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                %repo = what('safe_navigation');
+                %pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
                 pathToInitialVx = '../data/initialVx.mat';
                 load(pathToInitialVx);
                 
@@ -265,14 +307,29 @@ classdef AvoidSet < handle
                 %  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
                 %   minWith, obj.HJIextraArgs);
             else
-                % local update
-                [dataOut, tau, extraOuts] = ...
-                  HJIPDE_solve_local(data0, lxOld, obj.lCurr, ...
-                    obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
-                    minWith, obj.HJIextraArgs);
+                if strcmp(obj.updateMethod, 'HJI') || strcmp(obj.updateMethod, 'warmHJI')
+                    % Use typical HJI solver.
+                    [dataOut, tau, extraOuts] = ...
+                      HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
+                       minWith, obj.HJIextraArgs);
+                elseif strcmp(obj.updateMethod, 'warmGlobalQ')
+                    % Use Q-based algorithm with initial Q constructed
+                    % *globally*. 
+                    [dataOut, tau, extraOuts] = ...
+                      HJIPDE_solve_globalQ(data0, lxOld, obj.lCurr, ...
+                        obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
+                        minWith, obj.HJIextraArgs);
+                elseif strcmp(obj.updateMethod, 'warmLocalQ')
+                    % Use Q-based algorithm with initial Q constructed
+                    % *locally* near newly sensed regions.
+                    [dataOut, tau, extraOuts] = ...
+                      HJIPDE_solve_localQ(data0, lxOld, obj.lCurr, ...
+                        obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
+                        minWith, obj.HJIextraArgs);
+                end
             end
             
-            % --- compare solution with ground truth --- %
+            % --- compare solution with ground truth? --- %
             if obj.runComparison
                 % Grab the ground truth update at same timestep for comparison.
                 groundTruth = obj.valueFunCellArr{currTime};
@@ -281,7 +338,7 @@ classdef AvoidSet < handle
                 obj.compareSolutions(dataOut(:,:,:,end), groundTruth(:,:,:,end));
             end
 
-            % --- save out computed value function --- %
+            % --- save out computed value function? --- %
             if obj.saveValueFuns 
                 obj.valueFunCellArr{end+1} = dataOut;
                 obj.lxCellArr{end+1} = obj.lCurr;

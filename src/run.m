@@ -18,9 +18,6 @@ if strcmp(obsShape, 'rectangle')
     % Create lower and upper bounds on rectangle.
     lowRealObs = [4;1];
     upRealObs = [7;4];
-    % Create lower and upper bounds on rectangle.
-%     lowRealObs = [5;1];
-%     upRealObs = [6;3];
 else
     % Setup circular obstacle.
     lowRealObs = [5.5;2.5]; % center of circle
@@ -59,24 +56,33 @@ end
 
 %% Compute first safe set based on sensing. 
 
+% What kind of update method do we want to use?
+%   typical solver                  --> 'HJI'
+%   warm-start + typical solver     --> 'warmHJI'
+%   warm-start + global Q algorithm --> 'warmGlobalQ'
+%   warm-start + local Q algorithm  --> 'warmLocalQ'
+updateMethod = 'warmHJI';
+
 % If we want to warm start with prior value function.
 warmStart = true;
 
 % If we want to save the sequence of value functions.
-saveValueFuns = true;
-filename = 'localVxLxE005.mat';
+saveValueFuns = false;
+filename = strcat(updateMethod, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 
 % If we want to load data for any numerical comparisons. 
 runComparison = false;
 
-% Update epislon -- used in HJIPDE_solve_local()
+% Update epislon
+%   used in 'warmGlobalQ' and 'warmLocalQ' for which states to update
+%   used in 'warmHJI' and 'HJI' for convergenceThreshold 
 updateEpsilon = 0.005;
 
 % Setup avoid set object and compute first set.
 currTime = 1;
 setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
     xinit, N, dt, updateEpsilon, warmStart, saveValueFuns, runComparison);
-setObj.computeAvoidSet(senseData, senseShape, currTime);
+setObj.computeAvoidSet(senseData, senseShape, currTime, updateMethod);
 
 %% Plot initial conditions, sensing, and safe set.
 hold on
@@ -136,7 +142,7 @@ for t=1:T
     % --------------------------------------------------- %
     
     % Update l(x) and the avoid set.
-    setObj.computeAvoidSet(senseData, senseShape, t+1);
+    setObj.computeAvoidSet(senseData, senseShape, t+1, updateMethod);
     
 	% Delete old visualizations.
     delete(carVis);

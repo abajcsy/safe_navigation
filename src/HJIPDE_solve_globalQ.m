@@ -1,5 +1,5 @@
 function [data, tau, extraOuts] = ...
-    HJIPDE_solve(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs, plt)
+    HJIPDE_solve_globalQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs, plt)
 % ----- How to use this function -----
 %
 % Inputs:
@@ -705,10 +705,10 @@ integratorOptions = odeCFLset('factorCFL', 0.8, 'singleStep', 'on');
 
 startTime = cputime;
 
-%% ------- Extract states where Q = {x | lxOld < lx}. --------- %
-% Store the (linear) indicies of all the states where the new cost
-% function has changed (i.e. we sensed free-space). 
-Q = find((lxOld <= 0).*(lx > 0));
+%% ------- Construct Initial Q. --------- %
+% Store the (linear) indicies of all the states where the cost function
+% is less than zero (i.e. unsafe)
+Q = find(lx < 0);
 
 % Vector that helps us convert from 3D to linear indicies.
 [nX, nY, nTheta] = size(data0);
@@ -720,26 +720,18 @@ numNeighs = 3;
 neighbors = [];
 for dim=1:3
 	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
-  neighbors = [neighbors; neighList];
+	neighbors = [neighbors; neighList];
 end
 Q = vertcat(Q, neighbors(:));
 Q = unique(Q);
 
-% Set values that need updating to l(x) value
-% newRegion = shapeUnion(lx, -lxOld);
-% data0 = shapeIntersection(data0, newRegion);
-data0(Q) = lx(Q);
-
 % Store initial value function for computing how much a one-step 
 % update affected the values.
-Vold = data0(:); 
+Vold = data0(:);  % note: need to flatten to 1D for integratorFunc
 % ------------------------------------------------------------ %
 
 extraOuts.maxQSize = 0;
 Qold = [];
-
-% Q = [18890; 18891];
-% Vold = data0(:);
 
 %% Initialize PDE solution
 data0size = size(data0);
@@ -829,28 +821,7 @@ for i = istart:length(tau)
         if sz > extraOuts.maxQSize
           extraOuts.maxQSize = sz;
         end
-        
-        stuck = false;
-%         if sz == 45.0
-%             % --------- DEBUGGING ---------- %
-%             % plot which states we are going to be updating
-%             [Ix, Iy, It] = ind2sub(size(data0), Q);
-%             xVals = [g.min(1) : g.dx(1) : g.max(1)];
-%             yVals = [g.min(2) : g.dx(2) : g.max(2)];
-%             thetaVals = [g.min(3) : g.dx(3) : g.max(3)];
-%             % need to map 3D matrix indicies into 'real' values that
-%             % the grid is defined over.
-%             hand = scatter3(xVals(Ix), yVals(Iy), thetaVals(It), 'MarkerEdgeColor',[0 .5 .5],...
-%               'MarkerFaceColor',[0 .7 .7]);
-%             % ----------------------------- %
-%             
-%             plt.plotEnvironment();
-%             grid off
-% 
-%             fprintf("made it!");
-%             stuck = true;
-%         end
-        
+                
         % Save previous data if needed
         if strcmp(compMethod, 'minVOverTime') || ...
                 strcmp(compMethod, 'maxVOverTime')
@@ -929,46 +900,6 @@ for i = istart:length(tau)
         Qold = Q;
         Q(unchangedIndicies) = [];
         
-%         if Q == 19943
-%           fprintf('Old value is %f \n', Vold(Q));
-%           fprintf('New value is %f \n', y(Q));
-%           fprintf('The difference in value is %f \n', VxError);
-%         end
-%         
-%         % Change the old values at the states in Q. 
-%         Vold(Q) = y(Q);
-%         
-%         % Set new value function to have only the changes for states in Q.
-%         y = Vold;
-        % ---------------------------------------------------------- %
-        
-%         [sz,~] = size(Q);
-%         if stuck
-%             % --------- DEBUGGING ---------- %
-%             % plot which states we are going to be updating
-%             [Ix, Iy, It] = ind2sub(size(data0), Q);
-%             xVals = [g.min(1) : g.dx(1) : g.max(1)];
-%             yVals = [g.min(2) : g.dx(2) : g.max(2)];
-%             thetaVals = [g.min(3) : g.dx(3) : g.max(3)];
-%             % need to map 3D matrix indicies into 'real' values that
-%             % the grid is defined over.
-%             hand = scatter3(xVals(Ix), yVals(Iy), thetaVals(It), 'MarkerEdgeColor',[0 .5 .5],...
-%               'MarkerFaceColor',[0 .7 .7]);
-%             % ----------------------------- %
-%             
-%             plt.plotEnvironment();
-%             grid off
-%             
-%             currVx = reshape(y, g.shape);
-%             deriv = computeGradients(g, currVx);
-%             xState = xVals(Ix);
-%             yState = yVals(Iy);
-%             tState = thetaVals(It);
-%             for i=1:3
-%                 currDeriv = eval_u(g, deriv, [xState; yState; tState])
-%             end
-%             fprintf("made it!");
-%         end
         % ----------------------------------------------------------- %
         
         % --- Add neighbors of the states that still remain in Q. --- %
@@ -977,13 +908,7 @@ for i = istart:length(tau)
         %   direction for each state dimension. 6*num_states is the total
         %   number of neighbors we add for each state in Q. 
         %.  e.g. add 3+ and 3- from theta state, and same for x and y.
-        
-        % Vector that helps us convert from 3D to linear indicies.
-        %[nX, nY, nTheta] = size(data0);
-        %stride = [1, nX, nX*nY];
-        %maxLinIdx = nX*nY*nTheta;
-        %numNeighs = 3;
-        
+                
         % Get neighbors for all states in Q in each dimension (x,y,theta)
         neighbors = [];
         for dim=1:3
@@ -1069,20 +994,6 @@ for i = istart:length(tau)
                     extraArgs.ignoreBoundary
                 [gTrunc, dataNew] = truncateGrid(...
                     g, data_i, g.min+4*g.dx, g.max-4*g.dx);
-                
-                % ------- DEBUGGING ------- %
-                % Grab values at theta.
-%                 theta = -1.6456;
-%                 plotData = abs(dataNew-dataTrimmed);
-%                 [~, dataPlot] = proj(gTrunc, plotData, [0 0 1], theta);
-%                 %imagesc(plotData(:,:,1));
-%                 scatter3(gTrunc.xs{1}(:,:),gTrunc.xs{2}(:,:),gTrunc.xs{3}(:,:))
-%                 %surf(gTrunc.xs{1},gTrunc.xs{2},gTrunc.xs{3},'cdata',plotData);
-%                 colormap('jet');
-%                 caxis([0, 0.2]);
-%                 colorbar
-%                 drawnow
-                % ------------------------- %
                 
                 [change, indicies] = max(abs(dataNew(:)-dataTrimmed(:)));
                 dataTrimmed = dataNew;
