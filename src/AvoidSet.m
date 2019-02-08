@@ -38,6 +38,7 @@ classdef AvoidSet < handle
         warmStart       % (bool) if we want to warm start with prior V(x)
         firstCompute    % (bool) flag to see if this is the first time we have done computation
         updateMethod    % (string) what kind of solution method to use
+        inheritVals     % (string) if using localQ update method, pick where to inherit values from
         
         % Utility variables and flags
         saveValueFuns   % (bool) flag to save out sequence of V(x) and l(x)
@@ -55,7 +56,8 @@ classdef AvoidSet < handle
         % NOTE: Assumes DubinsCar dynamics!
         function obj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, ...
                 obsShape, xinit, N, dt, updateEpsilon, ...
-                warmStart, saveValueFuns, runComparison, updateMethod)
+                warmStart, saveValueFuns, runComparison, ...
+                inheritVals, updateMethod)
             obj.gridLow = gridLow;  
             obj.gridUp = gridUp;    
             obj.N = N;      
@@ -134,9 +136,6 @@ classdef AvoidSet < handle
             obj.schemeData.uMode = obj.uMode;
             obj.schemeData.dMode = obj.dMode;
 
-            % Convergence information
-            obj.HJIextraArgs.stopConverge = 0;
-            %obj.HJIextraArgs.convergeThreshold = .005;  %NOT USED IN LOCAL UPDATE
             % since we have a finite compute grid, we can't trust values
             % near the boundary of grid
             obj.HJIextraArgs.ignoreBoundary = 0; 
@@ -150,28 +149,17 @@ classdef AvoidSet < handle
             obj.valueFunCellArr = [];
             obj.lxCellArr = [];
             
-             % sanity check that warm starting is turned on if we are using
-            % method that needs warm-starting. 
-            if contains(updateMethod, 'warm') && ~warmStart
-                msg = strcat('Your update method: ', updateMethod, ... 
-                    ' requires warm-starting. Setting warmStart = true.');
-                warning(msg);
-                obj.warmStart = true;
-            elseif ~contains(updateMethod, 'warm') && warmStart
-                msg = strcat('Your update method: ', updateMethod, ... 
-                    ' does not support warm-starting. Setting warmStart = false.');
-                warning(msg);
-                obj.warmStart = false;
-            end
+            % For local update, specify where we update values from.
+            obj.inheritVals = inheritVals;
             
-            % sanity check that valid update methods are being chosen.
-            if strcmp(updateMethod, 'HJI') || strcmp(updateMethod, 'warmHJI')
+            % Convergence information
+            if strcmp(updateMethod, 'HJI')
                 msg = strcat('Your update method: ', updateMethod, ... 
-                    ' stopConverge to be true and convergence threshold. Setting these.');
+                    ' needs stopConverge to be true and convergence threshold. Setting these.');
                 warning(msg);
                 obj.HJIextraArgs.stopConverge = 1;
                 obj.HJIextraArgs.convergeThreshold = obj.updateEpsilon;
-            elseif strcmp(updateMethod, 'warmGlobalQ') || strcmp(updateMethod, 'warmLocalQ')
+            elseif strcmp(updateMethod, 'globalQ') || strcmp(updateMethod, 'localQ')
                 obj.HJIextraArgs.stopConverge = 0;
             else
                 msg = strcat('Your update method: ', updateMethod, ... 
@@ -294,6 +282,7 @@ classdef AvoidSet < handle
             % starting (but we need to set targets = l!) 
             minWith = 'minVWithL';
             
+            
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
@@ -307,19 +296,22 @@ classdef AvoidSet < handle
                 %  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
                 %   minWith, obj.HJIextraArgs);
             else
-                if strcmp(obj.updateMethod, 'HJI') || strcmp(obj.updateMethod, 'warmHJI')
+                if strcmp(obj.updateMethod, 'HJI') 
                     % Use typical HJI solver.
                     [dataOut, tau, extraOuts] = ...
                       HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
                        minWith, obj.HJIextraArgs);
-                elseif strcmp(obj.updateMethod, 'warmGlobalQ')
+                elseif strcmp(obj.updateMethod, 'globalQ')
                     % Use Q-based algorithm with initial Q constructed
                     % *globally*. 
                     [dataOut, tau, extraOuts] = ...
                       HJIPDE_solve_globalQ(data0, lxOld, obj.lCurr, ...
                         obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
                         minWith, obj.HJIextraArgs);
-                elseif strcmp(obj.updateMethod, 'warmLocalQ')
+                elseif strcmp(obj.updateMethod, 'localQ')
+                    % For local update, specify where we update values from.
+                    obj.HJIextraArgs.inheritVals = obj.inheritVals;
+                    
                     % Use Q-based algorithm with initial Q constructed
                     % *locally* near newly sensed regions.
                     [dataOut, tau, extraOuts] = ...

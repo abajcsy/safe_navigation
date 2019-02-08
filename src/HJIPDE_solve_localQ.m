@@ -1,5 +1,5 @@
 function [data, tau, extraOuts] = ...
-    HJIPDE_solve(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs, plt)
+    HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs, plt)
 % ----- How to use this function -----
 %
 % Inputs:
@@ -85,6 +85,8 @@ function [data, tau, extraOuts] = ...
 %                           .plotAlphaTF:       transparency of target
 %                                               function
 %                           .plotColorlxOld:    color of old cost function
+%       .inheritVals        which function to inherit values from (lx or
+%                           Vold)
 % Outputs:
 %   data - solution corresponding to grid g and time vector tau
 %   tau  - list of computation times (redundant)
@@ -726,9 +728,9 @@ Q = vertcat(Q, neighbors(:));
 Q = unique(Q);
 
 % Set values that need updating to l(x) value
-% newRegion = shapeUnion(lx, -lxOld);
-% data0 = shapeIntersection(data0, newRegion);
-data0(Q) = lx(Q);
+if strcmp(extraArgs.inheritVals, 'lx') 
+    data0(Q) = lx(Q);
+else % anything else defaults to the old value function passed in through data0
 
 % Store initial value function for computing how much a one-step 
 % update affected the values.

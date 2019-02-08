@@ -58,13 +58,16 @@ end
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
-%   warm-start + typical solver     --> 'warmHJI'
-%   warm-start + global Q algorithm --> 'warmGlobalQ'
-%   warm-start + local Q algorithm  --> 'warmLocalQ'
-updateMethod = 'warmHJI';
+%   global Q algorithm              --> 'globalQ'
+%   local Q algorithm               --> 'localQ' 
+updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
 warmStart = true;
+
+% If we are doing localQ, we need to specify where we are inheriting 
+% values from, l(x) or from data0
+inheritVals = 'lx'; 
 
 % If we want to save the sequence of value functions.
 saveValueFuns = false;
@@ -81,8 +84,9 @@ updateEpsilon = 0.005;
 % Setup avoid set object and compute first set.
 currTime = 1;
 setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
-    xinit, N, dt, updateEpsilon, warmStart, saveValueFuns, runComparison);
-setObj.computeAvoidSet(senseData, senseShape, currTime, updateMethod);
+    xinit, N, dt, updateEpsilon, warmStart, saveValueFuns, runComparison, ...
+    updateMethod, inheritVals);
+setObj.computeAvoidSet(senseData, senseShape, currTime);
 
 %% Plot initial conditions, sensing, and safe set.
 hold on
@@ -142,7 +146,7 @@ for t=1:T
     % --------------------------------------------------- %
     
     % Update l(x) and the avoid set.
-    setObj.computeAvoidSet(senseData, senseShape, t+1, updateMethod);
+    setObj.computeAvoidSet(senseData, senseShape, t+1);
     
 	% Delete old visualizations.
     delete(carVis);
