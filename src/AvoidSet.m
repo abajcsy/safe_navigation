@@ -135,37 +135,40 @@ classdef AvoidSet < handle
             obj.schemeData.accuracy = 'high'; % Set accuracy.
             obj.schemeData.uMode = obj.uMode;
             obj.schemeData.dMode = obj.dMode;
-
-            % since we have a finite compute grid, we can't trust values
-            % near the boundary of grid
-            obj.HJIextraArgs.ignoreBoundary = 0; 
-            
-            % Store the maximum queue size
-            obj.maxQSize = [];
             
             % Save out sequence of value functions as system moves through
-            % space as well as the cost functions. 
+            % space as well as the cost functions and the max Q size (if using Q method). 
             obj.saveValueFuns = saveValueFuns;
             obj.valueFunCellArr = [];
             obj.lxCellArr = [];
+            obj.maxQSize = [];
             
             % For local update, specify where we update values from.
             obj.inheritVals = inheritVals;
+            obj.updateMethod = updateMethod;
+            
+            % since we have a finite compute grid, we may not want to 
+            % trust values near the boundary of grid
+            obj.HJIextraArgs.ignoreBoundary = 0; 
             
             % Convergence information
-            if strcmp(updateMethod, 'HJI')
-                msg = strcat('Your update method: ', updateMethod, ... 
-                    ' needs stopConverge to be true and convergence threshold. Setting these.');
-                warning(msg);
+            if strcmp(obj.updateMethod, 'HJI')
                 obj.HJIextraArgs.stopConverge = 1;
                 obj.HJIextraArgs.convergeThreshold = obj.updateEpsilon;
-            elseif strcmp(updateMethod, 'globalQ') || strcmp(updateMethod, 'localQ')
+            elseif strcmp(updateMethod, 'globalQ') || strcmp(obj.updateMethod, 'localQ')
                 obj.HJIextraArgs.stopConverge = 0;
             else
-                msg = strcat('Your update method: ', updateMethod, ... 
+                msg = strcat('Your update method: ', obj.updateMethod, ... 
                     'is not a valid option.');
                 error(msg);
             end
+            
+            fprintf('------ Avoid Set Problem Setup -------\n');
+            fprintf('   update method: %s\n', obj.updateMethod);
+            fprintf('   warm start: %d\n', obj.warmStart);
+            fprintf('   stopConverge: %d\n', obj.HJIextraArgs.stopConverge);
+            fprintf('   updateEpsilon: %.3f\n', obj.updateEpsilon);
+            fprintf('--------------------------------------\n');
             
             % Grab the ground truth value functions over time
             obj.runComparison = runComparison;
@@ -286,9 +289,9 @@ classdef AvoidSet < handle
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                %repo = what('safe_navigation');
-                %pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
-                pathToInitialVx = '../data/initialVx.mat';
+                repo = what('safe_navigation');
+                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                %pathToInitialVx = '../data/initialVx.mat';
                 load(pathToInitialVx);
                 
                 % (option 2) run the full, standard Vx computation
@@ -340,7 +343,7 @@ classdef AvoidSet < handle
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
             obj.firstCompute = false;
-            if exist('extraOuts', 'var')
+            if exist('extraOuts', 'var') && isfield(extraOuts, 'maxQSize')
               obj.maxQSize = [obj.maxQSize, extraOuts.maxQSize];
             else
               obj.maxQSize = [obj.maxQSize, 0];

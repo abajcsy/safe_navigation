@@ -85,7 +85,7 @@ updateEpsilon = 0.005;
 currTime = 1;
 setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
     xinit, N, dt, updateEpsilon, warmStart, saveValueFuns, runComparison, ...
-    updateMethod, inheritVals);
+    inheritVals, updateMethod);
 setObj.computeAvoidSet(senseData, senseShape, currTime);
 
 %% Plot initial conditions, sensing, and safe set.
