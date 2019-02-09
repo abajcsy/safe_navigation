@@ -12,6 +12,9 @@ clear all
 lowEnv = [0;0];
 upEnv = [10;7];
 
+% Are we using a 2D or a 3D system?
+numDims = 2;
+
 % Setup obstacle ['rectangle' or 'circle'].
 obsShape = 'rectangle';
 if strcmp(obsShape, 'rectangle')
@@ -25,18 +28,29 @@ else
 end
 
 % Setup lower and upper computation domains and discretization.
-gridLow = [lowEnv;-pi];
-gridUp = [upEnv;pi];
-N = [31;31;21];
+if numDims == 2
+    gridLow = lowEnv;
+    gridUp = upEnv;
+    N = [31;31];
+elseif numDims == 3
+    gridLow = [lowEnv;-pi];
+    gridUp = [upEnv;pi];
+    N = [31;31;21];
+else
+    error('I cannot handle %d number of dims!\n', numDims);
+end
 
 % Timestep for computation and simulation.
 dt = 0.05;
 
-% Initial condition.
-xinit = [2.0; 2.5; pi/2];
-
-% Goal position.
-xgoal = [8.5; 2.5; -pi/2];
+% Initial and final condition.
+if numDims == 3
+    xinit = [2.0; 2.5; pi/2];
+    xgoal = [8.5; 2.5; -pi/2];
+else
+    xinit = [2.0; 2.5];
+    xgoal = [8.5; 2.5];
+end
 
 %% Create plotter.
 plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
@@ -63,11 +77,16 @@ end
 updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
-warmStart = true;
+warmStart = false;
 
 % If we are doing localQ, we need to specify where we are inheriting 
 % values from, l(x) or from data0
 inheritVals = 'lx'; 
+
+% Update epislon
+%   used in 'warmGlobalQ' and 'warmLocalQ' for which states to update
+%   used in 'warmHJI' and 'HJI' for convergenceThreshold 
+updateEpsilon = 0.005;
 
 % If we want to save the sequence of value functions.
 saveValueFuns = false;
@@ -75,11 +94,6 @@ filename = strcat(updateMethod, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 
 % If we want to load data for any numerical comparisons. 
 runComparison = false;
-
-% Update epislon
-%   used in 'warmGlobalQ' and 'warmLocalQ' for which states to update
-%   used in 'warmHJI' and 'HJI' for convergenceThreshold 
-updateEpsilon = 0.005;
 
 % Setup avoid set object and compute first set.
 currTime = 1;
@@ -91,11 +105,6 @@ setObj.computeAvoidSet(senseData, senseShape, currTime);
 %% Plot initial conditions, sensing, and safe set.
 hold on
 
-% Plot l(x) and V(x).
-visSet = true;
-cmapHot = 'hot';
-cmapBone = 'bone';
-
 % Plot environment, car, and sensing.
 figure(1);
 envHandle = plt.plotEnvironment();
@@ -104,7 +113,21 @@ carVis = plt.plotCar(xinit);
 plt.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
 
 % Plot value function
+extraArgs.edgeColor = [1,0,0];
+
+if numDims == 3
+    extraArgs.theta = xinit(3);
+    funcToPlot = setObj.valueFun(:,:,:,end);
+else
+    funcToPlot = setObj.valueFun(:,:,end);
+end
+
+visSet = true;
+cmapHot = 'hot';
+cmapBone = 'bone';
+
 valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(3), visSet, [1,0,0], cmapHot);
+%extraArgs.edgeColor = [0.5,0.5,0.5];
 %beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0.5,0.5,0.5], cmapBone);
 
 %% Simulate dubins car moving around environment and the safe set changing
@@ -115,7 +138,11 @@ x = setObj.dynSys.x;
 
 for t=1:T
     % Get the current control.
-    u = getControl(t);
+    if numDims == 2
+        u = getControlKinVehicle(t, setObj.dynSys.drift);
+    elseif numDims == 3
+        u = getControlDubins(t);
+    end
     
 %     % Check if we are on boundary of safe set. If we are, apply safety 
 %     % controller instead. 
@@ -136,14 +163,6 @@ for t=1:T
     else
       error('unknown sesnor type');
     end  
-    
-	% -------------------- DEBUGGING -------------------- %
-    % x = 4.8753, 5.2864, 0.0708
-    %if abs(x(1) - 4.8753) < 0.01 && abs(x(2) - 5.2864) < 0.01
-    %    theta = x(3);
-    %    setObj.checkIfErrorVanishes(senseData, theta)
-    %end
-    % --------------------------------------------------- %
     
     % Update l(x) and the avoid set.
     setObj.computeAvoidSet(senseData, senseShape, t+1);
@@ -166,8 +185,14 @@ for t=1:T
     % Plot belief obstacle (i.e. everything unsensed) and the value function.
     % 	belief obstacle -- original l(x) which can be found at valueFun(1)
     % 	converged value function -- V_converged which can be found at valueFun(end)
-    valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), x(3), visSet, [1,0,0], cmapHot);
-    %beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0,0,0], cmapBone);
+    if numDims == 3
+        extraArgs.theta = xinit(3);
+        funcToPlot = setObj.valueFun(:,:,:,end);
+    else
+        funcToPlot = setObj.valueFun(:,:,end);
+    end
+    valueFunc = plt.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
+    %beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, visSet, extraArgs);
     
     % Pause based on timestep.
     pause(dt);

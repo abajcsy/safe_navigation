@@ -51,26 +51,44 @@ classdef Plotter
         % Inputs:
         %   g [array]     - grid corresponding to data
         %   func [array]  - data for function to visualize
-        %   theta [float] - angle for which to plot the level set
         %   visSet [bool] - if true, plots 2D slice of func.
         %                   Otherwise plots 3D.
-        %   edgeColor [vector or string] - color of level set boundary
-        %   cmap [string] - name of colormap to use
+        %   extraArgs
+        %           .theta [float] - (if 3D system) angle for which to plot the level set
+        %           .edgeColor [vector or string] - color of level set boundary
+        %           .cmap [string] - name of colormap to use
         % Outputs: 
         %   plots level set in (x,y) for fixed theta.
-        function h = plotFuncLevelSet(obj, g, func, theta, visSet, edgeColor, cmap)
+        function h = plotFuncLevelSet(obj, g, func, visSet, extraArgs)
             
-            % Grab slice at theta.
-            [gPlot, dataPlot] = proj(g, func, [0 0 1], theta);
-            extraArgs.LineWidth = 2;
-
+            if isfield(extraArgs, 'theta')
+                % Grab slice at theta.
+                [gPlot, dataPlot] = proj(g, func, [0 0 1], extraArgs.theta);
+            else
+                gPlot = g;
+                dataPlot = func;
+            end
+            
+            % grab the edge color
+            if isfield(extraArgs, 'edgeColor')
+                edgeColor = extraArgs.edgeColor;
+            else
+                edgeColor = [1,0,0];
+            end
+            
+            % grab the color map
+            if isfield(extraArgs, 'cmap')
+                cmap = extraArgs.cmap;
+            else
+                cmap = 'hot';
+            end
+            
             % Visualize final set.
-            % NOTE: plot -data because by default contourf plots all values
+            % NOTE: plot -data if using contourf plots because it uses all values
             % that are ABOVE zero, but inside our obstacle we have values
             % BELOW zero.
             if visSet
-                h = visSetIm(gPlot, -dataPlot, edgeColor, 0, extraArgs);
-                %h = visSetIm(g, func, edgeColor, 0, extraArgs);
+                h = visSetIm(gPlot, dataPlot, edgeColor, 0);
             else
                 alpha = 0.5;
                 h = visFuncIm(gPlot, dataPlot, edgeColor, alpha); %, edgeColor, 0.5);
@@ -94,14 +112,17 @@ classdef Plotter
             
             % Plot heading.
             center = x(1:2);
-            % Rotation matrix.
-            R = [cos(x(3)) -sin(x(3)); 
-                 sin(x(3)) cos(x(3))];
-            % Heading pt.
-            hpt = [0.5; 0];
-            hptRot = R*hpt + center;
-            p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'LineWidth', 1.5);
-            p2.Color(4) = 1.0;
+            
+            if length(x) == 3
+                % Rotation matrix.
+                R = [cos(x(3)) -sin(x(3)); 
+                     sin(x(3)) cos(x(3))];
+                % Heading pt.
+                hpt = [0.5; 0];
+                hptRot = R*hpt + center;
+                p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'LineWidth', 1.5);
+                p2.Color(4) = 1.0;
+            end
             
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);

@@ -710,15 +710,25 @@ startTime = cputime;
 % is less than zero (i.e. unsafe)
 Q = find(lx < 0);
 
-% Vector that helps us convert from 3D to linear indicies.
-[nX, nY, nTheta] = size(data0);
-stride = [1, nX, nX*nY];
-maxLinIdx = nX*nY*nTheta;
-numNeighs = 3;
+% Vector that helps us convert from 2D or 3D to linear indicies.
+if schemeData.dynSys.nx == 2
+    [nX, nY] = size(data0);
+    stride = [1, nX];
+    maxLinIdx = nX*nY;
+elseif schemeData.dynSys.nx == 3
+    [nX, nY, nTheta] = size(data0);
+    stride = [1, nX, nX*nY];
+    maxLinIdx = nX*nY*nTheta;
+else
+    error('Unsupported dimensions!\n');
+end
 
-% Get neighbors for all states in Q in each dimension (x,y,theta)
+% Number of neighbors to consider (based on order of approximation)
+numNeighs = 3;
+    
+% Get neighbors for all states in Q in each dimension (x,y) and (x,y,theta)
 neighbors = [];
-for dim=1:3
+for dim=1:schemeData.dynSys.nx
 	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
 	neighbors = [neighbors; neighList];
 end
@@ -911,7 +921,7 @@ for i = istart:length(tau)
                 
         % Get neighbors for all states in Q in each dimension (x,y,theta)
         neighbors = [];
-        for dim=1:3
+        for dim=1:schemeData.dynSys.nx
             neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
             neighbors = [neighbors; neighList];
         end
@@ -1324,7 +1334,7 @@ function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, gr
     
     % Check that the dimension is valid.
     if dim > sz || dim < 1
-        error('Looking for neighbors in invalid dimension!', dim);
+        error('Looking for neighbors in invalid dimension: %d!', dim);
     end
 
     neighList = [];

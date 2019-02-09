@@ -61,7 +61,11 @@ classdef AvoidSet < handle
             obj.gridLow = gridLow;  
             obj.gridUp = gridUp;    
             obj.N = N;      
-            obj.pdDims = 3;      % 3rd dimension is periodic for dubins
+            if length(N) == 3
+                obj.pdDims = 3;   % 3rd dimension is periodic for dubins
+            else
+                obj.pdDims = [];  % no periodic dim for 2D system
+            end
             obj.dt = dt;
             obj.updateEpsilon = updateEpsilon;
             obj.grid = createGrid(obj.gridLow, obj.gridUp, obj.N, obj.pdDims);
@@ -73,8 +77,13 @@ classdef AvoidSet < handle
             
             % Create the 'ground-truth' cost function from obstacle.
             if strcmp(obsShape, 'rectangle')
-                lowObs = [lowRealObs;gridLow(3)];
-                upObs = [upRealObs;gridUp(3)];
+                if length(N) == 3
+                    lowObs = [lowRealObs;gridLow(3)];
+                    upObs = [upRealObs;gridUp(3)];
+                else
+                    lowObs = lowRealObs;
+                    upObs = upRealObs;
+                end
                 obj.lReal = shapeRectangleByCorners(obj.grid,lowObs,upObs);
             else % if circular obstacle
                 center = lowRealObs;
@@ -86,8 +95,13 @@ classdef AvoidSet < handle
             % edge of the compute grid. 
             offsetX = (gridUp(1) - gridLow(1))/N(1);
             offsetY = (gridUp(2) - gridLow(2))/N(2);
-            obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, gridLow(3)];
-            obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, gridUp(3)];
+            if length(N) == 3
+                obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, gridLow(3)];
+                obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, gridUp(3)];
+            else
+                obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY];
+                obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY];
+            end
             % NOTE: need to negate the default shape function to make sure
             %       compute region is assigned (+) and boundary obstacle is (-)
             lBoundary = -shapeRectangleByCorners(obj.grid,obj.boundLow,obj.boundUp);
@@ -108,18 +122,21 @@ classdef AvoidSet < handle
             % lCurr or valueFun
             obj.firstCompute = true;
             
-            % Input bounds for dubins car.
-            wMax = 1;
-            vrange = [0.5,1];
-            
-            % --- DISTURBANCE --- %
-            obj.dMode = 'min';
-            dMax = [0,0,0]; %[.2, .2, .2];
-            % ------------------- %
+            if length(N) == 3
+                % Input bounds for dubins car.
+                wMax = 1;
+                vrange = [0.5,1];
 
-            % Define dynamic system.            
-            % Create dubins car where u = [v, w]
-            obj.dynSys = Plane(xinit, wMax, vrange, dMax);
+                % Define dynamic system.            
+                % Create dubins car where u = [v, w]
+                obj.dynSys = Plane(xinit, wMax, vrange);
+            else
+                % Define dynamic system.    
+                % Create 2D point-mass car u = [vx, vy].
+                vMax = 1;
+                drift = 1;
+                obj.dynSys = KinVehicle2D(xinit, vMax, drift);
+            end
             
             % Time vector.
             t0 = 0;
@@ -134,7 +151,6 @@ classdef AvoidSet < handle
             obj.schemeData.dynSys = obj.dynSys;
             obj.schemeData.accuracy = 'high'; % Set accuracy.
             obj.schemeData.uMode = obj.uMode;
-            obj.schemeData.dMode = obj.dMode;
             
             % Save out sequence of value functions as system moves through
             % space as well as the cost functions and the max Q size (if using Q method). 
@@ -164,6 +180,7 @@ classdef AvoidSet < handle
             end
             
             fprintf('------ Avoid Set Problem Setup -------\n');
+            fprintf('   dynamical system: %dD\n', length(N));
             fprintf('   update method: %s\n', obj.updateMethod);
             fprintf('   warm start: %d\n', obj.warmStart);
             fprintf('   stopConverge: %d\n', obj.HJIextraArgs.stopConverge);
@@ -271,7 +288,13 @@ classdef AvoidSet < handle
                 if obj.warmStart
                     % If we are warm starting, use the old value function
                     % as initial V(x) and then the true/correct l(x) in targets
-                    data0 = obj.valueFun(:,:,:,end);
+                    if length(obj.N) == 2
+                        % if our system is 2D
+                        data0 = obj.valueFun(:,:,end);
+                    else
+                        % if our system is 3D
+                        data0 = obj.valueFun(:,:,:,end);
+                    end
                 else
                     data0 = obj.lCurr;
                 end
@@ -285,19 +308,21 @@ classdef AvoidSet < handle
             % starting (but we need to set targets = l!) 
             minWith = 'minVWithL';
             
-            
             % ------------ Compute value function ---------- % 
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                repo = what('safe_navigation');
-                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                %repo = what('safe_navigation');
+                %pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
                 %pathToInitialVx = '../data/initialVx.mat';
-                load(pathToInitialVx);
+                %load(pathToInitialVx);
                 
                 % (option 2) run the full, standard Vx computation
-                %[dataOut, tau, extraOuts] = ...
-                %  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
-                %   minWith, obj.HJIextraArgs);
+                firstHJIextraArgs = obj.HJIextraArgs;
+                firstHJIextraArgs.stopConverge = 1;
+                firstHJIextraArgs.convergeThreshold = obj.updateEpsilon;
+                [dataOut, tau, extraOuts] = ...
+                  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
+                   minWith, firstHJIextraArgs);
             else
                 if strcmp(obj.updateMethod, 'HJI') 
                     % Use typical HJI solver.
@@ -378,7 +403,7 @@ classdef AvoidSet < handle
                 uOpt = obj.dynSys.optCtrl(x, current_deriv, obj.uMode); 
                 onBoundary = true;
             else
-                uOpt = zeros(2, 1);
+                uOpt = zeros(length(x), 1);
                 onBoundary = false;
             end
         end
