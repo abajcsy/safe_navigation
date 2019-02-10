@@ -6,9 +6,9 @@ function dx = dynamics(obj, t, x, u, ~, ~)
 
 
 if iscell(x)
-    dx = {u{1}+obj.drift, u{2}+obj.drift};
+    dx = {u{1}+obj.drift, u{2}};
 else
-    dx = [u(1)+obj.drift; u(2)+obj.drift];
+    dx = [u(1)+obj.drift; u(2)];
 end
 
 end
