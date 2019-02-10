@@ -728,7 +728,7 @@ Q = unique(Q);
 % Set values that need updating to l(x) value
 % newRegion = shapeUnion(lx, -lxOld);
 % data0 = shapeIntersection(data0, newRegion);
-data0(Q) = lx(Q);
+% data0(Q) = lx(Q);
 
 % Store initial value function for computing how much a one-step 
 % update affected the values.

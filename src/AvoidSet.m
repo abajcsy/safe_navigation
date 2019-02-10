@@ -36,6 +36,7 @@ classdef AvoidSet < handle
         boundLow        % (arr) lower limit of boundary padding
         boundUp         % (arr) upper limit of boundary padding 
         maxQSize        % (arr) Maximum queue size achieved for each timestep
+        occup
     end
     
     methods
@@ -187,6 +188,16 @@ classdef AvoidSet < handle
             
             % Union the sensed region with the actual obstacle.
             unionL = shapeUnion(sensingShape, obj.lReal);
+            
+            % unionL will typically be an occupancy grid and FMM will be
+            % used to get the signed distance function. We will use the 
+            % FMM code to do that. Since the FMM code works only on 2D, we 
+            % will take a slice of the grid, compute FMM, and then project
+            % it back to a 3D array.
+            [gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+            occupancy_map = sign(dataFMM);
+            unionL_2D_FMM = compute_fmm_map(gFMM, occupancy_map);
+            unionL = repmat(unionL_2D_FMM, 1, 1, obj.grid.N(3));
             
             if isnan(obj.lCurr)
                 obj.lCurr = unionL;
