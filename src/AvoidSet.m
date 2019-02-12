@@ -360,7 +360,8 @@ classdef AvoidSet < handle
 
             % --- save out computed value function? --- %
             if obj.saveValueFuns 
-                obj.valueFunCellArr{end+1} = dataOut;
+                % only save out the final, 'converged' value function
+                obj.valueFunCellArr{end+1} = dataOut(:,:,:,end);
                 obj.lxCellArr{end+1} = obj.lCurr;
             end
             
@@ -370,6 +371,7 @@ classdef AvoidSet < handle
             obj.firstCompute = false;
             if exist('extraOuts', 'var') && isfield(extraOuts, 'maxQSize')
               obj.maxQSize = [obj.maxQSize, extraOuts.maxQSize];
+              fprintf("%f\n", mean(obj.maxQSize));
             else
               obj.maxQSize = [obj.maxQSize, 0];
             end

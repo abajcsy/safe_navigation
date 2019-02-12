@@ -13,7 +13,7 @@ lowEnv = [0;0];
 upEnv = [10;7];
 
 % Are we using a 2D or a 3D system?
-numDims = 2;
+numDims = 3;
 
 % Setup obstacle ['rectangle' or 'circle'].
 obsShape = 'rectangle';
@@ -74,18 +74,18 @@ end
 %   typical solver                  --> 'HJI'
 %   global Q algorithm              --> 'globalQ'
 %   local Q algorithm               --> 'localQ' 
-updateMethod = 'HJI';
+updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
-warmStart = false;
+warmStart = true;
 
 % If we are doing localQ, we need to specify where we are inheriting 
 % values from, l(x) or from data0
 inheritVals = 'lx'; 
 
 % Update epislon
-%   used in 'warmGlobalQ' and 'warmLocalQ' for which states to update
-%   used in 'warmHJI' and 'HJI' for convergenceThreshold 
+%   used in 'globalQ' and 'localQ' for which states to update
+%   used in 'HJI' for convergenceThreshold 
 updateEpsilon = 0.005;
 
 % If we want to save the sequence of value functions.
@@ -186,7 +186,7 @@ for t=1:T
     % 	belief obstacle -- original l(x) which can be found at valueFun(1)
     % 	converged value function -- V_converged which can be found at valueFun(end)
     if numDims == 3
-        extraArgs.theta = xinit(3);
+        extraArgs.theta = x(3);
         funcToPlot = setObj.valueFun(:,:,:,end);
     else
         funcToPlot = setObj.valueFun(:,:,end);
@@ -202,7 +202,8 @@ if saveValueFuns
     % Save out the sequence of value functions.
     valueFunCellArr = setObj.valueFunCellArr; 
     lxCellArr = setObj.lxCellArr; 
+    maxQSize = setObj.maxQSize;
     repo = what('safe_navigation');
     savePath = strcat(repo.path, '/data/', filename);
-    save(savePath, 'valueFunCellArr', 'lxCellArr');
+    save(savePath, 'valueFunCellArr', 'lxCellArr', 'maxQSize');
 end
