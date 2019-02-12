@@ -110,25 +110,18 @@ classdef Plotter
         
         %% Plots sensing radius centered around car position (x)
         % Inputs:
-        %   x [vector]  - 3D state of dubins car
-        %   senseRad [float] - sensing radius
+        %   grid  - 
+        %   signed_distance_map - 
         % Ouput:
-        %   s   - handle for figure
-        function s = plotSensing(obj, x, senseRad, senseShape)
-            if strcmp(senseShape,'rectangle')
-                lowx = x(1)-senseRad;
-                lowy = x(2)-senseRad;
-                s = rectangle('Position',[lowx,lowy,senseRad*2,senseRad*2], 'EdgeColor', [0,0,1,0.5], 'LineWidth', 2);
-            else
-                %s = viscircles([x(1),x(2)],senseRad, 'Color', [0,0.2,1,0.5], 'LineWidth', 2);
-                pos = [x(1)-senseRad x(2)-senseRad senseRad*2 senseRad*2];
-                s = rectangle('Position', pos,'Curvature',[1,1], 'FaceColor',[0,0.2,1,0.3], 'EdgeColor', [0,0.2,1,0]);
-            end
+        %   h   - handle for figure
+        function h = plotSensing(obj, grid, signed_distance_map)
+            s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
+            h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
         end
-        
+
         %% Plots waypoints.
         function plotWaypts(obj, waypts, simWidth, simHeight)
             X = [];

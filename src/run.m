@@ -45,11 +45,17 @@ xgoal = [8.5; 2.5; -pi/2];
 plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
 
 %% Construct sensed region.
-
-% get the sensing radius (circle) 
-senseShape = 'circle';
-senseRad = 1.5;
-senseData = [[xinit(1);xinit(2)], [senseRad;senseRad]];
+senseShape = 'camera';
+if strcmp(senseShape, 'circle')
+  senseRad = 1.5;
+  senseData = {[xinit(1);xinit(2);xinit(3)], [senseRad;senseRad]};
+elseif strcmp(senseShape, 'camera')
+  initialR = 1.5; % The initial radius of the safe region
+  senseFOV = pi/6; % The (half) field-of-view of the camera
+  senseData = {[xinit(1);xinit(2);xinit(3)], [senseFOV; initialR]};
+else
+  error('unknown sesnor type');
+end
 
 %% Compute first safe set based on sensing. 
 
@@ -79,14 +85,17 @@ hold on
 visSet = true;
 cmapHot = 'hot';
 cmapBone = 'bone';
-valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(3), visSet, [1,0,0], cmapHot);
-%beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0.5,0.5,0.5], cmapBone);
 
 % Plot environment, car, and sensing.
+figure(1);
 envHandle = plt.plotEnvironment();
-senseVis = plt.plotSensing(xinit, senseRad, senseShape);
+senseVis = plt.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
 carVis = plt.plotCar(xinit);
 plt.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
+
+% Plot value function
+valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(3), visSet, [1,0,0], cmapHot);
+%beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0.5,0.5,0.5], cmapBone);
 
 %% Simulate dubins car moving around environment and the safe set changing
 
@@ -109,8 +118,14 @@ for t=1:T
     setObj.dynSys.updateState(u, dt, setObj.dynSys.x);
     x = setObj.dynSys.x;
     
-    % Get the new sensing radius (circle).
-    senseData = [[x(1);x(2)],[senseRad;senseRad]];    
+    % Get the new sensing region.
+    if strcmp(senseShape, 'circle')
+      senseData = {[x(1);x(2);x(3)], [senseRad;senseRad]};
+    elseif strcmp(senseShape, 'camera')
+      senseData = {[x(1);x(2);x(3)], [senseFOV; initialR]};
+    else
+      error('unknown sesnor type');
+    end  
     
 	% -------------------- DEBUGGING -------------------- %
     % x = 4.8753, 5.2864, 0.0708
@@ -123,6 +138,16 @@ for t=1:T
     % Update l(x) and the avoid set.
     setObj.computeAvoidSet(senseData, senseShape, t+1);
     
+	% Delete old visualizations.
+    delete(carVis);
+    delete(senseVis);
+    
+    % Plot the state of the car (point), environment, and sensing.
+    senseVis = plt.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
+    carVis = plt.plotCar(x);
+    envHandle = plt.plotEnvironment();
+    % ----------------------------------- %
+    
     % -------------- Plotting -------------- %
     % Delete old visualizations.
     delete(valueFunc);
@@ -133,16 +158,6 @@ for t=1:T
     % 	converged value function -- V_converged which can be found at valueFun(end)
     valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), x(3), visSet, [1,0,0], cmapHot);
     %beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0,0,0], cmapBone);
-    
-	% Delete old visualizations.
-    delete(carVis);
-    delete(senseVis);
-    
-    % Plot the state of the car (point), environment, and sensing.
-	senseVis = plt.plotSensing(x, senseRad, senseShape);
-    carVis = plt.plotCar(x);
-    envHandle = plt.plotEnvironment();
-    % ----------------------------------- %
     
     % Pause based on timestep.
     pause(dt);

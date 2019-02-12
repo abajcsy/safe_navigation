@@ -37,6 +37,8 @@ classdef AvoidSet < handle
         boundUp         % (arr) upper limit of boundary padding 
         maxQSize        % (arr) Maximum queue size achieved for each timestep
         occup
+        gFMM            % Computation grid struct for FMM
+        unionL_2D_FMM   % Signed distance for the sensed occupancy map
     end
     
     methods
@@ -170,15 +172,46 @@ classdef AvoidSet < handle
             % NOTE: need to negate the default shape function to make sure
             %       free space is assigned (+) and unknown space is (-)
             if strcmp(senseShape, 'rectangle')
-                lowSenseXY = senseData(:,1);
-                upSenseXY = senseData(:,2);
+                lowSenseXY = senseData{1}(1:2);
+                upSenseXY = senseData{2};
                 lowObs = [lowSenseXY;obj.gridLow(3)];
                 upObs = [upSenseXY;obj.gridUp(3)];
                 sensingShape = -shapeRectangleByCorners(obj.grid,lowObs,upObs);
-            else % if circular sensing region
-                center = senseData(:,1);
-                radius = senseData(1,2);
+                % Union the sensed region with the actual obstacle.
+                unionL = shapeUnion(sensingShape, obj.lReal);
+                % Project the slice of unionL and create an occupancy map
+                [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                occupancy_map = sign(dataFMM);
+            elseif strcmp(senseShape, 'circle') % if circular sensing region
+                center = senseData{1}(1:2);
+                radius = senseData{2}(1);
                 sensingShape = -shapeCylinder(obj.grid, 3, center, radius);
+                % Union the sensed region with the actual obstacle.
+                unionL = shapeUnion(sensingShape, obj.lReal);
+                % Project the slice of unionL and create an occupancy map
+                [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                occupancy_map = sign(dataFMM);
+            elseif strcmp(senseShape, 'camera') % if camera sensing region
+                % It is assumed that the obstacle is only position
+                % dependent in this computation.
+                
+                % If this is the first computation, use a circle; 
+                % otherwise use a camera
+                if obj.firstCompute
+                  sensingShape = -shapeCylinder(obj.grid, 3, senseData{1}(1:2), senseData{2}(2));
+                  % Union the sensed region with the actual obstacle.
+                  unionL = shapeUnion(sensingShape, obj.lReal);
+                  % Project the slice of unionL and create an occupancy map
+                  [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                  occupancy_map = sign(dataFMM);
+                else
+                  % Project the slice of obstacle
+                  [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                  occupancy_map = generate_camera_sensing_region(obj.gFMM, ...
+                    obsSlice, senseData{2}(1), senseData{1}(1:2), senseData{1}(3));
+                end
+            else
+               error('Unrecognized sensor type');
             end
             
             % --- LOCAL UPDATE --- % 
@@ -186,18 +219,12 @@ classdef AvoidSet < handle
             lxOld = obj.lCurr;
             % -------------------- %
             
-            % Union the sensed region with the actual obstacle.
-            unionL = shapeUnion(sensingShape, obj.lReal);
-            
-            % unionL will typically be an occupancy grid and FMM will be
-            % used to get the signed distance function. We will use the 
-            % FMM code to do that. Since the FMM code works only on 2D, we 
-            % will take a slice of the grid, compute FMM, and then project
-            % it back to a 3D array.
-            [gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
-            occupancy_map = sign(dataFMM);
-            unionL_2D_FMM = compute_fmm_map(gFMM, occupancy_map);
-            unionL = repmat(unionL_2D_FMM, 1, 1, obj.grid.N(3));
+            % We will use the FMM code to get the signed distance function. 
+            % Since the FMM code works only on 2D, we will take a slice of 
+            % the grid, compute FMM, and then project it back to a 3D
+            % array.
+            obj.unionL_2D_FMM = compute_fmm_map(obj.gFMM, occupancy_map);
+            unionL = repmat(obj.unionL_2D_FMM, 1, 1, obj.grid.N(3));
             
             if isnan(obj.lCurr)
                 obj.lCurr = unionL;
