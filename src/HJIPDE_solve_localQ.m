@@ -1,5 +1,5 @@
 function [data, tau, extraOuts] = ...
-    HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs, plt)
+    HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs)
 % ----- How to use this function -----
 %
 % Inputs:
@@ -722,7 +722,7 @@ numNeighs = 3;
 neighbors = [];
 for dim=1:3
 	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
-  neighbors = [neighbors; neighList];
+    neighbors = [neighbors; neighList];
 end
 Q = vertcat(Q, neighbors(:));
 Q = unique(Q);
@@ -730,7 +730,8 @@ Q = unique(Q);
 % Set values that need updating to l(x) value
 if strcmp(extraArgs.inheritVals, 'lx') 
     data0(Q) = lx(Q);
-else % anything else defaults to the old value function passed in through data0
+end % anything else defaults to the old value function passed in through data0
+    
 
 % Store initial value function for computing how much a one-step 
 % update affected the values.
@@ -739,9 +740,6 @@ Vold = data0(:);
 
 extraOuts.maxQSize = 0;
 Qold = [];
-
-% Q = [18890; 18891];
-% Vold = data0(:);
 
 %% Initialize PDE solution
 data0size = size(data0);
@@ -1338,75 +1336,32 @@ function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, gr
     end
 
     neighList = [];
-%     for i = 1:numel(linIndicies)
-%         linIdx = linIndicies(i);
-%         for n=1:numNeighs
-%             % Get right and left neighbors that are n gridcells away.
-%             [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIdx);
-%             subIndicies = [subInd1; subInd2; subInd3];
-%             rightNeigh = subIndicies;
-%             leftNeigh = subIndicies;
-%             rightNeigh(dim) = rightNeigh(dim) + n;
-%             leftNeigh(dim) = leftNeigh(dim) - n;
-% %             rightNeigh = linIdx + stride(dim)*n;
-% %             leftNeigh = linIdx - stride(dim)*n;
-%             
-%             % Take into account periodic boundaries
-%             if dim == periodicDim
-%               if leftNeigh(dim) <= 0
-%                 leftNeigh(dim) = leftNeigh(dim) - 1;
-%               end
-%               rightNeigh(dim) = mod(rightNeigh(dim)-1, grid.shape(dim)) + 1;
-%               leftNeigh(dim) = mod(leftNeigh(dim)-1, grid.shape(dim)) + 1;
-%             end
-% 
-% %             % Make sure we don't return neighbors that are outside of our
-% %             % computation grid.
-% %             if rightNeigh <= maxLinIdx && rightNeigh > 0
-% %                 neighList = [neighList, rightNeigh];
-% %             end
-% %             if leftNeigh <= maxLinIdx && leftNeigh > 0
-% %                 neighList = [neighList, leftNeigh];
-% %             end
-%             
-%             % Make sure we don't return neighbors that are outside of our
-%             % computation grid.
-%             if rightNeigh(dim) <= grid.shape(dim) && rightNeigh(dim) > 0
-%                 rightNeigh = sub2ind(grid.shape, rightNeigh(1), rightNeigh(2), rightNeigh(3));
-%                 neighList = [neighList, rightNeigh];
-%             end
-%             if leftNeigh(dim) <= grid.shape(dim) && leftNeigh(dim) > 0
-%                 leftNeigh = sub2ind(grid.shape, leftNeigh(1), leftNeigh(2), leftNeigh(3));
-%                 neighList = [neighList, leftNeigh];
-%             end
-%         end
-%     end
 
-      for n=1:numNeighs
-          % Get right and left neighbors that are n gridcells away.
-          [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIndicies);
-          subIndicies = [subInd1, subInd2, subInd3];
-          rightNeigh = subIndicies;
-          leftNeigh = subIndicies;
-          rightNeigh(:, dim) = rightNeigh(:, dim) + n;
-          leftNeigh(:, dim) = leftNeigh(:, dim) - n;
+    for n=1:numNeighs
+      % Get right and left neighbors that are n gridcells away.
+      [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIndicies);
+      subIndicies = [subInd1, subInd2, subInd3];
+      rightNeigh = subIndicies;
+      leftNeigh = subIndicies;
+      rightNeigh(:, dim) = rightNeigh(:, dim) + n;
+      leftNeigh(:, dim) = leftNeigh(:, dim) - n;
 
-          % Take into account periodic boundaries
-          if dim == periodicDim
-            zero_indicies = find(leftNeigh(:, dim) <= 0);
-            leftNeigh(zero_indicies, dim) = leftNeigh(zero_indicies) - 1;
-            rightNeigh(:, dim) = mod(rightNeigh(:, dim)-1, grid.shape(dim)) + 1;
-            leftNeigh(:, dim) = mod(leftNeigh(:, dim)-1, grid.shape(dim)) + 1;
-          end
-
-          % Make sure we don't return neighbors that are outside of our
-          % computation grid.
-          valid_indicies = find((rightNeigh(:, dim) <= grid.shape(dim)) .* (rightNeigh(:, dim) > 0));
-          rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3));
-          neighList = [neighList; rightNeigh(:)];
-          
-          valid_indicies = find((leftNeigh(:, dim) <= grid.shape(dim)) .* (leftNeigh(:, dim) > 0));
-          leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3));
-          neighList = [neighList; leftNeigh(:)];
+      % Take into account periodic boundaries
+      if dim == periodicDim
+        zero_indicies = find(leftNeigh(:, dim) <= 0);
+        leftNeigh(zero_indicies, dim) = leftNeigh(zero_indicies) - 1;
+        rightNeigh(:, dim) = mod(rightNeigh(:, dim)-1, grid.shape(dim)) + 1;
+        leftNeigh(:, dim) = mod(leftNeigh(:, dim)-1, grid.shape(dim)) + 1;
       end
+
+      % Make sure we don't return neighbors that are outside of our
+      % computation grid.
+      valid_indicies = find((rightNeigh(:, dim) <= grid.shape(dim)) .* (rightNeigh(:, dim) > 0));
+      rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3));
+      neighList = [neighList; rightNeigh(:)];
+
+      valid_indicies = find((leftNeigh(:, dim) <= grid.shape(dim)) .* (leftNeigh(:, dim) > 0));
+      leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3));
+      neighList = [neighList; leftNeigh(:)];
+    end
 end

@@ -52,9 +52,6 @@ else
     xgoal = [8.5; 2.5];
 end
 
-%% Create plotter.
-plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
-
 %% Construct sensed region.
 senseShape = 'camera';
 if strcmp(senseShape, 'circle')
@@ -74,7 +71,7 @@ end
 %   typical solver                  --> 'HJI'
 %   global Q algorithm              --> 'globalQ'
 %   local Q algorithm               --> 'localQ' 
-updateMethod = 'localQ';
+updateMethod = 'globalQ';
 
 % If we want to warm start with prior value function.
 warmStart = true;
@@ -86,7 +83,7 @@ inheritVals = 'lx';
 % Update epislon
 %   used in 'globalQ' and 'localQ' for which states to update
 %   used in 'HJI' for convergenceThreshold 
-updateEpsilon = 0.005;
+updateEpsilon = 0.01;
 
 % If we want to save the sequence of value functions.
 saveValueFuns = false;
@@ -105,30 +102,12 @@ setObj.computeAvoidSet(senseData, senseShape, currTime);
 %% Plot initial conditions, sensing, and safe set.
 hold on
 
+% Create plotter.
+plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
+
 % Plot environment, car, and sensing.
-figure(1);
-envHandle = plt.plotEnvironment();
-senseVis = plt.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
-carVis = plt.plotCar(xinit);
-plt.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
-
-% Plot value function
-extraArgs.edgeColor = [1,0,0];
-
-if numDims == 3
-    extraArgs.theta = xinit(3);
-    funcToPlot = setObj.valueFun(:,:,:,end);
-else
-    funcToPlot = setObj.valueFun(:,:,end);
-end
-
-visSet = true;
-cmapHot = 'hot';
-cmapBone = 'bone';
-
-valueFunc = plt.plotFuncLevelSet(setObj.grid, setObj.valueFun(:,:,:,end), xinit(3), visSet, [1,0,0], cmapHot);
-%extraArgs.edgeColor = [0.5,0.5,0.5];
-%beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, x(3), visSet, [0.5,0.5,0.5], cmapBone);
+plt.updatePlot(xinit, setObj);
+pause(dt);
 
 %% Simulate dubins car moving around environment and the safe set changing
 
@@ -167,32 +146,8 @@ for t=1:T
     % Update l(x) and the avoid set.
     setObj.computeAvoidSet(senseData, senseShape, t+1);
     
-	% Delete old visualizations.
-    delete(carVis);
-    delete(senseVis);
-    
-    % Plot the state of the car (point), environment, and sensing.
-    senseVis = plt.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
-    carVis = plt.plotCar(x);
-    envHandle = plt.plotEnvironment();
-    % ----------------------------------- %
-    
-    % -------------- Plotting -------------- %
-    % Delete old visualizations.
-    delete(valueFunc);
-    %delete(beliefObstacle);
-    
-    % Plot belief obstacle (i.e. everything unsensed) and the value function.
-    % 	belief obstacle -- original l(x) which can be found at valueFun(1)
-    % 	converged value function -- V_converged which can be found at valueFun(end)
-    if numDims == 3
-        extraArgs.theta = x(3);
-        funcToPlot = setObj.valueFun(:,:,:,end);
-    else
-        funcToPlot = setObj.valueFun(:,:,end);
-    end
-    valueFunc = plt.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
-    %beliefObstacle = plt.plotFuncLevelSet(setObj.grid, setObj.lCurr, visSet, extraArgs);
+    % Update plotting.
+	plt.updatePlot(x, setObj);
     
     % Pause based on timestep.
     pause(dt);

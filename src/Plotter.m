@@ -1,4 +1,4 @@
-classdef Plotter
+classdef Plotter < handle
     %PLOTTER Plots level sets and environment and stuff.
     
     properties
@@ -9,6 +9,14 @@ classdef Plotter
         upObs       % if rectangle: upper right (x,y) point
                     % if circle: radius of circle 
         obsShape    % shape of the obstacle (rectangle or circle)
+        
+        % figure handles
+        figh
+        envh
+        senseh
+        carh
+        vxh
+        firstPlot 
     end
     
     methods
@@ -19,6 +27,47 @@ classdef Plotter
             obj.lowObs = lowObs;
             obj.upObs = upObs;
             obj.obsShape = obsShape;
+            obj.envh = NaN;
+            obj.senseh = NaN;
+            obj.carh = NaN;
+            obj.vxh = NaN;
+            obj.firstPlot = true;
+        end
+        
+        %% Updates the plot (environment, sensing, set, car)
+        %  Input:
+        %       x       -- state of dyn system
+        %       setObj  -- avoid set object
+        function updatePlot(obj, x, setObj)
+            % Delete old plots
+            if ~obj.firstPlot
+                delete(obj.envh);
+                delete(obj.senseh);
+                delete(obj.carh);
+                delete(obj.vxh);
+            else
+                obj.figh = figure(1);
+                obj.firstPlot = false;
+            end
+            
+            % Visualize environment and sensing and car
+            obj.envh = obj.plotEnvironment();
+            obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
+            obj.carh = obj.plotCar(x);
+            obj.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
+
+            % Plot value function
+            extraArgs.edgeColor = [1,0,0];
+
+            if length(x) == 3
+                extraArgs.theta = x(3);
+                funcToPlot = setObj.valueFun(:,:,:,end);
+            else
+                funcToPlot = setObj.valueFun(:,:,end);
+            end
+
+            visSet = true;
+            obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
         end
         
         %% Plots the environment with the obstacle.

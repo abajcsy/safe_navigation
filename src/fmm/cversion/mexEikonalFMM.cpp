@@ -498,7 +498,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     double *speedValues, *uValues, *bdryCondValues;
     double **u, **speed, **bdryCond;
     bool **Alive, **NarrowBand;
-    const int *dims;
+    const mwSize *dims;
 	int N, iP,jP;
     double L,TOL,error,bc;
     int i,j,k;

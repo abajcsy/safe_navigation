@@ -47,13 +47,15 @@ classdef AvoidSet < handle
         lxCellArr       % (cell arr) stores sequence of l(x)
         maxQSize        % (arr) Maximum queue size achieved for each timestep
         occup
+        
+        % Sensing-based occu grid info
         gFMM            % Computation grid struct for FMM
         unionL_2D_FMM   % Signed distance for the sensed occupancy map
     end
     
     methods
         %% Constructor. 
-        % NOTE: Assumes DubinsCar dynamics!
+        % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
         function obj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, ...
                 obsShape, xinit, N, dt, updateEpsilon, ...
                 warmStart, saveValueFuns, runComparison, ...
