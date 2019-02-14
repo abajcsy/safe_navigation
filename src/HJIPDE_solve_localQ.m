@@ -90,6 +90,9 @@ function [data, tau, extraOuts] = ...
 % Outputs:
 %   data - solution corresponding to grid g and time vector tau
 %   tau  - list of computation times (redundant)
+%   extraOuts - This structure can be used to pass on extra outputs, for
+%               example:
+%       .QSizes: (array) size of Q at each step backwards in computation time 
 
 %% Default parameters
 if numel(tau) < 2
@@ -712,6 +715,11 @@ startTime = cputime;
 % function has changed (i.e. we sensed free-space). 
 Q = find((lxOld <= 0).*(lx > 0));
 
+% Set states in warm-started value function that are free-space
+% to have the l(x) value -- need this for V(x) to change at all (in
+% theory!)
+data0(Q) = lx(Q);
+
 % Vector that helps us convert from 3D to linear indicies.
 [nX, nY, nTheta] = size(data0);
 stride = [1, nX, nX*nY];
@@ -720,26 +728,22 @@ numNeighs = 3;
 
 % Get neighbors for all states in Q in each dimension (x,y,theta)
 neighbors = [];
-for dim=1:3
-	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
+pDim = 3;
+for dim=1:schemeData.dynSys.nx
+	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, pDim);
     neighbors = [neighbors; neighList];
 end
 Q = vertcat(Q, neighbors(:));
 Q = unique(Q);
 
-% Set values that need updating to l(x) value
-if strcmp(extraArgs.inheritVals, 'lx') 
-    data0(Q) = lx(Q);
-end % anything else defaults to the old value function passed in through data0
-    
-
 % Store initial value function for computing how much a one-step 
 % update affected the values.
 Vold = data0(:); 
-% ------------------------------------------------------------ %
 
-extraOuts.maxQSize = 0;
+% Stores the sequence of Q sizes over computation time.
+extraOuts.QSizes = [];
 Qold = [];
+% ------------------------------------------------------------ %
 
 %% Initialize PDE solution
 data0size = size(data0);
@@ -826,9 +830,8 @@ for i = istart:length(tau)
         fprintf('Q size: %f\n', sz);
         fprintf('\n');
         
-        if sz > extraOuts.maxQSize
-          extraOuts.maxQSize = sz;
-        end
+        % Record the current Q size.
+        extraOuts.QSizes = [extraOuts.QSizes, sz];
                 
         % Save previous data if needed
         if strcmp(compMethod, 'minVOverTime') || ...
@@ -919,8 +922,8 @@ for i = istart:length(tau)
                 
         % Get neighbors for all states in Q in each dimension (x,y,theta)
         neighbors = [];
-        for dim=1:3
-            neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
+        for dim=1:schemeData.dynSys.nx
+            neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, pDim);
             neighbors = [neighbors; neighList];
         end
         Q = vertcat(Q, neighbors(:));
@@ -1017,7 +1020,7 @@ for i = istart:length(tau)
         end
     
     % ---- If Q is empty, we need to exit the outer for-loop as well! --- %
-    if isempty(Q)
+    if isempty(Q) || ~(~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
         extraOuts.stoptau = tau(i);
         tau(i+1:end) = [];
 

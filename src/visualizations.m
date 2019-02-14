@@ -1,10 +1,10 @@
 %% Visualizes stuff in a pretty way.
+clf
 
 %% Choose which method you wanna visualize.
-%   HJI, globalQ, localQ
-method = 'HJI';
-warm = false;
-inheritVals = 'lx';
+%   HJI, localQ
+method = 'localQ';
+warm = true;
 
 %% Grab the data from both local updates.
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
@@ -13,57 +13,61 @@ load(strcat(path, 'grid.mat'));
 load(strcat(path, 'trajectory.mat'));
 if strcmp(method, 'HJI')
     if warm
-        filePath = strcat(path, 'warmHJI_reduced.mat');
+        title('Warm Start HJI-VI', 'Interpreter','latex', 'fontsize',16);
+        filePath = strcat(path, 'HJIwarm.mat');
         load(filePath);
-        valueFuns = valueFunCellArr;
-        color = [0.5,0.5,0.5];
+        color = [0.1,0.1,1.0];
     else
-        filePath = strcat(path, 'groundTruth_reduced.mat');
+        title('HJI-VI', 'Interpreter','latex', 'fontsize',16);
+        filePath = strcat(path, 'HJI.mat');
         load(filePath);
-        valueFuns = reducedValueFunCellArr;
         color = [0,0,0];
     end
-elseif strcmp(method, 'globalQ')
-    if warm
-        filePath = strcat(path, 'warmGlobalQ_reduced.mat');
-        load(filePath);
-        valueFuns = valueFunCellArr;
-        color = [0.1,0.1,0.6];
-    else
-        filePath = strcat(path, 'globalQ_reduced.mat');
-        load(filePath);
-        valueFuns = valueFunCellArr;
-        color = [0.1,0.1,1.0];
-    end
 elseif strcmp(method, 'localQ')
-	if strcmp(inheritVals, 'lx')
-        filePath = strcat(path, 'hackySignedDistanceWarmStart_reduced.mat');
-        load(filePath);
-        valueFuns = reducedValueFunCellArr;
-        color = [0.6,0.1,0.1];
-    else
-        filePath = strcat(path, 'pureWarmStart_reduced.mat');
-        load(filePath);
-        valueFuns = reducedValueFunCellArr;
-        color = [1.0,0.1,0.1];
-    end
+    title('Local Update Algorithm', 'Interpreter','latex', 'fontsize',16);
+    filePath = strcat(path, 'localQwarm.mat');
+    load(filePath);
+    color = [1.0,0.1,0.1];
 else
     error('Unsupported method type.');
 end
 
+valueFuns = valueFunCellArr;
+
 %% Visualize
 
+% Setup environment bounds.
+lowEnv = [0;0];
+upEnv = [10;7];
+
+% Create lower and upper bounds on rectangle.
+lowRealObs = [4;1];
+upRealObs = [7;4];
+obsShape = 'rectangle';
+plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
+
 figure(1)
+dt = 0.05;
 hold on;
 for i=1:length(valueFuns)
+    
+    % plot value function
     currFun = valueFuns{i};
-    extraArgs.LineWidth = 2.0;
+    extraArgs.LineWidth = 1.5;
     currState = trajectory{i}{1};
     [gPlot, plotData] = proj(grid, currFun, [0 0 1], currState(3));
+    
+    e = plt.plotEnvironment();    
+    s = plt.plotSensing(gPlot, fovCellArr{i});
+    c = plt.plotCar(currState);
+    
     set = visSetIm(gPlot, plotData, color, 0, extraArgs);
-    pause(0.02);
+    pause(dt);
     if i ~= length(valueFuns)
         delete(set);
+        delete(e);
+        delete(s);
+        delete(c);
     end
 end
 

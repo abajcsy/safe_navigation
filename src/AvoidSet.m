@@ -38,15 +38,13 @@ classdef AvoidSet < handle
         warmStart       % (bool) if we want to warm start with prior V(x)
         firstCompute    % (bool) flag to see if this is the first time we have done computation
         updateMethod    % (string) what kind of solution method to use
-        inheritVals     % (string) if using localQ update method, pick where to inherit values from
         
         % Utility variables and flags
-        saveValueFuns   % (bool) flag to save out sequence of V(x) and l(x)
-        runComparison   % (bool) flag to run computational comparisons
         valueFunCellArr % (cell arr) stores sequence of V(x) 
         lxCellArr       % (cell arr) stores sequence of l(x)
-        maxQSize        % (arr) Maximum queue size achieved for each timestep
-        occup
+        QSizeCellArr    % (cell arr) all queue size achieved for each timestep
+        fovCellArr      % (cell arr) stores the results of FMM
+        solnTimes       % (array) total time to compute solution at each step
         
         % Sensing-based occu grid info
         gFMM            % Computation grid struct for FMM
@@ -58,8 +56,7 @@ classdef AvoidSet < handle
         % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
         function obj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, ...
                 obsShape, xinit, N, dt, updateEpsilon, ...
-                warmStart, saveValueFuns, runComparison, ...
-                inheritVals, updateMethod)
+                warmStart, updateMethod)
             obj.gridLow = gridLow;  
             obj.gridUp = gridUp;    
             obj.N = N;      
@@ -156,13 +153,13 @@ classdef AvoidSet < handle
             
             % Save out sequence of value functions as system moves through
             % space as well as the cost functions and the max Q size (if using Q method). 
-            obj.saveValueFuns = saveValueFuns;
             obj.valueFunCellArr = [];
             obj.lxCellArr = [];
-            obj.maxQSize = [];
+            obj.QSizeCellArr = [];
+            obj.solnTimes = [];
+            obj.fovCellArr = [];
             
-            % For local update, specify where we update values from.
-            obj.inheritVals = inheritVals;
+            % Specify which update method we are using.
             obj.updateMethod = updateMethod;
             
             % since we have a finite compute grid, we may not want to 
@@ -173,7 +170,7 @@ classdef AvoidSet < handle
             if strcmp(obj.updateMethod, 'HJI')
                 obj.HJIextraArgs.stopConverge = 1;
                 obj.HJIextraArgs.convergeThreshold = obj.updateEpsilon;
-            elseif strcmp(updateMethod, 'globalQ') || strcmp(obj.updateMethod, 'localQ')
+            elseif strcmp(obj.updateMethod, 'localQ')
                 obj.HJIextraArgs.stopConverge = 0;
             else
                 msg = strcat('Your update method: ', obj.updateMethod, ... 
@@ -188,15 +185,6 @@ classdef AvoidSet < handle
             fprintf('   stopConverge: %d\n', obj.HJIextraArgs.stopConverge);
             fprintf('   updateEpsilon: %.3f\n', obj.updateEpsilon);
             fprintf('--------------------------------------\n');
-            
-            % Grab the ground truth value functions over time
-            obj.runComparison = runComparison;
-            if obj.runComparison
-                repo = what('safe_navigation');
-                valFunPath = strcat(repo.path, '/data/groundTruthValueFuns.mat');
-                load(valFunPath, 'valueFunCellArr');
-                obj.valueFunCellArr = valueFunCellArr;
-            end
             
         end
         
@@ -275,6 +263,9 @@ classdef AvoidSet < handle
             obj.unionL_2D_FMM = compute_fmm_map(obj.gFMM, occupancy_map);
             unionL = repmat(obj.unionL_2D_FMM, 1, 1, obj.grid.N(3));
             
+            % Store the FOV info (for plotting, analysis etc.)
+            obj.fovCellArr{end+1} = obj.unionL_2D_FMM;
+            
             if isnan(obj.lCurr)
                 obj.lCurr = unionL;
             else
@@ -311,37 +302,29 @@ classdef AvoidSet < handle
             minWith = 'minVWithL';
             
             % ------------ Compute value function ---------- % 
+            
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                %repo = what('safe_navigation');
-                %pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                repo = what('safe_navigation');
+                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
                 %pathToInitialVx = '../data/initialVx.mat';
-                %load(pathToInitialVx);
+                load(pathToInitialVx);
                 
                 % (option 2) run the full, standard Vx computation
-                firstHJIextraArgs = obj.HJIextraArgs;
-                firstHJIextraArgs.stopConverge = 1;
-                firstHJIextraArgs.convergeThreshold = obj.updateEpsilon;
-                [dataOut, tau, extraOuts] = ...
-                  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
-                   minWith, firstHJIextraArgs);
+                %firstHJIextraArgs = obj.HJIextraArgs;
+                %firstHJIextraArgs.stopConverge = 1;
+                %firstHJIextraArgs.convergeThreshold = 0.01;
+                %[dataOut, tau, extraOuts] = ...
+                %  HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                %    obj.timeDisc, obj.schemeData, minWith, firstHJIextraArgs);
             else
+                start_t = now;
                 if strcmp(obj.updateMethod, 'HJI') 
-                    % Use typical HJI solver.
+                    % Use typical HJI solver (with or without warm start).
                     [dataOut, tau, extraOuts] = ...
-                      HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
-                       minWith, obj.HJIextraArgs);
-                elseif strcmp(obj.updateMethod, 'globalQ')
-                    % Use Q-based algorithm with initial Q constructed
-                    % *globally*. 
-                    [dataOut, tau, extraOuts] = ...
-                      HJIPDE_solve_globalQ(data0, lxOld, obj.lCurr, ...
-                        obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
-                        minWith, obj.HJIextraArgs);
+                      HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                        obj.timeDisc, obj.schemeData, minWith, obj.HJIextraArgs);    
                 elseif strcmp(obj.updateMethod, 'localQ')
-                    % For local update, specify where we update values from.
-                    obj.HJIextraArgs.inheritVals = obj.inheritVals;
-                    
                     % Use Q-based algorithm with initial Q constructed
                     % *locally* near newly sensed regions.
                     [dataOut, tau, extraOuts] = ...
@@ -349,33 +332,22 @@ classdef AvoidSet < handle
                         obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
                         minWith, obj.HJIextraArgs);
                 end
-            end
-            
-            % --- compare solution with ground truth? --- %
-            if obj.runComparison
-                % Grab the ground truth update at same timestep for comparison.
-                groundTruth = obj.valueFunCellArr{currTime};
-
-                % Compare the local update to the ground-truth.
-                obj.compareSolutions(dataOut(:,:,:,end), groundTruth(:,:,:,end));
+                end_t = now;
             end
 
-            % --- save out computed value function? --- %
-            if obj.saveValueFuns 
-                % only save out the final, 'converged' value function
-                obj.valueFunCellArr{end+1} = dataOut(:,:,:,end);
-                obj.lxCellArr{end+1} = obj.lCurr;
-            end
+            % only save out the final, 'converged' value function
+            obj.valueFunCellArr{end+1} = dataOut(:,:,:,end);
+            obj.lxCellArr{end+1} = obj.lCurr;
             
             % Update internal variables.
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
             obj.firstCompute = false;
-            if exist('extraOuts', 'var') && isfield(extraOuts, 'maxQSize')
-              obj.maxQSize = [obj.maxQSize, extraOuts.maxQSize];
-              fprintf("%f\n", mean(obj.maxQSize));
+            obj.solnTimes = [obj.solnTimes, end_t - start_t];
+            if exist('extraOuts', 'var') && isfield(extraOuts, 'QSizes')
+                obj.QSizeCellArr{end+1} = extraOuts.QSizes;
             else
-              obj.maxQSize = [obj.maxQSize, 0];
+                error('No field extraOuts.QSizes!');
             end
         end
         

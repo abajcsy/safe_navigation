@@ -69,43 +69,37 @@ end
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
-%   global Q algorithm              --> 'globalQ'
 %   local Q algorithm               --> 'localQ' 
-updateMethod = 'globalQ';
+updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
 warmStart = true;
 
-% If we are doing localQ, we need to specify where we are inheriting 
-% values from, l(x) or from data0
-inheritVals = 'lx'; 
-
 % Update epislon
-%   used in 'globalQ' and 'localQ' for which states to update
+%   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
 updateEpsilon = 0.01;
 
-% If we want to save the sequence of value functions.
-saveValueFuns = false;
-filename = strcat(updateMethod, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
-
-% If we want to load data for any numerical comparisons. 
-runComparison = false;
+% If we want to save the sequence of value functions, compute times, etc..
+saveOutputData = true;
+if warmStart
+    name = strcat(updateMethod, 'warm');
+else
+    name = updateMethod;
+end
+filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 
 % Setup avoid set object and compute first set.
 currTime = 1;
 setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
-    xinit, N, dt, updateEpsilon, warmStart, saveValueFuns, runComparison, ...
-    inheritVals, updateMethod);
+    xinit, N, dt, updateEpsilon, warmStart, updateMethod);
 setObj.computeAvoidSet(senseData, senseShape, currTime);
 
 %% Plot initial conditions, sensing, and safe set.
 hold on
 
-% Create plotter.
-plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
-
 % Plot environment, car, and sensing.
+plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
 plt.updatePlot(xinit, setObj);
 pause(dt);
 
@@ -153,12 +147,14 @@ for t=1:T
     pause(dt);
 end
 
-if saveValueFuns 
+if saveOutputData
     % Save out the sequence of value functions.
     valueFunCellArr = setObj.valueFunCellArr; 
     lxCellArr = setObj.lxCellArr; 
-    maxQSize = setObj.maxQSize;
+    QSizeCellArr = setObj.QSizeCellArr;
+    solnTimes = setObj.solnTimes;
+    fovCellArr = setObj.fovCellArr;
     repo = what('safe_navigation');
     savePath = strcat(repo.path, '/data/', filename);
-    save(savePath, 'valueFunCellArr', 'lxCellArr', 'maxQSize');
+    save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', 'solnTimes', 'fovCellArr');
 end

@@ -90,8 +90,8 @@ classdef Plotter < handle
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
             
-            xlabel('x');
-            ylabel('y');
+            xlabel('$p_x$', 'Interpreter','latex');
+            ylabel('$p_y$', 'Interpreter','latex');
             set(gca,'TickLength',[0 0]);
             box on
         end
@@ -145,8 +145,8 @@ classdef Plotter < handle
             end
 
             colormap(flipud(cmap));
-            xlabel('x');
-            ylabel('y');
+            xlabel('$p_x$', 'Interpreter','latex');
+            ylabel('$p_y$', 'Interpreter','latex');
             %grid off
             set(gca,'TickLength',[0 0]);
         end

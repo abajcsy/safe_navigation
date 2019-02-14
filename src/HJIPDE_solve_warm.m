@@ -1,12 +1,16 @@
 function [data, tau, extraOuts] = ...
-    HJIPDE_solve_globalQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, compMethod, extraArgs, plt)
+    HJIPDE_solve_warm(data0, lxOld, lx, tau, schemeData, compMethod, extraArgs)
+% [data, tau, extraOuts] = ...
+%   HJIPDE_solve(data0, tau, schemeData, minWith, extraargs)
+%     Solves HJIPDE with initial conditions data0, at times tau, and with
+%     parameters schemeData and extraArgs
+%
 % ----- How to use this function -----
 %
 % Inputs:
 %   data0           - initial value function
 %   lxOld           - prior cost function from last HJIPDE computation 
 %   lx              - current cost function 
-%   updateEpsilon   - don't consider states when change in Vx is < epsilon
 %   tau             - list of computation times
 %   schemeData      - problem parameters passed into the Hamiltonian func
 %                       .grid: grid (required!)
@@ -25,6 +29,10 @@ function [data, tau, extraOuts] = ...
 %                       - 'maxVWithL' to do max with targets
 %   extraArgs       - this structure can be used to leverage other 
 %                       additional functionalities within this function. 
+%                       Its subfields are:
+%     .obstacles:           (matrix) a single obstacle or a list of 
+%                           obstacles with time stamps tau (obstacles must 
+%                           have same time stamp as the solution)
 %     .targets:             (matrix) a single target or a list of targets 
 %                           with time stamps tau (targets must have same 
 %                           time stamp as the solution). This functionality 
@@ -35,6 +43,25 @@ function [data, tau, extraOuts] = ...
 %                           warm-starting with a value function (data0)
 %                           that is not equal to the target/cost function
 %                           (l(x))
+
+%     .keepLast:            (bool) Only keep data from latest time stamp 
+%                           and delete previous datas
+%     .quiet:               (bool) Don't spit out stuff in command window
+%     .lowMemory:           (bool) use methods to save on memory
+%     .fipOutput:           (bool) flip time stamps of output
+
+
+
+%     .stopInit:            (vector) stop the computation once the  
+%                           reachable set includes the initial state
+%     
+%     .stopSetInclude:      (matrix) stops computation when reachable set 
+%                           includes this set
+%     .stopSet:             (matrix) same as stopSet Include
+%     .stopSetIntersect:    (matrix) stops computation when reachable set 
+%                           intersects this set
+%     .stopLevel:           (double) level of the stopSet to check the 
+%                           inclusion for. Default level is zero.
 %     .stopConverge:        (bool) set to true to stop the computation when
 %                           it converges
 %     .convergeThreshold:   Max change in each iteration allowed when 
@@ -54,6 +81,21 @@ function [data, tau, extraOuts] = ...
 %                               - 'hard' sets it to 1 once convergence
 %                                  happens
 %                               - 1 sets it to 'hard'
+%     .SDModFunc, .SDModParams:
+%         Function for modifying scheme data every time step given by tau.
+%         Currently this is only used to switch between using optimal control at
+%         every grid point and using maximal control for the SPP project when
+%         computing FRS using centralized controller
+%
+%     .saveFilename, .saveFrequency:
+%         file name under which temporary data is saved at some frequency in
+%         terms of the number of time steps
+%
+%     .compRegion:          unused for now (meant to limit computation 
+%                           region)
+%     .makeVideo:           (bool) whether or not to create a video
+%     .videoFilename:       (string) filename of video
+%     .frameRate:           (int) framerate of video
 %     .visualize:           either fill in struct or set to 1 to visualize
 %                           .plotData:          (struct) information   
 %                                               required to plot the data:
@@ -67,6 +109,41 @@ function [data, tau, extraOuts] = ...
 %                                                        take minimum
 %                                                        (union) for second
 %                                                        dimension
+%                           .sliceLevel:        (double) level set of    
+%                                               reachable set to visualize 
+%                                               (default is 0)
+%                           .holdOn:            (bool) leave whatever was 
+%                                                already on the figure?
+%                           .lineWidth:         (int) width of lines
+%                           .viewAngle:         (vector) [az,el] angles for
+%                                               viewing plot
+%                           .camlightPosition:  (vector) location of light
+%                                               source
+%                           .viewGrid:          (bool) view grid
+%                           .viewAxis:          (vector) size of axis
+%                           .xTitle:            (string) x axis title
+%                           .yTitle:            (string) y axis title
+%                           .zTitle:            (string) z axis title
+%                           .fontSize:          (int) font size of figure
+%                           .deleteLastPlot:    (bool) set to true to   
+%                                               delete previous plot 
+%                                               before displaying next one
+%                           .figNum:            (int) for plotting a 
+%                                               specific figure number
+%                           .figFilename:       (string) provide this to   
+%                                               save the figures (requires 
+%                                               export_fig package)
+%                           .initialValueSet:   (bool) view initial value
+%                                               set
+%                           .initialValueFunction: (bool) view initial
+%                                               value function
+%                           .valueSet:          (bool) view value set
+%                           .valueFunction:     (bool) view value function
+%                           .obstacleSet:       (bool) view obstacle set
+%                           .obstacleFunction:  (bool) view obstacle
+%                                               function
+%                           .targetSet:         (bool) view target set
+%                           .targetFunction:    (bool) view target function
 %                           .plotColorVS0:      color of initial value set
 %                           .plotColorVF0:      color of initial value
 %                                               function
@@ -84,10 +161,28 @@ function [data, tau, extraOuts] = ...
 %                           .plotColorTF:       color of target function
 %                           .plotAlphaTF:       transparency of target
 %                                               function
-%                           .plotColorlxOld:    color of old cost function
+
 % Outputs:
 %   data - solution corresponding to grid g and time vector tau
 %   tau  - list of computation times (redundant)
+%   extraOuts - This structure can be used to pass on extra outputs, for
+%               example:
+%      .stoptau: time at which the reachable set contains the initial
+%                state; tau and data vectors only contain the data till
+%                stoptau time.
+%
+%      .hVS0:   These are all figure handles for the appropriate
+%      .hVF0	set/function
+%      .hTS
+%      .hTF
+%      .hOS
+%      .hOF
+%      .hVS
+%      .hVF
+%      .QSizes: (array) size of Q at each step backwards in computation time 
+% 
+% -------Updated 11/14/18 by Sylvia Herbert (sylvia.lee.herbert@gmail.com)
+% 
 
 %% Default parameters
 if numel(tau) < 2
@@ -95,7 +190,7 @@ if numel(tau) < 2
 end
 
 if nargin < 4
-    compMethod = 'minVWdithV0';
+    compMethod = 'minVWithV0';
 end
 
 if nargin < 5
@@ -462,16 +557,6 @@ if (isfield(extraArgs, 'visualize') && isstruct(extraArgs.visualize))...
             extraArgs.visualize.plotAlphaVF0);
     end
     
-    %% -------------- Visualize old cost funtion. -----------------
-    
-    if isfield(extraArgs.visualize,'plotColorlxOld')
-        [gPlot, lxOldPlot] = proj(g, lxOld, ~plotDims, projpt);
-        extraOuts.hlxOld = visSetIm(gPlot, lxOldPlot, ...
-            extraArgs.visualize.plotColorlxOld, sliceLevel, eAT_visSetIm);
-    end
-    
-    % -------------------------------------------------------------
-    
     %% Visualize Target Function/Set
     
     %---Visualize Target Set-----------------------------------------------
@@ -705,43 +790,15 @@ integratorOptions = odeCFLset('factorCFL', 0.8, 'singleStep', 'on');
 
 startTime = cputime;
 
-%% ------- Construct Initial Q. --------- %
-% Store the (linear) indicies of all the states where the cost function
-% is less than zero (i.e. unsafe)
-Q = find(lx < 0);
+%% Inherit the vaues from l(x)
+% Store the (linear) indicies of all the states where the new cost
+% function has changed (i.e. we sensed free-space). 
+Q = find((lxOld <= 0).*(lx > 0));
 
-% Vector that helps us convert from 2D or 3D to linear indicies.
-if schemeData.dynSys.nx == 2
-    [nX, nY] = size(data0);
-    stride = [1, nX];
-    maxLinIdx = nX*nY;
-elseif schemeData.dynSys.nx == 3
-    [nX, nY, nTheta] = size(data0);
-    stride = [1, nX, nX*nY];
-    maxLinIdx = nX*nY*nTheta;
-else
-    error('Unsupported dimensions!\n');
-end
-
-% Number of neighbors to consider (based on order of approximation)
-numNeighs = 3;
-    
-% Get neighbors for all states in Q in each dimension (x,y) and (x,y,theta)
-neighbors = [];
-for dim=1:schemeData.dynSys.nx
-	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
-	neighbors = [neighbors; neighList];
-end
-Q = vertcat(Q, neighbors(:));
-Q = unique(Q);
-
-% Store initial value function for computing how much a one-step 
-% update affected the values.
-Vold = data0(:);  % note: need to flatten to 1D for integratorFunc
-% ------------------------------------------------------------ %
-
-extraOuts.maxQSize = 0;
-Qold = [];
+% Set values in warm-started value function that are free-space
+% to have the l(x) value -- need this for V(x) to change at all (in
+% theory!)
+data0(Q) = lx(Q);
 
 %% Initialize PDE solution
 data0size = size(data0);
@@ -787,7 +844,11 @@ if isfield(extraArgs,'ignoreBoundary') &&...
 end
 
 
-%% Beginning of backwards reachable set/tube computation. 
+%% Main Computation Loop.
+
+% Stores the sequence of Q sizes over computation time.
+extraOuts.QSizes = [];
+
 for i = istart:length(tau)
     if ~quiet
         fprintf('tau(i) = %f\n', tau(i))
@@ -818,20 +879,15 @@ for i = istart:length(tau)
     end
     y = y0(:);
 
+    
     tNow = tau(i-1);
     
-    %% Main integration loop to get to the next tau(i)  
-    % Stop updates if either converged AND have no more states to update. 
-    while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
-        fprintf('\n');
-        [sz,~] = size(Q);
-        fprintf('Q size: %f\n', sz);
-        fprintf('\n');
+    %% Main integration loop to get to the next tau(i)
+    while tNow < tau(i) - small
+        % Record the current Q size (i.e. total number of points in grid).
+        sz = prod(schemeData.grid.shape);
+        extraOuts.QSizes = [extraOuts.QSizes, sz];
         
-        if sz > extraOuts.maxQSize
-          extraOuts.maxQSize = sz;
-        end
-                
         % Save previous data if needed
         if strcmp(compMethod, 'minVOverTime') || ...
                 strcmp(compMethod, 'maxVOverTime')
@@ -890,45 +946,6 @@ for i = istart:length(tau)
         else
             error('Check which compMethod you are using')
         end
-        
-        % ------- Only keep Vx changes for the states in Q. --------- %
-        % Store the change between the old value and the new value at the 
-        % candidate states stored in Q.
-        VxError = Vold(Q) - y(Q);
-        
-        % Change the old values at the states in Q. 
-        Vold(Q) = y(Q);
-        
-        % Set new value function to have only the changes for states in Q.
-        y = Vold;
-        
-        % --- Remove states from Q where Vx has not changed enough. --- %
-        % Grab the states whose value wasn't affected enough by the update.
-        unchangedIndicies = find(abs(VxError) < updateEpsilon);
-        
-        % Remove the unchanged states from the list of states to update.
-        Qold = Q;
-        Q(unchangedIndicies) = [];
-        
-        % ----------------------------------------------------------- %
-        
-        % --- Add neighbors of the states that still remain in Q. --- %
-        %   NOTE:  Since we are using a 3rd order approx scheme for our
-        %   spatial derivative, we should add three neighboring points in each
-        %   direction for each state dimension. 6*num_states is the total
-        %   number of neighbors we add for each state in Q. 
-        %.  e.g. add 3+ and 3- from theta state, and same for x and y.
-                
-        % Get neighbors for all states in Q in each dimension (x,y,theta)
-        neighbors = [];
-        for dim=1:schemeData.dynSys.nx
-            neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, 3);
-            neighbors = [neighbors; neighList];
-        end
-        Q = vertcat(Q, neighbors(:));
-        Q = unique(Q);
-        % ---------------------------------------------------------- %
-        
         
         % "Mask" using obstacles
         if isfield(extraArgs, 'obstacles')
@@ -1005,6 +1022,20 @@ for i = istart:length(tau)
                 [gTrunc, dataNew] = truncateGrid(...
                     g, data_i, g.min+4*g.dx, g.max-4*g.dx);
                 
+                % ------- DEBUGGING ------- %
+                % Grab values at theta.
+%                 theta = -1.6456;
+%                 plotData = abs(dataNew-dataTrimmed);
+%                 [~, dataPlot] = proj(gTrunc, plotData, [0 0 1], theta);
+%                 %imagesc(plotData(:,:,1));
+%                 scatter3(gTrunc.xs{1}(:,:),gTrunc.xs{2}(:,:),gTrunc.xs{3}(:,:))
+%                 %surf(gTrunc.xs{1},gTrunc.xs{2},gTrunc.xs{3},'cdata',plotData);
+%                 colormap('jet');
+%                 caxis([0, 0.2]);
+%                 colorbar
+%                 drawnow
+                % ------------------------- %
+                
                 [change, indicies] = max(abs(dataNew(:)-dataTrimmed(:)));
                 dataTrimmed = dataNew;
                 if ~quiet
@@ -1018,19 +1049,6 @@ for i = istart:length(tau)
             end
         end
     
-    % ---- If Q is empty, we need to exit the outer for-loop as well! --- %
-    if isempty(Q)
-        extraOuts.stoptau = tau(i);
-        tau(i+1:end) = [];
-
-        if ~lowMemory && ~keepLast
-            data(clns{:}, i+1:size(data, gDim+1)) = [];
-        end
-        break
-    end
-    % ------------------------------------------------------------------- %
-        
-        
     %% If commanded, stop the reachable set computation once it contains
     % the initial state.
     if isfield(extraArgs, 'stopInit')
@@ -1319,94 +1337,4 @@ switch(accuracy)
     otherwise
         error('Unknown accuracy level %s', accuracy);
 end
-end
-
-%% Function to get neighbors of a list of linearly indexed states.
-%   linIndicies  -- list of linear indicies whose neighbors we are trying to get
-%   dim          -- dimension in which we are looking for neighbors (e.g. x, y)
-%                   dim needs to be between 1 and dimension of state
-%   numNeighs    -- number of neighbors to find in the left (and right)
-%                   direction.
-%   stride       -- list containing size of each state
-%   maxLinIdx    -- maximum linear idx value
-function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, grid, periodicDim)
-	[~,sz] = size(stride);
-    
-    % Check that the dimension is valid.
-    if dim > sz || dim < 1
-        error('Looking for neighbors in invalid dimension: %d!', dim);
-    end
-
-    neighList = [];
-%     for i = 1:numel(linIndicies)
-%         linIdx = linIndicies(i);
-%         for n=1:numNeighs
-%             % Get right and left neighbors that are n gridcells away.
-%             [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIdx);
-%             subIndicies = [subInd1; subInd2; subInd3];
-%             rightNeigh = subIndicies;
-%             leftNeigh = subIndicies;
-%             rightNeigh(dim) = rightNeigh(dim) + n;
-%             leftNeigh(dim) = leftNeigh(dim) - n;
-% %             rightNeigh = linIdx + stride(dim)*n;
-% %             leftNeigh = linIdx - stride(dim)*n;
-%             
-%             % Take into account periodic boundaries
-%             if dim == periodicDim
-%               if leftNeigh(dim) <= 0
-%                 leftNeigh(dim) = leftNeigh(dim) - 1;
-%               end
-%               rightNeigh(dim) = mod(rightNeigh(dim)-1, grid.shape(dim)) + 1;
-%               leftNeigh(dim) = mod(leftNeigh(dim)-1, grid.shape(dim)) + 1;
-%             end
-% 
-% %             % Make sure we don't return neighbors that are outside of our
-% %             % computation grid.
-% %             if rightNeigh <= maxLinIdx && rightNeigh > 0
-% %                 neighList = [neighList, rightNeigh];
-% %             end
-% %             if leftNeigh <= maxLinIdx && leftNeigh > 0
-% %                 neighList = [neighList, leftNeigh];
-% %             end
-%             
-%             % Make sure we don't return neighbors that are outside of our
-%             % computation grid.
-%             if rightNeigh(dim) <= grid.shape(dim) && rightNeigh(dim) > 0
-%                 rightNeigh = sub2ind(grid.shape, rightNeigh(1), rightNeigh(2), rightNeigh(3));
-%                 neighList = [neighList, rightNeigh];
-%             end
-%             if leftNeigh(dim) <= grid.shape(dim) && leftNeigh(dim) > 0
-%                 leftNeigh = sub2ind(grid.shape, leftNeigh(1), leftNeigh(2), leftNeigh(3));
-%                 neighList = [neighList, leftNeigh];
-%             end
-%         end
-%     end
-
-      for n=1:numNeighs
-          % Get right and left neighbors that are n gridcells away.
-          [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIndicies);
-          subIndicies = [subInd1, subInd2, subInd3];
-          rightNeigh = subIndicies;
-          leftNeigh = subIndicies;
-          rightNeigh(:, dim) = rightNeigh(:, dim) + n;
-          leftNeigh(:, dim) = leftNeigh(:, dim) - n;
-
-          % Take into account periodic boundaries
-          if dim == periodicDim
-            zero_indicies = find(leftNeigh(:, dim) <= 0);
-            leftNeigh(zero_indicies, dim) = leftNeigh(zero_indicies) - 1;
-            rightNeigh(:, dim) = mod(rightNeigh(:, dim)-1, grid.shape(dim)) + 1;
-            leftNeigh(:, dim) = mod(leftNeigh(:, dim)-1, grid.shape(dim)) + 1;
-          end
-
-          % Make sure we don't return neighbors that are outside of our
-          % computation grid.
-          valid_indicies = find((rightNeigh(:, dim) <= grid.shape(dim)) .* (rightNeigh(:, dim) > 0));
-          rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3));
-          neighList = [neighList; rightNeigh(:)];
-          
-          valid_indicies = find((leftNeigh(:, dim) <= grid.shape(dim)) .* (leftNeigh(:, dim) > 0));
-          leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3));
-          neighList = [neighList; leftNeigh(:)];
-      end
 end
