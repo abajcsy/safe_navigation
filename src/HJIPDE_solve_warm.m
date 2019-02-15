@@ -800,6 +800,9 @@ Q = find((lxOld <= 0).*(lx > 0));
 % theory!)
 data0(Q) = lx(Q);
 
+% Store the old value for comparison
+Qold = [];
+
 %% Initialize PDE solution
 data0size = size(data0);
 
@@ -1022,20 +1025,6 @@ for i = istart:length(tau)
                 [gTrunc, dataNew] = truncateGrid(...
                     g, data_i, g.min+4*g.dx, g.max-4*g.dx);
                 
-                % ------- DEBUGGING ------- %
-                % Grab values at theta.
-%                 theta = -1.6456;
-%                 plotData = abs(dataNew-dataTrimmed);
-%                 [~, dataPlot] = proj(gTrunc, plotData, [0 0 1], theta);
-%                 %imagesc(plotData(:,:,1));
-%                 scatter3(gTrunc.xs{1}(:,:),gTrunc.xs{2}(:,:),gTrunc.xs{3}(:,:))
-%                 %surf(gTrunc.xs{1},gTrunc.xs{2},gTrunc.xs{3},'cdata',plotData);
-%                 colormap('jet');
-%                 caxis([0, 0.2]);
-%                 colorbar
-%                 drawnow
-                % ------------------------- %
-                
                 [change, indicies] = max(abs(dataNew(:)-dataTrimmed(:)));
                 dataTrimmed = dataNew;
                 if ~quiet
@@ -1043,6 +1032,10 @@ for i = istart:length(tau)
                 end
             else
                 [change, indicies] = max(abs(y - y0(:)));
+                unchangedIndicies = find(abs(y - y0(:)) > convergeThreshold);
+                Qold = Q;
+                Q = unchangedIndicies;
+                
                 if ~quiet
                     fprintf('Max change since last iteration: %f\n', change)
                 end
@@ -1086,7 +1079,7 @@ for i = istart:length(tau)
     end
     
     %% Stop computation if we've converged
-    if stopConverge && change < convergeThreshold
+    if stopConverge && (change < convergeThreshold || ~(~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q))))
         
         if isfield(extraArgs, 'discountFactor') && ...
                 extraArgs.discountFactor && ...
