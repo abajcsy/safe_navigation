@@ -70,10 +70,10 @@ end
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-updateMethod = 'HJI';
+updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
-warmStart = false;
+warmStart = true;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update

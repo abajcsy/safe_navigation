@@ -169,7 +169,7 @@ classdef Plotter < handle
                 % Heading pt.
                 hpt = [0.5; 0];
                 hptRot = R*hpt + center;
-                p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'LineWidth', 1.5);
+                p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'k', 'LineWidth', 1.5);
                 p2.Color(4) = 1.0;
             end
             
