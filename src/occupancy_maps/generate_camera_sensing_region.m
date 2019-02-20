@@ -1,4 +1,4 @@
-function occupancy_grid = generate_camera_sensing_region(grid, obs, half_fov, vehicle_pos, vehicle_heading)
+function [occupancy_grid, sensed_region] = generate_camera_sensing_region(grid, obs, half_fov, vehicle_pos, vehicle_heading)
 
 % ----- How to use this function -----
 %
@@ -23,6 +23,9 @@ angle_to_source = atan2(grid.xs{2} - vehicle_pos(2), grid.xs{1} - vehicle_pos(1)
 % Find the points that are inside the field of view and set them to free
 indicies_inside_fov = find(abs(angle_to_source - vehicle_heading) < half_fov);
 occupancy_grid(indicies_inside_fov) = 1;
+
+% Store the set of states (unoccluded) that we can see.
+sensed_region = occupancy_grid;
 
 % Compute the indicies inside the obstacle and set them to occupied
 obs_indicies = find(obs <= 0);

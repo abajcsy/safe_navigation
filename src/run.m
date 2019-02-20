@@ -54,6 +54,7 @@ end
 
 %% Construct sensed region.
 senseShape = 'camera';
+
 if strcmp(senseShape, 'circle')
   senseRad = 1.5;
   senseData = {[xinit(1);xinit(2);xinit(3)], [senseRad;senseRad]};
@@ -81,7 +82,7 @@ warmStart = true;
 updateEpsilon = 0.01;
 
 % If we want to save the sequence of value functions, compute times, etc..
-saveOutputData = true;
+saveOutputData = false;
 if warmStart
     name = strcat(updateMethod, 'warm');
 else
@@ -93,28 +94,68 @@ filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 currTime = 1;
 setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
     xinit, N, dt, updateEpsilon, warmStart, updateMethod);
-setObj.computeAvoidSet(senseData, senseShape, currTime);
+
+% Update occupancy grid based on sensing. 
+setObj.updateOccupancyMap(senseData, senseShape);
+
+% Compute avoid set based on current sensing.
+%setObj.computeAvoidSet(currTime);
 
 %% Plot initial conditions, sensing, and safe set.
 hold on
 
 % Plot environment, car, and sensing.
 plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
-plt.updatePlot(xinit, setObj);
+plt.updatePlot(xinit, xgoal, setObj);
 pause(dt);
+
+%% Setup which planner you want to use.
+%   hand-engineered trajectory      --> 'hand'
+%   rapidly-exploring random-tree   --> 'rrt'
+% (todo)
+%   spline-based planner            --> 'spline'
+%   learning, vision-based planner  --> 'learn'
+plannerName = 'rrt';
+
+if strcmp(plannerName, 'rrt')
+    % setup parameters
+    maxIter = 1000;
+    dx = 0.01; % size of step along edges for collision-checking
+    showTree = false;
+    
+    % create rrt obj
+    planner = RRT(setObj.grid, setObj.occupancy_map_plan);
+    % build rrt
+    nodes = planner.build(xinit(1:2), xgoal(1:2), maxIter, dx, showTree);
+    % get optimal path
+    path = nodes.getPath(xgoal(1:2));
+    % (optional) plot optimal path
+    planner.plotPath(path);
+end
 
 %% Simulate dubins car moving around environment and the safe set changing
 
 % Total simulation timesteps.
-T = 200; 
+T = 500; 
 x = setObj.dynSys.x;
 
+% Threshold for where 
+goalEps = 0.3;
+
 for t=1:T
-    % Get the current control.
-    if numDims == 2
-        u = getControlKinVehicle(t, setObj.dynSys.drift);
-    elseif numDims == 3
+    % Switch control and planning based on planner.
+    if strcmp(plannerName, 'hand')
         u = getControlDubins(t);
+    elseif strcmp(plannerName, 'rrt')
+        u = getPIDControl(t, x, path, setObj.dynSys);
+    else
+        error("Can't run unsupported planner! %s\n", plannerName);
+    end
+    
+    % If we are close enough to the goal, stop simulation.
+    fprintf('dist to goal: %f\n', norm(x - xgoal));
+    if norm(x(1:2) - xgoal(1:2)) < goalEps
+        break;
     end
     
 %     % Check if we are on boundary of safe set. If we are, apply safety 
@@ -137,11 +178,12 @@ for t=1:T
       error('unknown sesnor type');
     end  
     
-    % Update l(x) and the avoid set.
-    setObj.computeAvoidSet(senseData, senseShape, t+1);
+    % Update occupancy map, l(x), and the avoid set.
+    setObj.updateOccupancyMap(senseData, senseShape);
+    %setObj.computeAvoidSet(t+1);
     
     % Update plotting.
-	plt.updatePlot(x, setObj);
+	plt.updatePlot(x, xgoal, setObj);
     
     % Pause based on timestep.
     pause(dt);

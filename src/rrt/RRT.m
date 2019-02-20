@@ -15,17 +15,18 @@ classdef RRT < handle
         % Inputs:
         %   xinit    -- initial state (x,y)
         %   xgoal    -- goal state (x,y)
+        %   maxIter  -- maximum number of iterations before timing-out
         %   dx       -- how finely to collision-check along edges
         %   showTree -- bool flag to visualize tree as it grows
         % Outputs:
-        %   nodes    -- List of nodes representing RRT from xinit to goal.
-        function nodes = build(obj, xinit, xgoal, dx, showTree)
-            nodes = List(xinit);
-            iterations = 1000;
+        %   nodes    -- list of nodes representing RRT from xinit to goal.
+        function nodes = build(obj, xinit, xgoal, maxIter, dx, showTree)
+            nodes = NodeList(xinit);
             i = 1;
             figure(1);
+            goalEps = 0.3;
             hold on;
-            while i <= iterations 
+            while i <= maxIter
                 % gets random, collision-free state
                 xrand = obj.getRandState();
                 
@@ -48,7 +49,7 @@ classdef RRT < handle
                     if showTree
                         line([xclosest(1), xrand(1)], [xclosest(2), xrand(2)], ...
                             'Color', [0.5,0.5,0.5],  'LineWidth', 1);
-                        pause(0.05);
+                        pause(0.01);
                         xlim([obj.grid.min(1),obj.grid.max(1)]);
                         ylim([obj.grid.min(2),obj.grid.max(2)]);
                     end
@@ -57,7 +58,9 @@ classdef RRT < handle
                     nodes.insert(xrand);
                     
                     % if we found a path to the goal, terminate
-                    if isequal(xrand, xgoal) %norm(xrand - xgoal) < goalEps
+                    dToGoal = norm(xrand - xgoal);
+                    %fprintf("dist to goal: %f\n", dToGoal);
+                    if dToGoal < goalEps %isequal(xrand, xgoal) 
                         break;
                     end
                 end
@@ -71,7 +74,7 @@ classdef RRT < handle
         %   xrand   -- random state (x,y,theta) sampled from compute grid
         function xrand = getRandState(obj)
             % gets a random value from the integers 1 to n.
-            linIdx = randsample(prod(obj.grid.shape), 1);
+            linIdx = randsample(prod(obj.grid.shape(1:2)), 1);
             [r,c] = ind2sub(obj.grid.shape, linIdx);
             gridIdx = [r,c];
             collisionFree = obj.collisionCheckPt(gridIdx);
@@ -82,7 +85,7 @@ classdef RRT < handle
                 collisionFree = obj.collisionCheckPt(gridIdx);
             end
             % convert from grid index to real state value
-            xrand = [obj.grid.xs{1}(r,c), obj.grid.xs{2}(r,c)];
+            xrand = [obj.grid.xs{1}(r,c); obj.grid.xs{2}(r,c)];
         end
         
         %% Collision-check a point
@@ -141,6 +144,11 @@ classdef RRT < handle
             % [row, col], do:
             % xclosest = obj.grid.xs{1}(row,col)
             % yclosest = obj.grid.xs{2}(row,col)
+        end
+        
+        %% Updates occupancy grid 
+        function updateOccuGrid(obj, newOccuGrid)
+            obj.occuGrid = newOccuGrid;
         end
         
         %% Plots the occupancy grid.

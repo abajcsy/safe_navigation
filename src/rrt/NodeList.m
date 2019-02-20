@@ -1,4 +1,4 @@
-classdef List < handle
+classdef NodeList < handle
     % List of nodes.
     
     properties
@@ -7,7 +7,7 @@ classdef List < handle
     
     methods
         %% Constructor
-        function obj = List(xinit)
+        function obj = NodeList(xinit)
             obj.nodes = [Node(xinit)];
         end
         

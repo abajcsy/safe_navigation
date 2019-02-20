@@ -38,36 +38,38 @@ classdef Plotter < handle
         %  Input:
         %       x       -- state of dyn system
         %       setObj  -- avoid set object
-        function updatePlot(obj, x, setObj)
+        function updatePlot(obj, x, xgoal, setObj)
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.envh);
-                delete(obj.senseh);
+%                 delete(obj.senseh);
                 delete(obj.carh);
-                delete(obj.vxh);
+%                 delete(obj.vxh);
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
+                c = [0.1,0.8,0.5];
+                scatter(xgoal(1),xgoal(2),[],c,'filled');
             end
             
             % Visualize environment and sensing and car
             obj.envh = obj.plotEnvironment();
-            obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
+%             obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
             obj.carh = obj.plotCar(x);
             obj.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
 
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
 
-            if length(x) == 3
-                extraArgs.theta = x(3);
-                funcToPlot = setObj.valueFun(:,:,:,end);
-            else
-                funcToPlot = setObj.valueFun(:,:,end);
-            end
-
-            visSet = true;
-            obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
+%             if length(x) == 3
+%                 extraArgs.theta = x(3);
+%                 funcToPlot = setObj.valueFun(:,:,:,end);
+%             else
+%                 funcToPlot = setObj.valueFun(:,:,end);
+%             end
+% 
+%             visSet = true;
+%             obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
         end
         
         %% Plots the environment with the obstacle.
