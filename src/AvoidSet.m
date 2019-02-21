@@ -247,6 +247,13 @@ classdef AvoidSet < handle
                   occupancy_map = generate_camera_sensing_region(obj.gFMM, ...
                     obsSlice, senseData{2}(1), senseData{1}(1:2), senseData{1}(3));
                 end
+            elseif strcmp(senseShape, 'lidar') % if lidar sensing region
+                % It is assumed that the obstacle is only position
+                % dependent in this computation.
+                % Project the slice of obstacle
+                [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                occupancy_map = generate_lidar_sensing_region(obj.gFMM, ...
+                  obsSlice, senseData{2}(1), senseData{1}(1:2));
             else
                error('Unrecognized sensor type');
             end

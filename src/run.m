@@ -61,6 +61,9 @@ elseif strcmp(senseShape, 'camera')
   initialR = 1.5; % The initial radius of the safe region
   senseFOV = pi/6; % The (half) field-of-view of the camera
   senseData = {[xinit(1);xinit(2);xinit(3)], [senseFOV; initialR]};
+elseif strcmp(senseShape, 'lidar')
+  senseRad = 1.5; % The sensing radius of lidar
+  senseData = {[xinit(1);xinit(2);xinit(3)], [senseRad]};
 else
   error('unknown sesnor type');
 end
@@ -133,6 +136,8 @@ for t=1:T
       senseData = {[x(1);x(2);x(3)], [senseRad;senseRad]};
     elseif strcmp(senseShape, 'camera')
       senseData = {[x(1);x(2);x(3)], [senseFOV; initialR]};
+    elseif strcmp(senseShape, 'lidar')
+      senseData = {[x(1);x(2);x(3)], [senseRad]};
     else
       error('unknown sesnor type');
     end  
