@@ -150,6 +150,8 @@ classdef AvoidSet < handle
             obj.schemeData.dynSys = obj.dynSys;
             obj.schemeData.accuracy = 'high'; % Set accuracy.
             obj.schemeData.uMode = obj.uMode;
+            obj.schemeData.partialFunc = @dubins3Dpartial_localQ;
+            obj.schemeData.hamFunc = @dubins3Dham_localQ;
             
             % Save out sequence of value functions as system moves through
             % space as well as the cost functions and the max Q size (if using Q method). 
