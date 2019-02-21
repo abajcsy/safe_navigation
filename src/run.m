@@ -123,7 +123,7 @@ if strcmp(plannerName, 'rrt')
     dx = 0.01; % size of step along edges for collision-checking
     showTree = false;
     
-    % create rrt obj
+    % Create RRT obj.
     planner = RRT(setObj.grid, setObj.occupancy_map_plan);
     % build rrt
     nodes = planner.build(xinit(1:2), xgoal(1:2), maxIter, dx, showTree);
@@ -131,6 +131,10 @@ if strcmp(plannerName, 'rrt')
     path = nodes.getPath(xgoal(1:2));
     % (optional) plot optimal path
     planner.plotPath(path);
+    
+    % Create PID controller to track RRT trajectory.
+    controller = PIDController(setObj.dynSys);
+    controller.updatePath(path);
 end
 
 %% Simulate dubins car moving around environment and the safe set changing
@@ -147,13 +151,12 @@ for t=1:T
     if strcmp(plannerName, 'hand')
         u = getControlDubins(t);
     elseif strcmp(plannerName, 'rrt')
-        u = getPIDControl(t, x, path, setObj.dynSys);
+        u = controller.getControl(t, x);
     else
         error("Can't run unsupported planner! %s\n", plannerName);
     end
     
     % If we are close enough to the goal, stop simulation.
-    fprintf('dist to goal: %f\n', norm(x - xgoal));
     if norm(x(1:2) - xgoal(1:2)) < goalEps
         break;
     end
