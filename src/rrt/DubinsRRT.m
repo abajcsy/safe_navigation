@@ -21,9 +21,9 @@ classdef DubinsRRT < handle
         %   xinit   -- initial state (x,y,theta)
         %   xgoal   -- goal state (x,y,theta)
         % Outputs:
-        %   tree    -- KDTree representing RRT from xinit to goal.
-        function tree = buildRRT(obj, xinit, xgoal)
-            tree = KDTree(xinit);
+        %   nodes    -- list of nodes representing RRT from xinit to goal.
+        function nodes = buildRRT(obj, xinit, xgoal)
+            nodes = NodeList(xinit);
             iterations = 1000;
             i = 1;
             while i <= iterations 
@@ -31,12 +31,12 @@ classdef DubinsRRT < handle
                 xrand = obj.getRandState();
                 
                 % find closest point to collision-free state
-                [~, xclosest] = tree.findNNDubins(xrand, obj.pathGenerator);
+                [~, xclosest] = nodes.findNNDubins(xrand, obj.pathGenerator);
                 
                 % generate dubins curve from xrand to the neighbor
                 [exists, ~, ~]= obj.pathGenerator.getDubinsPath(xclosest, xrand);
                 if exists
-                    tree.insert(bestPt);
+                    nodes.insert(bestPt);
                     % if we found a path to the goal, terminate
                     if isequal(bestPt, xgoal)
                         break;
@@ -64,7 +64,7 @@ classdef DubinsRRT < handle
             % convert from grid index to real state value
             xrand = [];
             for i=1:obj.grid.dim
-             xrand = [xrand, obj.grid.xs{i}(gridIdx(i))];
+                xrand = [xrand, obj.grid.xs{i}(gridIdx(i))];
             end
         end
         

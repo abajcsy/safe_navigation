@@ -4,13 +4,13 @@
 %   path    -- (cell array) series of waypoints to goal
 function u = getPIDControl(t, x, path, dynSys)
     % find which waypoint is closest to our current position.
-    xystar = getClosestWaypt(x,path);
-    %xystar = getRefWaypt(t,path);
+    %xystar = getClosestWaypt(x,path);
+    xystar = getRefWaypt(t,path);
     h = scatter(xystar(1), xystar(2), 'r', 'filled');
     h.MarkerFaceAlpha = 0.2;
     
     % Proportional gain matrix
-    Kp = [0.1 0.1 0; 0 0 0.5];
+    Kp = [1 1 0; 0 0 1];
     ff = [0;0];
     
 	% Rotation matrix.
@@ -28,9 +28,9 @@ function u = getPIDControl(t, x, path, dynSys)
     
     % clip control based on bounds
     if u(1) > dynSys.vrange(2)
-        u(1) = dynSys.vrange(1);
-    elseif u(1) < dynSys.vrange(1)
         u(1) = dynSys.vrange(2);
+    elseif u(1) < dynSys.vrange(1)
+        u(1) = dynSys.vrange(1);
     end
     
     if u(2) > dynSys.wMax
