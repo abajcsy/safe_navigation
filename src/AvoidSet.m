@@ -199,6 +199,13 @@ classdef AvoidSet < handle
         end
         
         %% Based on sensing, update occupancy grids and signed distances.
+        % Inputs:
+        %   senseData [vector]      - if rectangle sensing region, 
+        %                           (x,y) coords of lower left sensing box and
+        %                           (x,y) coords of upper right sensing box.
+        %                           if circle sensing region, 
+        %                           (x,y) coords of center and radius
+        %   senseShape [string]     - either 'rectangle' or 'circle'
         function updateOccupancyMap(obj, senseData, senseShape)
             % Construct cost function for region outside sensing radius
             % or 'known' environment.
@@ -288,18 +295,9 @@ classdef AvoidSet < handle
         end
         
         %% Computes avoid set. 
-        % Inputs:
-        %   senseData [vector]      - if rectangle sensing region, 
-        %                           (x,y) coords of lower left sensing box and
-        %                           (x,y) coords of upper right sensing box.
-        %                           if circle sensing region, 
-        %                           (x,y) coords of center and radius
-        %   senseShape [string]     - either 'rectangle' or 'circle'
-        %   currTime [int]          - current timestep (in simulation) 
         % Outputs:
         %   dataOut             - infinite-horizon (converged) value function 
-        function dataOut = computeAvoidSet(obj, senseData, senseShape, ...
-                currTime)
+        function dataOut = computeAvoidSet(obj)
             
             % Sanity checks.
             if isempty(obj.occupancy_map_safety) || isempty(obj.gFMM)

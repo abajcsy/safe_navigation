@@ -45,7 +45,7 @@ dt = 0.05;
 
 % Initial and final condition.
 if numDims == 3
-    xinit = [2.0; 2.5; pi/2];
+    xinit = [2.0; 2.5; 0];
     xgoal = [8.5; 2.5; -pi/2];
 else
     xinit = [2.0; 2.5];
@@ -79,7 +79,7 @@ warmStart = true;
 % Update epislon
 %   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
-updateEpsilon = 0.01;
+updateEpsilon = 0.05;
 
 % If we want to save the sequence of value functions, compute times, etc..
 saveOutputData = false;
@@ -97,9 +97,8 @@ setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
 
 % Update occupancy grid based on sensing. 
 setObj.updateOccupancyMap(senseData, senseShape);
-
 % Compute avoid set based on current sensing.
-%setObj.computeAvoidSet(currTime);
+setObj.computeAvoidSet();
 
 %% Plot initial conditions, sensing, and safe set.
 hold on
@@ -148,6 +147,11 @@ prevplant = 1;
 replanTime = 50;
 
 for t=1:T
+    % If we are close enough to the goal, stop simulation.
+    if norm(x(1:2) - xgoal(1:2)) < goalEps
+        break;
+    end
+    
     % Switch control and planning based on planner.
     if strcmp(plannerName, 'hand')
         u = getHandCodedControl(t);
@@ -157,17 +161,12 @@ for t=1:T
         error("Can't run unsupported planner! %s\n", plannerName);
     end
     
-    % If we are close enough to the goal, stop simulation.
-    if norm(x(1:2) - xgoal(1:2)) < goalEps
-        break;
+    % Check if we are on boundary of safe set. If we are, apply safety 
+    % controller instead. 
+    [uOpt, onBoundary] = setObj.checkAndGetSafetyControl(x);
+    if onBoundary
+       u = uOpt;
     end
-    
-%     % Check if we are on boundary of safe set. If we are, apply safety 
-%     % controller instead. 
-%     [uOpt, onBoundary] = setObj.checkAndGetSafetyControl(x);
-%     if onBoundary
-%        u = uOpt;
-%     end
 
     % Apply control to dynamics.
     setObj.dynSys.updateState(u, dt, setObj.dynSys.x);
@@ -187,7 +186,7 @@ for t=1:T
     
     % Update occupancy map, l(x), and the avoid set.
     setObj.updateOccupancyMap(senseData, senseShape);
-    %setObj.computeAvoidSet(t+1);
+    setObj.computeAvoidSet();
     
     % store new occupancy map 
     newOccuMap = setObj.occupancy_map_plan;

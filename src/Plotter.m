@@ -42,9 +42,9 @@ classdef Plotter < handle
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.envh);
-%                 delete(obj.senseh);
+                delete(obj.senseh);
                 delete(obj.carh);
-%                 delete(obj.vxh);
+                delete(obj.vxh);
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
@@ -54,22 +54,22 @@ classdef Plotter < handle
             
             % Visualize environment and sensing and car
             obj.envh = obj.plotEnvironment();
-%             obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
+            obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
             obj.carh = obj.plotCar(x);
             obj.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
 
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
 
-%             if length(x) == 3
-%                 extraArgs.theta = x(3);
-%                 funcToPlot = setObj.valueFun(:,:,:,end);
-%             else
-%                 funcToPlot = setObj.valueFun(:,:,end);
-%             end
-% 
-%             visSet = true;
-%             obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
+            if length(x) == 3
+                extraArgs.theta = x(3);
+                funcToPlot = setObj.valueFun(:,:,:,end);
+            else
+                funcToPlot = setObj.valueFun(:,:,end);
+            end
+
+            visSet = true;
+            obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
         end
         
         %% Plots the environment with the obstacle.
@@ -187,8 +187,12 @@ classdef Plotter < handle
         % Ouput:
         %   h   - handle for figure
         function h = plotSensing(obj, grid, signed_distance_map)
-            s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
-            h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
+            posIdx = find(signed_distance_map > 0);
+            h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 20, ...
+                'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
+            
+            %s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
+            %h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
