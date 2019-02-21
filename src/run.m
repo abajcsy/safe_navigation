@@ -119,16 +119,13 @@ plannerName = 'rrt';
 
 if strcmp(plannerName, 'rrt')
     % setup parameters
-    maxIter = 1000;
+    maxIter = 50;
     dx = 0.01; % size of step along edges for collision-checking
-    showTree = false;
     
     % Create RRT obj.
-    planner = RRT(setObj.grid, setObj.occupancy_map_plan);
-    % build rrt
-    nodes = planner.build(xinit(1:2), xgoal(1:2), maxIter, dx, showTree);
-    % get optimal path
-    path = nodes.getPath(xgoal(1:2));
+    planner = RRT(setObj.grid, setObj.occupancy_map_plan, maxIter, dx);
+    % build rrt and get optimal path
+    path = planner.replan(xinit(1:2), xgoal(1:2));
     % (optional) plot optimal path
     planner.plotPath(path);
     
@@ -140,16 +137,20 @@ end
 %% Simulate dubins car moving around environment and the safe set changing
 
 % Total simulation timesteps.
-T = 500; 
+T = 800; 
 x = setObj.dynSys.x;
 
-% Threshold for where 
+% Threshold for when we are considered close enough to goal, we stop simulation.
 goalEps = 0.3;
+
+% Variables for determining when to replan.
+prevplant = 1;
+replanTime = 50;
 
 for t=1:T
     % Switch control and planning based on planner.
     if strcmp(plannerName, 'hand')
-        u = getControlDubins(t);
+        u = getHandCodedControl(t);
     elseif strcmp(plannerName, 'rrt')
         u = controller.getControl(t, x);
     else
@@ -181,15 +182,36 @@ for t=1:T
       error('unknown sesnor type');
     end  
     
+    % store occupancy map before sensing
+    prevOccuMap = setObj.occupancy_map_plan;
+    
     % Update occupancy map, l(x), and the avoid set.
     setObj.updateOccupancyMap(senseData, senseShape);
     %setObj.computeAvoidSet(t+1);
+    
+    % store new occupancy map 
+    newOccuMap = setObj.occupancy_map_plan;
+    diffOccu = abs(newOccuMap - prevOccuMap);
+    
+    % If we sensed new obstacle information, need to replan.
+    if strcmp(plannerName, 'rrt') && any(diffOccu(:)) %abs(t-prevplant) >= replanTime %&& 
+        % Update occupancy grid based on sensor measurements.
+        planner.updateOccuGrid(setObj.occupancy_map_plan);
+        % Update path.
+        path = planner.replan(x(1:2), xgoal(1:2));
+        % Update path that controller is trying to track.
+        controller.updatePath(path);
+        % (optional) plot optimal path
+        planner.plotPath(path);
+        prevplant = t;
+    end
     
     % Update plotting.
 	plt.updatePlot(x, xgoal, setObj);
     
     % Pause based on timestep.
     pause(dt);
+    
 end
 
 if saveOutputData

@@ -1,32 +1,57 @@
 classdef RRT < handle
     properties
         grid        % (x,y,theta) compute grid
-        occuGrid    % occupancy grid full of -1's (obstacle) and +1's (free)
+        occuGrid    % (arr) occupancy grid full of -1's (obstacle) and +1's (free)
+        pathHandle  % figure handle for path
+        path        % (cell arr) current best path
+        maxIter     % (int) maximum number of iterations before timing-out
+        dx          % (float) how finely to collision-check along edges
     end
     
     methods
         %% Constructor.
-        function obj = RRT(grid, occuGrid)
+        function obj = RRT(grid, occuGrid, maxIter, dx)
             obj.grid = grid;
             obj.occuGrid = occuGrid;
+            obj.pathHandle = [];
+            obj.path = [];
+            obj.maxIter = maxIter;
+            obj.dx = dx;
+        end
+        
+        %% Replans path
+        function path = replan(obj, xinit, xgoal)
+            if ~isempty(obj.path)
+                % sanity check -- is our old path still collision-free?
+                collFree = obj.collisionCheckPath();
+            else
+                % definitely need to replan if we dont have a path.
+                collFree = false;
+            end
+            
+            % if old path isn't collision-free need to replan.
+            if ~collFree
+                showTree = false;
+                nodes = obj.build(xinit, xgoal, showTree);
+                obj.path = nodes.getPath(xgoal);
+            end
+            path = obj.path;
         end
         
         %% Creates the RRT starting from xinit. 
         % Inputs:
         %   xinit    -- initial state (x,y)
         %   xgoal    -- goal state (x,y)
-        %   maxIter  -- maximum number of iterations before timing-out
-        %   dx       -- how finely to collision-check along edges
         %   showTree -- bool flag to visualize tree as it grows
         % Outputs:
         %   nodes    -- list of nodes representing RRT from xinit to goal.
-        function nodes = build(obj, xinit, xgoal, maxIter, dx, showTree)
+        function nodes = build(obj, xinit, xgoal, showTree)
             nodes = NodeList(xinit);
             i = 1;
             figure(1);
             goalEps = 0.3;
             hold on;
-            while i <= maxIter
+            while i <= obj.maxIter
                 % gets random, collision-free state
                 xrand = obj.getRandState();
                 
@@ -41,7 +66,7 @@ classdef RRT < handle
                 
                 % check if path from the random point to the closest one is
                 % collision-free
-                collFree = obj.collisionCheckLine(xclosest, xrand, dx);
+                collFree = obj.collisionCheckLine(xclosest, xrand);
                 
                 if collFree
                     
@@ -75,12 +100,12 @@ classdef RRT < handle
         function xrand = getRandState(obj)
             % gets a random value from the integers 1 to n.
             linIdx = randsample(prod(obj.grid.shape(1:2)), 1);
-            [r,c] = ind2sub(obj.grid.shape, linIdx);
+            [r,c] = ind2sub(obj.grid.shape(1:2), linIdx);
             gridIdx = [r,c];
             collisionFree = obj.collisionCheckPt(gridIdx);
             while ~collisionFree
-                linIdx = randsample(prod(obj.grid.shape), 1);
-                [r,c] = ind2sub(obj.grid.shape, linIdx);
+                linIdx = randsample(prod(obj.grid.shape(1:2)), 1);
+                [r,c] = ind2sub(obj.grid.shape(1:2), linIdx);
                 gridIdx = [r,c];
                 collisionFree = obj.collisionCheckPt(gridIdx);
             end
@@ -113,7 +138,7 @@ classdef RRT < handle
         %                       checking
         % Outputs:
         %   collisionFree   -- true if state is obs-free, false else 
-        function collisionFree = collisionCheckLine(obj, xstart, xend, dx)
+        function collisionFree = collisionCheckLine(obj, xstart, xend)
             collisionFree = true;
             
             % line parametrization where 0 <= t <= 1
@@ -128,9 +153,23 @@ classdef RRT < handle
                     collisionFree = false;
                     return;
                 end
-                t = t+dx;
+                t = t+obj.dx;
                 x = xstart + t*diff;
             end
+        end
+        
+        %% Collision checks the current path
+        function collisionFree = collisionCheckPath(obj)
+            for i=1:length(obj.path)-1
+                prevx = obj.path{i};
+                nextx = obj.path{i+1};
+                collFree = obj.collisionCheckLine(prevx,nextx);
+                if ~collFree
+                    collisionFree = false;
+                    return;
+                end
+            end
+            collisionFree = true;
         end
         
         %% Converts from (x,y) state to (i,j) grid index.
@@ -170,11 +209,18 @@ classdef RRT < handle
         
         %% Plots optimal path
         function plotPath(obj, path)
+            if ~isempty(obj.pathHandle)
+                for i=1:length(obj.pathHandle)
+                    delete(obj.pathHandle(i));
+                end
+            end
+            obj.pathHandle = [];
             i = 1;
             while i < length(path)
                 x = path{i};
                 xnext = path{i+1};
-                line([x(1), xnext(1)], [x(2), xnext(2)], 'Color', 'blue', 'LineWidth', 1.5);
+                h = line([x(1), xnext(1)], [x(2), xnext(2)], 'Color', 'blue', 'LineWidth', 1.5);
+                obj.pathHandle = [obj.pathHandle, h];
                 i = i+1;
             end
             xlim([obj.grid.min(1),obj.grid.max(1)]);
