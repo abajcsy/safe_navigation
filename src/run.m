@@ -1,161 +1,67 @@
 %% Run the safety & planning procedure. 
-% TODO:
-% - implement planner and optimal controller scheme
-% - what if we knew some prior info about environment and other stuff we didnt?
 
 % Clear old figure plotting and variables.
 clf 
 clc 
-clear all
+clear 
 
-% Setup environment bounds.
-lowEnv = [0;0];
-upEnv = [10;7];
+%% Load the current experimental setup and all the parameters.
+params = setupDubinsExp1();
 
-% Are we using a 2D or a 3D system?
-numDims = 3;
+%% Setup Obstacle Map Generator.
+map = OccuMap(params.grid, params.obstacles);
 
-% Setup obstacle ['rectangle' or 'circle'].
-obsShape = 'rectangle';
-if strcmp(obsShape, 'rectangle')
-    % Create lower and upper bounds on rectangle.
-    lowRealObs = [4;1];
-    upRealObs = [7;4];
-else
-    % Setup circular obstacle.
-    lowRealObs = [5.5;2.5]; % center of circle
-    upRealObs = [1.5;1.5]; % radius of circle
-end
+% Compute the first occupancy map.
+map.updateMapAndCost(params.senseData, params.senseShape);
 
-% Setup lower and upper computation domains and discretization.
-if numDims == 2
-    gridLow = lowEnv;
-    gridUp = upEnv;
-    N = [31;31];
-elseif numDims == 3
-    gridLow = [lowEnv;-pi];
-    gridUp = [upEnv;pi];
-    N = [31;31;21];
-else
-    error('I cannot handle %d number of dims!\n', numDims);
-end
+%% Setup Safety Module.
+% Setup safety module object and compute first set.
+safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
+    params.dt, params.updateEpsilon, params.warmStart, params.updateMethod);
 
-% Timestep for computation and simulation.
-dt = 0.05;
-
-% Initial and final condition.
-if numDims == 3
-    xinit = [2.0; 2.5; 0];
-    xgoal = [8.5; 2.5; -pi/2];
-else
-    xinit = [2.0; 2.5];
-    xgoal = [8.5; 2.5];
-end
-
-%% Construct sensed region.
-senseShape = 'camera';
-
-if strcmp(senseShape, 'circle')
-  senseRad = 1.5;
-  senseData = {[xinit(1);xinit(2);xinit(3)], [senseRad;senseRad]};
-elseif strcmp(senseShape, 'camera')
-  initialR = 1.5; % The initial radius of the safe region
-  senseFOV = pi/6; % The (half) field-of-view of the camera
-  senseData = {[xinit(1);xinit(2);xinit(3)], [senseFOV; initialR]};
-else
-  error('unknown sesnor type');
-end
-
-%% Compute first safe set based on sensing. 
-
-% What kind of update method do we want to use?
-%   typical solver                  --> 'HJI'
-%   local Q algorithm               --> 'localQ' 
-updateMethod = 'localQ';
-
-% If we want to warm start with prior value function.
-warmStart = true;
-
-% Update epislon
-%   used in 'localQ' for determining which states to update
-%   used in 'HJI' for convergenceThreshold 
-updateEpsilon = 0.05;
-
-% If we want to save the sequence of value functions, compute times, etc..
-saveOutputData = false;
-if warmStart
-    name = strcat(updateMethod, 'warm');
-else
-    name = updateMethod;
-end
-filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
-
-% Setup avoid set object and compute first set.
-currTime = 1;
-setObj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, obsShape, ...
-    xinit, N, dt, updateEpsilon, warmStart, updateMethod);
-
-% Update occupancy grid based on sensing. 
-setObj.updateOccupancyMap(senseData, senseShape);
-% Compute avoid set based on current sensing.
-setObj.computeAvoidSet();
+% Compute the first avoid set based on current sensing.
+safety.computeAvoidSet(map.signed_dist_safety);
 
 %% Plot initial conditions, sensing, and safe set.
 hold on
 
 % Plot environment, car, and sensing.
-plt = Plotter(lowEnv, upEnv, lowRealObs, upRealObs, obsShape);
-plt.updatePlot(xinit, xgoal, setObj);
-pause(dt);
+plt = Plotter(params.lowEnv, params.upEnv, params.obstacles);
+plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, map);
+pause(params.dt);
 
-%% Setup which planner you want to use.
-%   hand-engineered trajectory      --> 'hand'
-%   rapidly-exploring random-tree   --> 'rrt'
-% (todo)
-%   spline-based planner            --> 'spline'
-%   learning, vision-based planner  --> 'learn'
-plannerName = 'rrt';
-
-if strcmp(plannerName, 'rrt')
-    % setup parameters
-    maxIter = 50;
-    dx = 0.01; % size of step along edges for collision-checking
-    
+%% Setup Planner.
+if strcmp(params.plannerName, 'rrt')
     % Create RRT obj.
-    planner = RRT(setObj.grid, setObj.occupancy_map_plan, maxIter, dx);
+    planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, params.dx);
     % build rrt and get optimal path
-    path = planner.replan(xinit(1:2), xgoal(1:2));
+    path = planner.replan(params.xinit(1:2), params.xgoal(1:2));
     % (optional) plot optimal path
-    planner.plotPath(path);
+    plt.plotTraj(path);
     
     % Create PID controller to track RRT trajectory.
-    controller = PIDController(setObj.dynSys);
+    controller = PIDController(params.dynSys);
     controller.updatePath(path);
 end
 
-%% Simulate dubins car moving around environment and the safe set changing
+%% Simulation loop.
+% Grab initial state.
+x = params.dynSys.x;
+prevSafeUpdate = 1;
+prevPlanUpdate = 1;
 
-% Total simulation timesteps.
-T = 800; 
-x = setObj.dynSys.x;
-
-% Threshold for when we are considered close enough to goal, we stop simulation.
-goalEps = 0.3;
-
-% Variables for determining when to replan.
-prevplant = 1;
-replanTime = 50;
-
-for t=1:T
+for t=1:params.T
+    forceUpdate = false;
+    
     % If we are close enough to the goal, stop simulation.
-    if norm(x(1:2) - xgoal(1:2)) < goalEps
+    if norm(x(1:2) - params.xgoal(1:2)) < params.goalEps
         break;
     end
     
     % Switch control and planning based on planner.
-    if strcmp(plannerName, 'hand')
+    if strcmp(params.plannerName, 'hand')
         u = getHandCodedControl(t);
-    elseif strcmp(plannerName, 'rrt')
+    elseif strcmp(params.plannerName, 'rrt')
         u = controller.getControl(t, x);
     else
         error("Can't run unsupported planner! %s\n", plannerName);
@@ -163,64 +69,68 @@ for t=1:T
     
     % Check if we are on boundary of safe set. If we are, apply safety 
     % controller instead. 
-    [uOpt, onBoundary] = setObj.checkAndGetSafetyControl(x);
+    [uOpt, onBoundary] = safety.checkAndGetSafetyControl(x);
     if onBoundary
        u = uOpt;
+       forceUpdate = true;
     end
 
     % Apply control to dynamics.
-    setObj.dynSys.updateState(u, dt, setObj.dynSys.x);
-    x = setObj.dynSys.x;
+    params.dynSys.updateState(u, params.dt, params.dynSys.x);
+    x = params.dynSys.x;
     
     % Get the new sensing region.
-    if strcmp(senseShape, 'circle')
+    if strcmp(params.senseShape, 'circle')
       senseData = {[x(1);x(2);x(3)], [senseRad;senseRad]};
-    elseif strcmp(senseShape, 'camera')
-      senseData = {[x(1);x(2);x(3)], [senseFOV; initialR]};
+    elseif strcmp(params.senseShape, 'camera')
+      senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR]};
     else
       error('unknown sesnor type');
     end  
     
-    % store occupancy map before sensing
-    prevOccuMap = setObj.occupancy_map_plan;
+    % Update occupancy map, cost function, and the avoid set.
+    map.updateMapAndCost(senseData, params.senseShape);
     
-    % Update occupancy map, l(x), and the avoid set.
-    setObj.updateOccupancyMap(senseData, senseShape);
-    setObj.computeAvoidSet();
+    % Time duration since last update of safe set and planner.
+    dtSafe = t - prevSafeUpdate;
+    dtPlan = t - prevPlanUpdate;
     
-    % store new occupancy map 
-    newOccuMap = setObj.occupancy_map_plan;
-    diffOccu = abs(newOccuMap - prevOccuMap);
+    % If need to update the safety set, do so.  
+    if dtSafe >= params.safetyFreq || forceUpdate
+        safety.computeAvoidSet(map.signed_dist_safety);
+        prevSafeUpdate = t;
+    end
     
-    % If we sensed new obstacle information, need to replan.
-    if strcmp(plannerName, 'rrt') && any(diffOccu(:)) %abs(t-prevplant) >= replanTime %&& 
-        % Update occupancy grid based on sensor measurements.
-        planner.updateOccuGrid(setObj.occupancy_map_plan);
-        % Update path.
-        path = planner.replan(x(1:2), xgoal(1:2));
-        % Update path that controller is trying to track.
-        controller.updatePath(path);
-        % (optional) plot optimal path
-        planner.plotPath(path);
-        prevplant = t;
+    % If need to update the planner, do so.
+    if dtPlan >= params.planFreq
+        if strcmp(params.plannerName, 'rrt') 
+            % Update internal variable.
+            planner.updateOccuGrid(map.occupancy_map_plan);
+            % Replan path.
+            path = planner.replan(x(1:2), params.xgoal(1:2));
+            % Update path that controller is trying to track.
+            controller.updatePath(path);
+            % (optional) plot optimal path
+            plt.plotTraj(path);
+            prevPlanUpdate = t;
+        end
     end
     
     % Update plotting.
-	plt.updatePlot(x, xgoal, setObj);
+	plt.updatePlot(x, params.xgoal, safety.valueFun, map);
     
     % Pause based on timestep.
-    pause(dt);
-    
+    pause(params.dt);
 end
 
-if saveOutputData
+if params.saveOutputData
     % Save out the sequence of value functions.
-    valueFunCellArr = setObj.valueFunCellArr; 
-    lxCellArr = setObj.lxCellArr; 
-    QSizeCellArr = setObj.QSizeCellArr;
-    solnTimes = setObj.solnTimes;
-    fovCellArr = setObj.fovCellArr;
+    valueFunCellArr = safety.valueFunCellArr; 
+    lxCellArr = safety.lxCellArr; 
+    QSizeCellArr = safety.QSizeCellArr;
+    solnTimes = safety.solnTimes;
+    fovCellArr = safety.fovCellArr;
     repo = what('safe_navigation');
-    savePath = strcat(repo.path, '/data/', filename);
+    savePath = strcat(repo.path, '/data/', params.filename);
     save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', 'solnTimes', 'fovCellArr');
 end

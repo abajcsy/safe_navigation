@@ -11,9 +11,11 @@ classdef RRT < handle
     methods
         %% Constructor.
         function obj = RRT(grid, occuGrid, maxIter, dx)
+            load('seed.mat');
+            % set random seed.
+            rng(s);
             obj.grid = grid;
             obj.occuGrid = occuGrid;
-            obj.pathHandle = [];
             obj.path = [];
             obj.maxIter = maxIter;
             obj.dx = dx;
@@ -207,25 +209,6 @@ classdef RRT < handle
             ylim([obj.grid.min(2),obj.grid.max(2)]);
         end
         
-        %% Plots optimal path
-        function plotPath(obj, path)
-            if ~isempty(obj.pathHandle)
-                for i=1:length(obj.pathHandle)
-                    delete(obj.pathHandle(i));
-                end
-            end
-            obj.pathHandle = [];
-            i = 1;
-            while i < length(path)
-                x = path{i};
-                xnext = path{i+1};
-                h = line([x(1), xnext(1)], [x(2), xnext(2)], 'Color', 'blue', 'LineWidth', 1.5);
-                obj.pathHandle = [obj.pathHandle, h];
-                i = i+1;
-            end
-            xlim([obj.grid.min(1),obj.grid.max(1)]);
-            ylim([obj.grid.min(2),obj.grid.max(2)]);
-        end
     end
    
 end 

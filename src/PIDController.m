@@ -58,8 +58,8 @@ classdef PIDController < handle
         function u = getControl(obj, t, x)
             %xystar = obj.getNextWaypt(x);
             xystar = obj.getTimedWaypt(t);
-            h = scatter(xystar(1), xystar(2), 'r', 'filled');
-            h.MarkerFaceAlpha = 0.2;
+            %h = scatter(xystar(1), xystar(2), 'r', 'filled');
+            %h.MarkerFaceAlpha = 0.2;
 
             % Rotation matrix.
             R = [cos(x(3)) sin(x(3)); 
