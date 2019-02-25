@@ -6,13 +6,14 @@ clc
 clear 
 
 %% Load the current experimental setup and all the parameters.
-params = setupDubinsExp1();
+params = dubinsCameraExp1();
+%params = dubinsLidarExp1(); this one is weird...
 
 %% Setup Obstacle Map Generator.
 map = OccuMap(params.grid, params.obstacles);
 
 % Compute the first occupancy map.
-map.updateMapAndCost(params.senseData, params.senseShape);
+map.updateMapAndCost(params.initSenseData, params.senseShape);
 
 %% Setup Safety Module.
 % Setup safety module object and compute first set.
@@ -35,13 +36,13 @@ if strcmp(params.plannerName, 'rrt')
     % Create RRT obj.
     planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, params.dx);
     % build rrt and get optimal path
-    path = planner.replan(params.xinit(1:2), params.xgoal(1:2));
+    [path, newpath] = planner.replan(params.xinit(1:2), params.xgoal(1:2));
     % (optional) plot optimal path
     plt.plotTraj(path);
     
     % Create PID controller to track RRT trajectory.
-    controller = PIDController(params.dynSys);
-    controller.updatePath(path);
+    controller = PIDController(params.dynSys, params.dt);
+    controller.updatePath(path, 1, newpath);
 end
 
 %% Simulation loop.
@@ -84,7 +85,7 @@ for t=1:params.T
       senseData = {[x(1);x(2);x(3)], [params.senseRad; params.senseRad]};
     elseif strcmp(params.senseShape, 'camera')
       senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR]};
-    elseif strcmp(senseShape, 'lidar')
+    elseif strcmp(params.senseShape, 'lidar')
       senseData = {[x(1);x(2);x(3)], [params.senseRad]};
     else
       error('unknown sesnor type');
@@ -109,9 +110,9 @@ for t=1:params.T
             % Update internal variable.
             planner.updateOccuGrid(map.occupancy_map_plan);
             % Replan path.
-            path = planner.replan(x(1:2), params.xgoal(1:2));
+            [path, newpath] = planner.replan(x(1:2), params.xgoal(1:2));
             % Update path that controller is trying to track.
-            controller.updatePath(path);
+            controller.updatePath(path, t, newpath);
             % (optional) plot optimal path
             plt.plotTraj(path);
             prevPlanUpdate = t;

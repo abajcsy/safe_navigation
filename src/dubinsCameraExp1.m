@@ -1,4 +1,4 @@
-function params = setupDubinsExp1()
+function params = dubinsCameraExp1()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -54,7 +54,7 @@ params.uMode = 'max';
 params.senseShape = 'camera';
 params.initialR = 1.5; % The initial radius of the safe region
 params.senseFOV = pi/6; % The (half) field-of-view of the camera
-params.senseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.

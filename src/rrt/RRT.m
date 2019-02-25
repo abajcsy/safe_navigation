@@ -22,7 +22,14 @@ classdef RRT < handle
         end
         
         %% Replans path
-        function path = replan(obj, xinit, xgoal)
+        % Inputs:
+        %   xinit   -- initial state (x,y)
+        %   xgoal   -- goal state (x,y)
+        % Outputs:
+        %   path    -- (cell arr) waypoints of shortest RRT path
+        %   newpath -- (bool) if we actually replaned a new path
+        function [path, newpath] = replan(obj, xinit, xgoal)
+            newpath = false;
             if ~isempty(obj.path)
                 % sanity check -- is our old path still collision-free?
                 collFree = obj.collisionCheckPath();
@@ -36,6 +43,7 @@ classdef RRT < handle
                 showTree = false;
                 nodes = obj.build(xinit, xgoal, showTree);
                 obj.path = nodes.getPath(xgoal);
+                newpath = true;
             end
             path = obj.path;
         end

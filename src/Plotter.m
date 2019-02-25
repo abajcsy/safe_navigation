@@ -220,13 +220,26 @@ classdef Plotter < handle
             end
             obj.trajh = [];
             i = 1;
+            xvals = [];
+            yvals = [];
             while i < length(path)
                 x = path{i};
+                xvals = [xvals, x(1)];
+                yvals = [yvals, x(2)];
                 xnext = path{i+1};
+                % plot the line segments.
                 h = line([x(1), xnext(1)], [x(2), xnext(2)], 'Color', 'blue', 'LineWidth', 1.5);
                 obj.trajh = [obj.trajh, h];
                 i = i+1;
             end
+            
+            % get final waypt.
+            x = path{i};
+            xvals = [xvals, x(1)];
+            yvals = [yvals, x(2)];
+            % plot the waypts.
+            s = scatter(xvals, yvals, 15, 'b', 'filled');
+            obj.trajh = [obj.trajh, s];
         end
         
         

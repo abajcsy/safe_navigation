@@ -4,6 +4,7 @@ classdef PIDController < handle
     properties
         path            % (cell arr) waypoints
         dynSys          % (obj) dynamical system (dubins car)
+        dt              % (float) time step
         nextWayptIdx    % (int) idx into next candidate waypt
         K               % (matrix) 2x2 gain matrix
         ff              % (vector) 2x1 feed-forward term
@@ -13,18 +14,17 @@ classdef PIDController < handle
     
     methods
         %% Constructor.
-        function obj = PIDController(dynSys)
+        function obj = PIDController(dynSys, dt)
             obj.dynSys = dynSys;
+            obj.dt = dt;
             
             % Proportional gain matrix and feed-forward term
             obj.K = [1 1 0; 0 0 1];
             obj.ff = [0;0];
-            
-            obj.totalT = 500;
         end
         
         %% Updates internal path variable and sets up the next waypt to ctrl to
-        function updatePath(obj, path)
+        function updatePath(obj, path, startT, newPath)
             % reset the next candidate waypt
             obj.path = path;
             if length(obj.path) > 1
@@ -33,21 +33,25 @@ classdef PIDController < handle
                 obj.nextWayptIdx = 1;
             end
             
-            % compute lengths of each segment in path
-            dTotal = 0;
-            dists = [];
-            for i=1:length(obj.path)-1
-                prevPt = obj.path{i};
-                nextPt = obj.path{i+1};
-                d = norm(nextPt - prevPt);
-                dTotal = dTotal + d;
-                dists = [dists, d];
-            end
-            
-            % re-time the trajectory
-            obj.wayptTimes = [1];
-            for i=1:length(obj.path)-1
-                obj.wayptTimes = [obj.wayptTimes, obj.totalT*(dists(i)/dTotal)];
+            if newPath
+                % compute lengths of each segment in path
+                dTotal = 0;
+                dists = [];
+                for i=1:length(obj.path)-1
+                    prevPt = obj.path{i};
+                    nextPt = obj.path{i+1};
+                    d = norm(nextPt - prevPt);
+                    dTotal = dTotal + d;
+                    dists = [dists, d];
+                end
+                obj.totalT = dTotal/obj.dt;
+
+                % re-time the trajectory
+                obj.wayptTimes = [startT];
+                for i=2:length(obj.path)
+                    newTime = obj.wayptTimes(i-1) + obj.totalT*(dists(i-1)/dTotal);
+                    obj.wayptTimes = [obj.wayptTimes, newTime];
+                end
             end
         end
         
@@ -58,8 +62,8 @@ classdef PIDController < handle
         function u = getControl(obj, t, x)
             %xystar = obj.getNextWaypt(x);
             xystar = obj.getTimedWaypt(t);
-            %h = scatter(xystar(1), xystar(2), 'r', 'filled');
-            %h.MarkerFaceAlpha = 0.2;
+            h = scatter(xystar(1), xystar(2), 'c', 'filled');
+            h.MarkerFaceAlpha = 0.2;
 
             % Rotation matrix.
             R = [cos(x(3)) sin(x(3)); 
