@@ -24,6 +24,7 @@ params.xgoal = [8.5; 2.5; -pi/2];
 params.plannerName = 'rrt';
 params.maxIter = 50;   % max number of iterations
 params.dx = 0.01;      % size of step along edges for collision-checking
+params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
 
 %% Dynamical System Params.
 params.wMax = 1;

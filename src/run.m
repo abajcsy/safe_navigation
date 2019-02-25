@@ -7,7 +7,6 @@ clear
 
 %% Load the current experimental setup and all the parameters.
 params = dubinsLocalQCameraExp1();
-%params = dubinsLocalQLidarExp1(); 
 
 %% Setup Obstacle Map Generator.
 map = OccuMap(params.grid, params.obstacles);
@@ -38,7 +37,8 @@ end
 %% Setup Planner.
 if strcmp(params.plannerName, 'rrt')
     % Create RRT obj.
-    planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, params.dx);
+    planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, ...
+        params.dx, params.rrtGoalEps);
     % build rrt and get optimal path
     [path, newpath] = planner.replan(params.xinit(1:2), params.xgoal(1:2));
     

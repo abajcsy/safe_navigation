@@ -1,4 +1,4 @@
-function params = dubinsLocalQCameraExp1()
+function params = dubinsWarmCameraExp1()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -38,10 +38,10 @@ params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'localQ';
+params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
-params.warmStart = true;
+params.warmStart = false;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
@@ -63,7 +63,7 @@ params.dt = 0.05;
 params.T = 800; 
 
 % Threshold for when we are considered close enough to goal, we stop simulation.
-params.goalEps = 0.4;
+params.goalEps = 0.3;
 
 % Variables for determining when to replan & reupdate safe set.
 params.planFreq = 10;
@@ -76,11 +76,11 @@ params.safetyTol = 0.05;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = true;
+params.visualize = false;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = false;
+params.saveOutputData = true;
 
 % Create filename if we want to save things out.
 % Naming convention:

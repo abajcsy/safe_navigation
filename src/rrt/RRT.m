@@ -6,11 +6,12 @@ classdef RRT < handle
         path        % (cell arr) current best path
         maxIter     % (int) maximum number of iterations before timing-out
         dx          % (float) how finely to collision-check along edges
+        goalEps     % (float) how close to the goal we need to get
     end
     
     methods
         %% Constructor.
-        function obj = RRT(grid, occuGrid, maxIter, dx)
+        function obj = RRT(grid, occuGrid, maxIter, dx, goalEps)
             load('seed.mat');
             % set random seed.
             rng(s);
@@ -19,6 +20,7 @@ classdef RRT < handle
             obj.path = [];
             obj.maxIter = maxIter;
             obj.dx = dx;
+            obj.goalEps = goalEps;
         end
         
         %% Replans path
@@ -29,22 +31,22 @@ classdef RRT < handle
         %   path    -- (cell arr) waypoints of shortest RRT path
         %   newpath -- (bool) if we actually replaned a new path
         function [path, newpath] = replan(obj, xinit, xgoal)
-            newpath = false;
-            if ~isempty(obj.path)
-                % sanity check -- is our old path still collision-free?
-                collFree = obj.collisionCheckPath();
-            else
-                % definitely need to replan if we dont have a path.
-                collFree = false;
-            end
-            
-            % if old path isn't collision-free need to replan.
-            if ~collFree
+%             newpath = false;
+%             if ~isempty(obj.path)
+%                 % sanity check -- is our old path still collision-free?
+%                 collFree = obj.collisionCheckPath();
+%             else
+%                 % definitely need to replan if we dont have a path.
+%                 collFree = false;
+%             end
+%             
+%             % if old path isn't collision-free need to replan.
+%             if ~collFree
                 showTree = false;
                 nodes = obj.build(xinit, xgoal, showTree);
                 obj.path = nodes.getPath(xgoal);
                 newpath = true;
-            end
+            %end
             path = obj.path;
         end
         
@@ -59,7 +61,6 @@ classdef RRT < handle
             nodes = NodeList(xinit);
             i = 1;
             figure(1);
-            goalEps = 0.3;
             hold on;
             while i <= obj.maxIter
                 % gets random, collision-free state
@@ -94,8 +95,8 @@ classdef RRT < handle
                     
                     % if we found a path to the goal, terminate
                     dToGoal = norm(xrand - xgoal);
-                    %fprintf("dist to goal: %f\n", dToGoal);
-                    if dToGoal < goalEps %isequal(xrand, xgoal) 
+                    
+                    if dToGoal < obj.goalEps 
                         break;
                     end
                 end
