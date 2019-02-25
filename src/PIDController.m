@@ -8,7 +8,6 @@ classdef PIDController < handle
         nextWayptIdx    % (int) idx into next candidate waypt
         K               % (matrix) 2x2 gain matrix
         ff              % (vector) 2x1 feed-forward term
-        totalT          % (int) total time to execute path
         wayptTimes      % (arr) timestamps for each waypoint
     end
     
@@ -44,12 +43,13 @@ classdef PIDController < handle
                     dTotal = dTotal + d;
                     dists = [dists, d];
                 end
-                obj.totalT = dTotal/obj.dt;
+                % total time to execute path
+                totalT = dTotal/obj.dt;
 
                 % re-time the trajectory
                 obj.wayptTimes = [startT];
                 for i=2:length(obj.path)
-                    newTime = obj.wayptTimes(i-1) + obj.totalT*(dists(i-1)/dTotal);
+                    newTime = obj.wayptTimes(i-1) + totalT*(dists(i-1)/dTotal);
                     obj.wayptTimes = [obj.wayptTimes, newTime];
                 end
             end
@@ -62,8 +62,8 @@ classdef PIDController < handle
         function u = getControl(obj, t, x)
             %xystar = obj.getNextWaypt(x);
             xystar = obj.getTimedWaypt(t);
-            h = scatter(xystar(1), xystar(2), 'c', 'filled');
-            h.MarkerFaceAlpha = 0.2;
+            %h = scatter(xystar(1), xystar(2), 'c', 'filled');
+            %h.MarkerFaceAlpha = 0.2;
 
             % Rotation matrix.
             R = [cos(x(3)) sin(x(3)); 
@@ -94,7 +94,7 @@ classdef PIDController < handle
 
         %% Get reference point from trajectory in time-parametrized way.
         function xref = getTimedWaypt(obj, t)
-            if t > obj.totalT
+            if t > obj.wayptTimes(end)
                 xref = obj.path{end};
                 return;
             end

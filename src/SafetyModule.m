@@ -218,11 +218,10 @@ classdef SafetyModule < handle
         
         %% Checks if state x is at the safety boundary. If it is, returns
         %  the optimal safety control to take. 
-        function [uOpt, onBoundary] = checkAndGetSafetyControl(obj, x)
+        function [uOpt, onBoundary] = checkAndGetSafetyControl(obj, x, tol)
             % Grab the value at state x from the most recent converged 
             % value function.
             value = eval_u(obj.grid, obj.valueFun(:,:,:,end), x);
-            tol = 0.1;
             
             % If the value is close to zero, we are close on the safety
             % boundary.

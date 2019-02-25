@@ -1,4 +1,4 @@
-function params = dubinsCameraExp1()
+function params = dubinsLocalQCameraExp1()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -65,20 +65,32 @@ params.T = 800;
 params.goalEps = 0.3;
 
 % Variables for determining when to replan & reupdate safe set.
-params.planFreq = 20;
+params.planFreq = 10;
 params.safetyFreq = 10;
+
+% How close to the boundary we need to be to apply safety control.
+params.safetyTol = 0.05;
+
+%% Plotting Params.
+
+% Do we want to visualize the simulation?
+% (say false if you want to save on speed and just save out results).
+params.visualize = false;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = false;
+params.saveOutputData = true;
 
 % Create filename if we want to save things out.
+% Naming convention:
+%   [updateMethod][warm][sensing][date].mat
 if params.saveOutputData
     if params.warmStart
         name = strcat(params.updateMethod, 'warm');
     else
         name = params.updateMethod;
     end
+    name = strcat(name, params.senseShape);
     params.filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 end
 end
