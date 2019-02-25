@@ -81,9 +81,11 @@ for t=1:params.T
     
     % Get the new sensing region.
     if strcmp(params.senseShape, 'circle')
-      senseData = {[x(1);x(2);x(3)], [senseRad;senseRad]};
+      senseData = {[x(1);x(2);x(3)], [params.senseRad; params.senseRad]};
     elseif strcmp(params.senseShape, 'camera')
       senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR]};
+    elseif strcmp(senseShape, 'lidar')
+      senseData = {[x(1);x(2);x(3)], [params.senseRad]};
     else
       error('unknown sesnor type');
     end  

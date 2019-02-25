@@ -161,6 +161,21 @@ classdef OccuMap < handle
                   % Update occupancy grid with newly sensed obstacles.
                   obj.occupancy_map_plan(find((obj.sensed_region > 0).*(obsSlice < 0))) = -1;
                 end
+            elseif strcmp(senseShape, 'lidar') % if lidar sensing region
+                % It is assumed that the obstacle is only position
+                % dependent in this computation.
+                % Project the slice of obstacle
+                [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                [obj.occupancy_map_safety, dataSense] = ...
+                    generate_lidar_sensing_region(obj.gFMM, obsSlice, ...
+                    senseData{2}(1), senseData{1}(1:2));
+              
+                % Record which states we have sensed. 
+                % (+1 sensed, -1 unsensed)                  
+                obj.sensed_region = max(obj.sensed_region, dataSense);
+
+                % Update occupancy grid with newly sensed obstacles.
+                obj.occupancy_map_plan(find((obj.sensed_region > 0).*(obsSlice < 0))) = -1;
             else
                error('Unrecognized sensor type');
             end
