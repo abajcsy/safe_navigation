@@ -83,7 +83,7 @@ params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = false;
+params.saveOutputData = true;
 
 % Create filename if we want to save things out.
 % Naming convention:
