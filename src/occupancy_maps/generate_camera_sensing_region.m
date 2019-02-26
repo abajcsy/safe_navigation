@@ -66,7 +66,8 @@ if ~isempty(obs_indicies_of_interest)
     points_y = repmat(points_y', [num_pts, 1]);
     error = sqrt((flattened_grid_x - points_x).^2 + (flattened_grid_y - points_y).^2);
     [~, array_indicies_to_check] = min(error, [], 1);
-    obs_status = sign(obs(indicies_to_trace(array_indicies_to_check)));
+    epsilon = 1e-6;
+    obs_status = sign(obs(indicies_to_trace(array_indicies_to_check))-epsilon);
     occupancy_status = 0.5*((obs_status + occupancy_status) - abs(obs_status - occupancy_status));
   end
   occupancy_grid(indicies_to_trace) = occupancy_status;

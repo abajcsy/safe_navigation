@@ -161,6 +161,8 @@ function runExperiment(experimentFun)
         end
 
         if params.visualize
+            %plt.updateOccuMapSafe(map.gFMM, map.occupancy_map_safety);
+            %plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
             % Update plotting.
             plt.updatePlot(x, params.xgoal, safety.valueFun, map, path);
 

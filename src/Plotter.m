@@ -14,6 +14,10 @@ classdef Plotter < handle
         vxh
         trajh
         firstPlot   % (bool) if this is the first time we plotted
+        
+        % occupancy map fig handles
+        safemaph
+        planmaph
     end
     
     methods
@@ -28,6 +32,8 @@ classdef Plotter < handle
             obj.vxh = NaN;
             obj.trajh = [];
             obj.firstPlot = true;
+            obj.safemaph = [];
+            obj.planmaph = [];
         end
         
         %% Updates the plot (environment, sensing, set, car)
@@ -71,6 +77,33 @@ classdef Plotter < handle
             obj.plotBoundaryPadding(map.boundLow, map.boundUp);
             obj.plotTraj(path);
         end
+        
+        %% Plots the occupancy map as understood by the safety module.
+        function updateOccuMapSafe(obj, g, safeMap)
+            if isempty(obj.safemaph)
+                obj.safemaph = figure(2);
+            end
+            % clear figure
+            clf(obj.safemaph);
+            colormap('gray');
+            contourf(g.xs{1}, g.xs{2}, safeMap, -1:1:1);
+            xlim([obj.lowEnv(1) obj.upEnv(1)]);
+            ylim([obj.lowEnv(2) obj.upEnv(2)]);
+        end
+        
+        %% Plots the occupancy map as understood by the planner.
+        function updateOccuMapPlan(obj, g, planMap)
+            if isempty(obj.planmaph)
+                obj.safemaph = figure(3);
+            end
+            % clear figure
+            clf(obj.planmaph);
+            contourf(g.xs{1}, g.xs{2}, planMap, -1:1:1);
+            colormap('gray');
+            xlim([obj.lowEnv(1) obj.upEnv(1)]);
+            ylim([obj.lowEnv(2) obj.upEnv(2)]);
+        end
+        
         
         %% Plots the environment with the obstacle.
         % Output: 
@@ -199,22 +232,6 @@ classdef Plotter < handle
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
-        end
-
-        %% Plots waypoints.
-        function plotWaypts(obj, waypts, simWidth, simHeight)
-            X = [];
-            Y = [];
-            for i=1:length(waypts)
-                pt = waypts{i};
-                X = [X,pt(1)];
-                Y = [Y,pt(2)];
-            end
-            hold on
-            plot(X,Y, 'k', 'LineWidth', 1.5);
-            scatter(X,Y,'filled', 'k');
-            xlim([0,simWidth]);
-            ylim([0,simHeight]);
         end
         
         %% Plots optimal path
