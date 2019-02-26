@@ -13,7 +13,7 @@ function run_experiments()
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    experiments = {@dubinsLocalQCameraExp1, @dubinsHJICameraExp1};%, ...
+    experiments = {@dubinsHJICameraExp1};%, ...
                   %@dubinsWarmCameraExp1, ...
                   %@dubinsHJICameraExp1, ...
                   %@dubinsLocalQLidarExp1};
@@ -161,7 +161,7 @@ function runExperiment(experimentFun)
         end
 
         if params.visualize
-            %plt.updateOccuMapSafe(map.gFMM, map.occupancy_map_safety);
+            %plt.updateOccuMapSafe(map.gFMM, sign(safety.lCurr(:,:,1)));
             %plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
             % Update plotting.
             plt.updatePlot(x, params.xgoal, safety.valueFun, map, path);

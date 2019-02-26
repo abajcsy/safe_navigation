@@ -1,5 +1,5 @@
 function [data, tau, extraOuts] = ...
-    HJIPDE_solve_warm(data0, lxOld, lx, tau, schemeData, compMethod, extraArgs)
+    HJIPDE_solve_warm(data0, lxOld, lx, tau, schemeData, compMethod, warmStart, extraArgs)
 % [data, tau, extraOuts] = ...
 %   HJIPDE_solve(data0, tau, schemeData, minWith, extraargs)
 %     Solves HJIPDE with initial conditions data0, at times tau, and with
@@ -1032,9 +1032,11 @@ for i = istart:length(tau)
                 end
             else
                 [change, indicies] = max(abs(y - y0(:)));
+                
                 unchangedIndicies = find(abs(y - y0(:)) > convergeThreshold);
                 Qold = Q;
                 Q = unchangedIndicies;
+                fprintf('Max change since last iteration: %f\n', change);
                 
                 if ~quiet
                     fprintf('Max change since last iteration: %f\n', change)
@@ -1079,7 +1081,12 @@ for i = istart:length(tau)
     end
     
     %% Stop computation if we've converged
-    if stopConverge && (change < convergeThreshold || ~(~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q))))
+    if warmStart
+        cond = ~(~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)));
+    else
+        cond = false;
+    end
+    if stopConverge && (change < convergeThreshold || cond)
         
         if isfield(extraArgs, 'discountFactor') && ...
                 extraArgs.discountFactor && ...

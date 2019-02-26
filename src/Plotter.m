@@ -54,6 +54,7 @@ classdef Plotter < handle
                 c = [0.1,0.8,0.5];
                 scatter(xgoal(1),xgoal(2),[],c,'filled');
             end
+            figure(obj.figh);
             
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
@@ -83,6 +84,7 @@ classdef Plotter < handle
             if isempty(obj.safemaph)
                 obj.safemaph = figure(2);
             end
+            figure(obj.safemaph);
             % clear figure
             clf(obj.safemaph);
             colormap('gray');
@@ -94,8 +96,9 @@ classdef Plotter < handle
         %% Plots the occupancy map as understood by the planner.
         function updateOccuMapPlan(obj, g, planMap)
             if isempty(obj.planmaph)
-                obj.safemaph = figure(3);
+                obj.planmaph = figure(3);
             end
+            figure(obj.planmaph);
             % clear figure
             clf(obj.planmaph);
             contourf(g.xs{1}, g.xs{2}, planMap, -1:1:1);
