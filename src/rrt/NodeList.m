@@ -43,7 +43,7 @@ classdef NodeList < handle
             % NOTE: need xgoal to be in the tree...
             [~, goalNode] = obj.findNN(xgoal);
             if isempty(goalNode)
-                error("Goal point is not in tree!");
+                error('Goal point is not in tree!');
             end
             revPath = {goalNode.data};
             currNode = goalNode.parent;

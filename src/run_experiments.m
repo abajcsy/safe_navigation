@@ -1,20 +1,25 @@
 %% Run all the experiments.
 
-% Clear old figure plotting and variables.
-clf 
-clc 
-clear 
+function run_experiments()
+    % Clear old figure plotting and variables.
+    clf 
+    clc 
+    clear 
 
-% Setup all function handles to experimental setup.
-experiments = {@dubinsLocalQCameraExp1, ...
-               @dubinsWarmCameraExp1, ...
-               @dubinsHJICameraExp1, ...
-               @dubinsLocalQLidarExp1};
+    % Setup all function handles to experimental setup.
+    %experiments = {@dubinsLocalQCameraExp1, ...
+    %               @dubinsWarmCameraExp1, ...
+    %               @dubinsHJICameraExp1, ...
+    %               @dubinsLocalQLidarExp1};
+    experiments = {@dubinsWarmCameraExp1, ...
+                   @dubinsHJICameraExp1, ...
+                   @dubinsLocalQLidarExp1};
 
-% Simulate each experiment.
-for i=1:length(experiments)
-    experimentFun = experiments{i};
-    runExperiment(experimentFun);
+    % Simulate each experiment.
+    for i=1:length(experiments)
+        experimentFun = experiments{i};
+        runExperiment(experimentFun);
+    end
 end
 
 %% Runs one experiment. 
@@ -103,7 +108,7 @@ function runExperiment(experimentFun)
         elseif strcmp(params.plannerName, 'rrt')
             u = controller.getControl(t, x);
         else
-            error("Can't run unsupported planner! %s\n", plannerName);
+            error('Cannot run unsupported planner! %s\n', plannerName);
         end
 
         % Check if we are on boundary of safe set. If we are, apply safety 
@@ -126,7 +131,7 @@ function runExperiment(experimentFun)
         elseif strcmp(params.senseShape, 'lidar')
           senseData = {[x(1);x(2);x(3)], [params.senseRad]};
         else
-          error('unknown sesnor type');
+          error('Unknown sensor type: %s\n', params.senseShape);
         end  
 
         % Update occupancy map, cost function, and the avoid set.
@@ -151,8 +156,10 @@ function runExperiment(experimentFun)
                 [path, newpath] = planner.replan(x(1:2), params.xgoal(1:2));
                 % Update path that controller is trying to track.
                 controller.updatePath(path, t, newpath);
-                % (optional) plot optimal path
-                plt.plotTraj(path);
+                if params.visualize
+                    % (optional) plot optimal path
+                    plt.plotTraj(path);
+                end
                 prevPlanUpdate = t;
             end
         end

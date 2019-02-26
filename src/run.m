@@ -87,7 +87,7 @@ for t=1:params.T
     elseif strcmp(params.plannerName, 'rrt')
         u = controller.getControl(t, x);
     else
-        error("Can't run unsupported planner! %s\n", plannerName);
+        error('Cannot run unsupported planner! %s\n', plannerName);
     end
     
     % Check if we are on boundary of safe set. If we are, apply safety 
@@ -135,8 +135,10 @@ for t=1:params.T
             [path, newpath] = planner.replan(x(1:2), params.xgoal(1:2));
             % Update path that controller is trying to track.
             controller.updatePath(path, t, newpath);
-            % (optional) plot optimal path
-            plt.plotTraj(path);
+            if params.visualize
+                % (optional) plot optimal path
+                plt.plotTraj(path);
+            end
             prevPlanUpdate = t;
         end
     end
