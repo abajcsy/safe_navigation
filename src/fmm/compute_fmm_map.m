@@ -24,6 +24,12 @@ end
 speed = ones(grid.N(1), grid.N(2));
 
 % Compute value
+indicies_occupied = find(occupancy_map < 0);
+indicies_unoccupied = find(occupancy_map > 0);
+if isempty(indicies_occupied) || isempty(indicies_unoccupied)
+    u = occupancy_map;
+    return;
+end
 u1 = compute_value(grid, occupancy_map, speed);
 u2 = compute_value(grid, -occupancy_map, speed);
 u = u1 .* (occupancy_map >= 0) - u2 .* (occupancy_map < 0);

@@ -5,16 +5,19 @@ function run_experiments()
     clf 
     clc 
     clear 
+    
+    % Compile FMM c-code.
+    repo = what('safe_navigation');
+    filename = 'mexEikonalFMM.cpp';
+    cppPath = strcat(repo.path, '/src/fmm/cversion/', filename);
+    mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    %experiments = {@dubinsLocalQCameraExp1, ...
-    %               @dubinsWarmCameraExp1, ...
-    %               @dubinsHJICameraExp1, ...
-    %               @dubinsLocalQLidarExp1};
-    experiments = {@dubinsWarmCameraExp1, ...
-                   @dubinsHJICameraExp1, ...
-                   @dubinsLocalQLidarExp1};
-
+    experiments = {@dubinsLocalQCameraExp1, ...
+                  @dubinsWarmCameraExp1, ...
+                  @dubinsHJICameraExp1, ...
+                  @dubinsLocalQLidarExp1};
+    
     % Simulate each experiment.
     for i=1:length(experiments)
         experimentFun = experiments{i};

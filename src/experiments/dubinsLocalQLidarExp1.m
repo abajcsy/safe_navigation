@@ -62,7 +62,7 @@ params.dt = 0.05;
 params.T = 800; 
 
 % Threshold for when we are considered close enough to goal, we stop simulation.
-params.goalEps = 0.3;
+params.goalEps = 0.4;
 
 % Variables for determining when to replan & reupdate safe set.
 params.planFreq = 10;

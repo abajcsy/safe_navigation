@@ -64,12 +64,18 @@ speed(dom_map>0) = 0;
 % Get path of current file
 funDir = mfilename('fullpath');
 
-% Compile mex file
-mex([funDir(1:end-13) 'cversion/mexEikonalFMM.cpp']);
+% Compile mex file if we haven't before.
+%if exist('mexEikonalFMM.mexa64', 'file') ~= 3
+%    mex([funDir(1:end-13) 'cversion/mexEikonalFMM.cpp']);
+%end
 
-
+%save('debuggingFMM.mat', 'g', 'target', 'speed', 'obs', 'dom_map');
 % Run FMM code
+try
 mexEikonalFMM(u,bdryCond,speed,L);
+catch 
+    fprintf('Im debugging.\n');
+end
 
 u(u>0.95*infty) = nan;
 

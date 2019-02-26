@@ -42,12 +42,20 @@ classdef RRT < handle
 %             
 %             % if old path isn't collision-free need to replan.
 %             if ~collFree
-                showTree = false;
+            showTree = false;
+            
+            % if we are close enough to the goal, just move straight to it.
+            dToGoal = norm(xinit - xgoal);
+            if dToGoal <= obj.goalEps
+                obj.path = {xinit, xgoal};
+                newpath = true;
+                path = obj.path;
+            else
                 nodes = obj.build(xinit, xgoal, showTree);
                 obj.path = nodes.getPath(xgoal);
                 newpath = true;
-            %end
-            path = obj.path;
+                path = obj.path;
+            end
         end
         
         %% Creates the RRT starting from xinit. 
