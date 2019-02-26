@@ -1,4 +1,4 @@
-classdef Plotter
+classdef Plotter < handle
     %PLOTTER Plots level sets and environment and stuff.
     
     properties
@@ -9,6 +9,14 @@ classdef Plotter
         upObs       % if rectangle: upper right (x,y) point
                     % if circle: radius of circle 
         obsShape    % shape of the obstacle (rectangle or circle)
+        
+        % figure handles
+        figh
+        envh
+        senseh
+        carh
+        vxh
+        firstPlot 
     end
     
     methods
@@ -19,6 +27,47 @@ classdef Plotter
             obj.lowObs = lowObs;
             obj.upObs = upObs;
             obj.obsShape = obsShape;
+            obj.envh = NaN;
+            obj.senseh = NaN;
+            obj.carh = NaN;
+            obj.vxh = NaN;
+            obj.firstPlot = true;
+        end
+        
+        %% Updates the plot (environment, sensing, set, car)
+        %  Input:
+        %       x       -- state of dyn system
+        %       setObj  -- avoid set object
+        function updatePlot(obj, x, setObj)
+            % Delete old plots
+            if ~obj.firstPlot
+                delete(obj.envh);
+                delete(obj.senseh);
+                delete(obj.carh);
+                delete(obj.vxh);
+            else
+                obj.figh = figure(1);
+                obj.firstPlot = false;
+            end
+            
+            % Visualize environment and sensing and car
+            obj.envh = obj.plotEnvironment();
+            obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
+            obj.carh = obj.plotCar(x);
+            obj.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
+
+            % Plot value function
+            extraArgs.edgeColor = [1,0,0];
+
+            if length(x) == 3
+                extraArgs.theta = x(3);
+                funcToPlot = setObj.valueFun(:,:,:,end);
+            else
+                funcToPlot = setObj.valueFun(:,:,end);
+            end
+
+            visSet = true;
+            obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
         end
         
         %% Plots the environment with the obstacle.
@@ -41,8 +90,8 @@ classdef Plotter
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
             
-            xlabel('x');
-            ylabel('y');
+            xlabel('$p_x$', 'Interpreter','latex');
+            ylabel('$p_y$', 'Interpreter','latex');
             set(gca,'TickLength',[0 0]);
             box on
         end
@@ -51,26 +100,44 @@ classdef Plotter
         % Inputs:
         %   g [array]     - grid corresponding to data
         %   func [array]  - data for function to visualize
-        %   theta [float] - angle for which to plot the level set
         %   visSet [bool] - if true, plots 2D slice of func.
         %                   Otherwise plots 3D.
-        %   edgeColor [vector or string] - color of level set boundary
-        %   cmap [string] - name of colormap to use
+        %   extraArgs
+        %           .theta [float] - (if 3D system) angle for which to plot the level set
+        %           .edgeColor [vector or string] - color of level set boundary
+        %           .cmap [string] - name of colormap to use
         % Outputs: 
         %   plots level set in (x,y) for fixed theta.
-        function h = plotFuncLevelSet(obj, g, func, theta, visSet, edgeColor, cmap)
+        function h = plotFuncLevelSet(obj, g, func, visSet, extraArgs)
             
-            % Grab slice at theta.
-            [gPlot, dataPlot] = proj(g, func, [0 0 1], theta);
-            extraArgs.LineWidth = 2;
-
+            if isfield(extraArgs, 'theta')
+                % Grab slice at theta.
+                [gPlot, dataPlot] = proj(g, func, [0 0 1], extraArgs.theta);
+            else
+                gPlot = g;
+                dataPlot = func;
+            end
+            
+            % grab the edge color
+            if isfield(extraArgs, 'edgeColor')
+                edgeColor = extraArgs.edgeColor;
+            else
+                edgeColor = [1,0,0];
+            end
+            
+            % grab the color map
+            if isfield(extraArgs, 'cmap')
+                cmap = extraArgs.cmap;
+            else
+                cmap = 'hot';
+            end
+            
             % Visualize final set.
-            % NOTE: plot -data because by default contourf plots all values
+            % NOTE: plot -data if using contourf plots because it uses all values
             % that are ABOVE zero, but inside our obstacle we have values
             % BELOW zero.
             if visSet
-                h = visSetIm(gPlot, -dataPlot, edgeColor, 0, extraArgs);
-                %h = visSetIm(g, func, edgeColor, 0, extraArgs);
+                h = visSetIm(gPlot, dataPlot, edgeColor, 0);
             else
                 alpha = 0.5;
                 h = visFuncIm(gPlot, dataPlot, edgeColor, alpha); %, edgeColor, 0.5);
@@ -78,8 +145,8 @@ classdef Plotter
             end
 
             colormap(flipud(cmap));
-            xlabel('x');
-            ylabel('y');
+            xlabel('$p_x$', 'Interpreter','latex');
+            ylabel('$p_y$', 'Interpreter','latex');
             %grid off
             set(gca,'TickLength',[0 0]);
         end
@@ -94,14 +161,17 @@ classdef Plotter
             
             % Plot heading.
             center = x(1:2);
-            % Rotation matrix.
-            R = [cos(x(3)) -sin(x(3)); 
-                 sin(x(3)) cos(x(3))];
-            % Heading pt.
-            hpt = [0.5; 0];
-            hptRot = R*hpt + center;
-            p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'LineWidth', 1.5);
-            p2.Color(4) = 1.0;
+            
+            if length(x) == 3
+                % Rotation matrix.
+                R = [cos(x(3)) -sin(x(3)); 
+                     sin(x(3)) cos(x(3))];
+                % Heading pt.
+                hpt = [0.5; 0];
+                hptRot = R*hpt + center;
+                p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'k', 'LineWidth', 1.5);
+                p2.Color(4) = 1.0;
+            end
             
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
@@ -110,25 +180,18 @@ classdef Plotter
         
         %% Plots sensing radius centered around car position (x)
         % Inputs:
-        %   x [vector]  - 3D state of dubins car
-        %   senseRad [float] - sensing radius
+        %   grid  - 
+        %   signed_distance_map - 
         % Ouput:
-        %   s   - handle for figure
-        function s = plotSensing(obj, x, senseRad, senseShape)
-            if strcmp(senseShape,'rectangle')
-                lowx = x(1)-senseRad;
-                lowy = x(2)-senseRad;
-                s = rectangle('Position',[lowx,lowy,senseRad*2,senseRad*2], 'EdgeColor', [0,0,1,0.5], 'LineWidth', 2);
-            else
-                %s = viscircles([x(1),x(2)],senseRad, 'Color', [0,0.2,1,0.5], 'LineWidth', 2);
-                pos = [x(1)-senseRad x(2)-senseRad senseRad*2 senseRad*2];
-                s = rectangle('Position', pos,'Curvature',[1,1], 'FaceColor',[0,0.2,1,0.3], 'EdgeColor', [0,0.2,1,0]);
-            end
+        %   h   - handle for figure
+        function h = plotSensing(obj, grid, signed_distance_map)
+            s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
+            h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
         end
-        
+
         %% Plots waypoints.
         function plotWaypts(obj, waypts, simWidth, simHeight)
             X = [];

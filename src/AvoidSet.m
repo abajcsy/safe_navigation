@@ -8,46 +8,63 @@ classdef AvoidSet < handle
     %           L = {x : l(x) <= 0}
     
     properties
-        gridLow         % Lower corner of computation domain
-        gridUp          % Upper corner of computation domain
-        N               % Number of grid points per dimension
-        grid            % Computation grid struct
-        dt              % Timestep in discretization
-        computeTimes    % Stores the computation times
-        dynSys          % Dynamical system (dubins car)
-        pdDims          % Which dimension is periodic?
-        lowRealObs      % (x,y) lower left corner of obstacle
-        upRealObs       % (x,y) upper right corner of obstacle
-        lReal           % cost function representing TRUE environment
-        lCurr           % current cost function representation (constructed from measurements)
-        valueFun        % Stores most recent converged value function 
-        timeDisc        % Discretized time vector          
-        schemeData      % Used to specify dyn, grid, etc. for HJIPDE_solve()
-        HJIextraArgs    % Specifies extra args to HJIPDE_solve()
-        updateEpsilon   % (float) value change threshold used in local update rule
-        warmStart       % (bool) if we want to warm start with prior V(x)
-        firstCompute    % (bool) flag to see if this is the first time we have done computation
+        % Computation grid & dynamics
+        gridLow         % (float arr) Lower corner of computation domain
+        gridUp          % (float arr) Upper corner of computation domain
+        N               % (int arr) Number of grid points per dimension
+        grid            % (obj) Computation grid struct
+        dt              % (float) Timestep in discretization
+        computeTimes    % (float arr) Stores the computation times
+        dynSys          % (obj) Dynamical system (dubins car)
+        pdDims          % (int) Which dimension is periodic?
         uMode           % (string) is control max or min-ing l(x)? 
         dMode           % (string) is disturbance max or min-ing l(x)? 
-        saveValueFuns   % (bool) flag to save out sequence of V(x) and l(x)
-        runComparison   % (bool) flag to run computational comparisons
-        valueFunCellArr % (cell arr) stores sequence of V(x) 
-        lxCellArr       % (cell arr) stores sequence of l(x)
         boundLow        % (arr) lower limit of boundary padding
         boundUp         % (arr) upper limit of boundary padding 
-        maxQSize        % (arr) Maximum queue size achieved for each timestep
+        
+        % Environment information
+        lowRealObs      % (float arr) (x,y) lower left corner of obstacle
+        upRealObs       % (float arr) (x,y) upper right corner of obstacle
+        lReal           % (float arr) Cost function representing TRUE environment
+        lCurr           % (float arr) Current cost function representation
+                        %             (constructed from measurements)
+                        
+        % Value function computation information
+        valueFun        % (float arr) Stores most recent converged value function 
+        timeDisc        % (float arr) Discretized time vector          
+        schemeData      % (struct) Used to specify dyn, grid, etc. for HJIPDE_solve()
+        HJIextraArgs    % (struct) Specifies extra args to HJIPDE_solve()
+        updateEpsilon   % (float) Value change threshold used in local update rule
+        warmStart       % (bool) if we want to warm start with prior V(x)
+        firstCompute    % (bool) flag to see if this is the first time we have done computation
+        updateMethod    % (string) what kind of solution method to use
+        
+        % Utility variables and flags
+        valueFunCellArr % (cell arr) stores sequence of V(x) 
+        lxCellArr       % (cell arr) stores sequence of l(x)
+        QSizeCellArr    % (cell arr) all queue size achieved for each timestep
+        fovCellArr      % (cell arr) stores the results of FMM
+        solnTimes       % (array) total time to compute solution at each step
+        
+        % Sensing-based occu grid info
+        gFMM            % Computation grid struct for FMM
+        unionL_2D_FMM   % Signed distance for the sensed occupancy map
     end
     
     methods
         %% Constructor. 
-        % NOTE: Assumes DubinsCar dynamics!
+        % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
         function obj = AvoidSet(gridLow, gridUp, lowRealObs, upRealObs, ...
                 obsShape, xinit, N, dt, updateEpsilon, ...
-                warmStart, saveValueFuns, runComparison)
+                warmStart, updateMethod)
             obj.gridLow = gridLow;  
             obj.gridUp = gridUp;    
             obj.N = N;      
-            obj.pdDims = 3;      % 3rd dimension is periodic for dubins
+            if length(N) == 3
+                obj.pdDims = 3;   % 3rd dimension is periodic for dubins
+            else
+                obj.pdDims = [];  % no periodic dim for 2D system
+            end
             obj.dt = dt;
             obj.updateEpsilon = updateEpsilon;
             obj.grid = createGrid(obj.gridLow, obj.gridUp, obj.N, obj.pdDims);
@@ -59,8 +76,13 @@ classdef AvoidSet < handle
             
             % Create the 'ground-truth' cost function from obstacle.
             if strcmp(obsShape, 'rectangle')
-                lowObs = [lowRealObs;gridLow(3)];
-                upObs = [upRealObs;gridUp(3)];
+                if length(N) == 3
+                    lowObs = [lowRealObs;gridLow(3)];
+                    upObs = [upRealObs;gridUp(3)];
+                else
+                    lowObs = lowRealObs;
+                    upObs = upRealObs;
+                end
                 obj.lReal = shapeRectangleByCorners(obj.grid,lowObs,upObs);
             else % if circular obstacle
                 center = lowRealObs;
@@ -72,8 +94,13 @@ classdef AvoidSet < handle
             % edge of the compute grid. 
             offsetX = (gridUp(1) - gridLow(1))/N(1);
             offsetY = (gridUp(2) - gridLow(2))/N(2);
-            obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, gridLow(3)];
-            obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, gridUp(3)];
+            if length(N) == 3
+                obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY, gridLow(3)];
+                obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY, gridUp(3)];
+            else
+                obj.boundLow = [gridLow(1)+offsetX, gridLow(2)+offsetY];
+                obj.boundUp = [gridUp(1)-offsetX, gridUp(2)-offsetY];
+            end
             % NOTE: need to negate the default shape function to make sure
             %       compute region is assigned (+) and boundary obstacle is (-)
             lBoundary = -shapeRectangleByCorners(obj.grid,obj.boundLow,obj.boundUp);
@@ -94,18 +121,21 @@ classdef AvoidSet < handle
             % lCurr or valueFun
             obj.firstCompute = true;
             
-            % Input bounds for dubins car.
-            wMax = 1;
-            vrange = [0.5,1];
-            
-            % --- DISTURBANCE --- %
-            obj.dMode = 'min';
-            dMax = [0,0,0]; %[.2, .2, .2];
-            % ------------------- %
+            if length(N) == 3
+                % Input bounds for dubins car.
+                wMax = 1;
+                vrange = [0.5,1];
 
-            % Define dynamic system.            
-            % Create dubins car where u = [v, w]
-            obj.dynSys = Plane(xinit, wMax, vrange, dMax);
+                % Define dynamic system.            
+                % Create dubins car where u = [v, w]
+                obj.dynSys = Plane(xinit, wMax, vrange);
+            else
+                % Define dynamic system.    
+                % Create 2D point-mass car u = [vx, vy].
+                vMax = 1;
+                drift = 1;
+                obj.dynSys = KinVehicle2D(xinit, vMax, drift);
+            end
             
             % Time vector.
             t0 = 0;
@@ -120,47 +150,57 @@ classdef AvoidSet < handle
             obj.schemeData.dynSys = obj.dynSys;
             obj.schemeData.accuracy = 'high'; % Set accuracy.
             obj.schemeData.uMode = obj.uMode;
-            obj.schemeData.dMode = obj.dMode;
-
-            % Convergence information
-            obj.HJIextraArgs.stopConverge = 0;
-            %obj.HJIextraArgs.convergeThreshold = .005;  %NOT USED IN LOCAL UPDATE
-            % since we have a finite compute grid, we can't trust values
-            % near the boundary of grid
-            obj.HJIextraArgs.ignoreBoundary = 0; 
-            
-            % Store the maximum queue size
-            obj.maxQSize = [];
             
             % Save out sequence of value functions as system moves through
-            % space as well as the cost functions. 
-            obj.saveValueFuns = saveValueFuns;
+            % space as well as the cost functions and the max Q size (if using Q method). 
             obj.valueFunCellArr = [];
             obj.lxCellArr = [];
+            obj.QSizeCellArr = [];
+            obj.solnTimes = [];
+            obj.fovCellArr = [];
             
-            % Grab the ground truth value functions over time
-            obj.runComparison = runComparison;
-            if obj.runComparison
-                repo = what('safe_navigation');
-                valFunPath = strcat(repo.path, '/data/groundTruthValueFuns.mat');
-                load(valFunPath, 'valueFunCellArr');
-                obj.valueFunCellArr = valueFunCellArr;
+            % Specify which update method we are using.
+            obj.updateMethod = updateMethod;
+            
+            % since we have a finite compute grid, we may not want to 
+            % trust values near the boundary of grid
+            obj.HJIextraArgs.ignoreBoundary = 0; 
+            
+            % Convergence information
+            if strcmp(obj.updateMethod, 'HJI')
+                obj.HJIextraArgs.stopConverge = 1;
+                obj.HJIextraArgs.convergeThreshold = obj.updateEpsilon;
+            elseif strcmp(obj.updateMethod, 'localQ')
+                obj.HJIextraArgs.stopConverge = 0;
+            else
+                msg = strcat('Your update method: ', obj.updateMethod, ... 
+                    'is not a valid option.');
+                error(msg);
             end
+            
+            fprintf('------ Avoid Set Problem Setup -------\n');
+            fprintf('   dynamical system: %dD\n', length(N));
+            fprintf('   update method: %s\n', obj.updateMethod);
+            fprintf('   warm start: %d\n', obj.warmStart);
+            fprintf('   stopConverge: %d\n', obj.HJIextraArgs.stopConverge);
+            fprintf('   updateEpsilon: %.3f\n', obj.updateEpsilon);
+            fprintf('--------------------------------------\n');
             
         end
         
         %% Computes avoid set. 
         % Inputs:
-        %   senseData [vector] - if rectangle sensing region, 
-        %                        (x,y) coords of lower left sensing box and
-        %                        (x,y) coords of upper right sensing box.
-        %                        if circle sensing region, 
-        %                        (x,y) coords of center and radius
-        %   senseShape [string] - either 'rectangle' or 'circle'
-        %   currTime [int]      - current timestep (in simulation) 
+        %   senseData [vector]      - if rectangle sensing region, 
+        %                           (x,y) coords of lower left sensing box and
+        %                           (x,y) coords of upper right sensing box.
+        %                           if circle sensing region, 
+        %                           (x,y) coords of center and radius
+        %   senseShape [string]     - either 'rectangle' or 'circle'
+        %   currTime [int]          - current timestep (in simulation) 
         % Outputs:
         %   dataOut             - infinite-horizon (converged) value function 
-        function dataOut = computeAvoidSet(obj, senseData, senseShape, currTime)
+        function dataOut = computeAvoidSet(obj, senseData, senseShape, ...
+                currTime)
             
             % ---------- START CONSTRUCT l(x) ---------- %
             
@@ -169,15 +209,46 @@ classdef AvoidSet < handle
             % NOTE: need to negate the default shape function to make sure
             %       free space is assigned (+) and unknown space is (-)
             if strcmp(senseShape, 'rectangle')
-                lowSenseXY = senseData(:,1);
-                upSenseXY = senseData(:,2);
+                lowSenseXY = senseData{1}(1:2);
+                upSenseXY = senseData{2};
                 lowObs = [lowSenseXY;obj.gridLow(3)];
                 upObs = [upSenseXY;obj.gridUp(3)];
                 sensingShape = -shapeRectangleByCorners(obj.grid,lowObs,upObs);
-            else % if circular sensing region
-                center = senseData(:,1);
-                radius = senseData(1,2);
+                % Union the sensed region with the actual obstacle.
+                unionL = shapeUnion(sensingShape, obj.lReal);
+                % Project the slice of unionL and create an occupancy map
+                [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                occupancy_map = sign(dataFMM);
+            elseif strcmp(senseShape, 'circle') % if circular sensing region
+                center = senseData{1}(1:2);
+                radius = senseData{2}(1);
                 sensingShape = -shapeCylinder(obj.grid, 3, center, radius);
+                % Union the sensed region with the actual obstacle.
+                unionL = shapeUnion(sensingShape, obj.lReal);
+                % Project the slice of unionL and create an occupancy map
+                [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                occupancy_map = sign(dataFMM);
+            elseif strcmp(senseShape, 'camera') % if camera sensing region
+                % It is assumed that the obstacle is only position
+                % dependent in this computation.
+                
+                % If this is the first computation, use a circle; 
+                % otherwise use a camera
+                if obj.firstCompute
+                  sensingShape = -shapeCylinder(obj.grid, 3, senseData{1}(1:2), senseData{2}(2));
+                  % Union the sensed region with the actual obstacle.
+                  unionL = shapeUnion(sensingShape, obj.lReal);
+                  % Project the slice of unionL and create an occupancy map
+                  [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                  occupancy_map = sign(dataFMM);
+                else
+                  % Project the slice of obstacle
+                  [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                  occupancy_map = generate_camera_sensing_region(obj.gFMM, ...
+                    obsSlice, senseData{2}(1), senseData{1}(1:2), senseData{1}(3));
+                end
+            else
+               error('Unrecognized sensor type');
             end
             
             % --- LOCAL UPDATE --- % 
@@ -185,8 +256,15 @@ classdef AvoidSet < handle
             lxOld = obj.lCurr;
             % -------------------- %
             
-            % Union the sensed region with the actual obstacle.
-            unionL = shapeUnion(sensingShape, obj.lReal);
+            % We will use the FMM code to get the signed distance function. 
+            % Since the FMM code works only on 2D, we will take a slice of 
+            % the grid, compute FMM, and then project it back to a 3D
+            % array.
+            obj.unionL_2D_FMM = compute_fmm_map(obj.gFMM, occupancy_map);
+            unionL = repmat(obj.unionL_2D_FMM, 1, 1, obj.grid.N(3));
+            
+            % Store the FOV info (for plotting, analysis etc.)
+            obj.fovCellArr{end+1} = obj.unionL_2D_FMM;
             
             if isnan(obj.lCurr)
                 obj.lCurr = unionL;
@@ -197,17 +275,26 @@ classdef AvoidSet < handle
             % ------------- CONSTRUCT V(x) ----------- %
             if obj.firstCompute
                 % First time we are doing computation, set data0 to lcurr
+                % no matter our update method. 
                 data0 = obj.lCurr;
             else
                 if obj.warmStart
                     % If we are warm starting, use the old value function
                     % as initial V(x) and then the true/correct l(x) in targets
-                    data0 = obj.valueFun(:,:,:,end);
+                    if length(obj.N) == 2
+                        % if our system is 2D
+                        data0 = obj.valueFun(:,:,end);
+                    else
+                        % if our system is 3D
+                        data0 = obj.valueFun(:,:,:,end);
+                    end
                 else
                     data0 = obj.lCurr;
                 end
             end
 
+            % Make sure that we store the true cost function 
+            % so we can do min with L.
             obj.HJIextraArgs.targets = obj.lCurr;
             
             % We can use min with l regardless of if we are warm
@@ -215,48 +302,52 @@ classdef AvoidSet < handle
             minWith = 'minVWithL';
             
             % ------------ Compute value function ---------- % 
+            
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-%                 repo = what('safe_navigation');
-%                 pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
-                pathToInitialVx = '../data/initialVx.mat';
+                repo = what('safe_navigation');
+                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
+                %pathToInitialVx = '../data/initialVx.mat';
                 load(pathToInitialVx);
                 
                 % (option 2) run the full, standard Vx computation
+                %firstHJIextraArgs = obj.HJIextraArgs;
+                %firstHJIextraArgs.stopConverge = 1;
+                %firstHJIextraArgs.convergeThreshold = 0.01;
                 %[dataOut, tau, extraOuts] = ...
-                %  HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
-                %   minWith, obj.HJIextraArgs);
+                %  HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                %    obj.timeDisc, obj.schemeData, minWith, firstHJIextraArgs);
             else
-                % local update
-                [dataOut, tau, extraOuts] = ...
-                  HJIPDE_solve_local(data0, lxOld, obj.lCurr, ...
-                    obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
-                    minWith, obj.HJIextraArgs);
+                start_t = now;
+                if strcmp(obj.updateMethod, 'HJI') 
+                    % Use typical HJI solver (with or without warm start).
+                    [dataOut, tau, extraOuts] = ...
+                      HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                        obj.timeDisc, obj.schemeData, minWith, obj.HJIextraArgs);    
+                elseif strcmp(obj.updateMethod, 'localQ')
+                    % Use Q-based algorithm with initial Q constructed
+                    % *locally* near newly sensed regions.
+                    [dataOut, tau, extraOuts] = ...
+                      HJIPDE_solve_localQ(data0, lxOld, obj.lCurr, ...
+                        obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
+                        minWith, obj.HJIextraArgs);
+                end
+                end_t = now;
             end
-            
-            % --- compare solution with ground truth --- %
-            if obj.runComparison
-                % Grab the ground truth update at same timestep for comparison.
-                groundTruth = obj.valueFunCellArr{currTime};
 
-                % Compare the local update to the ground-truth.
-                obj.compareSolutions(dataOut(:,:,:,end), groundTruth(:,:,:,end));
-            end
-
-            % --- save out computed value function --- %
-            if obj.saveValueFuns 
-                obj.valueFunCellArr{end+1} = dataOut;
-                obj.lxCellArr{end+1} = obj.lCurr;
-            end
+            % only save out the final, 'converged' value function
+            obj.valueFunCellArr{end+1} = dataOut(:,:,:,end);
+            obj.lxCellArr{end+1} = obj.lCurr;
             
             % Update internal variables.
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
             obj.firstCompute = false;
-            if exist('extraOuts', 'var')
-              obj.maxQSize = [obj.maxQSize, extraOuts.maxQSize];
+            obj.solnTimes = [obj.solnTimes, end_t - start_t];
+            if exist('extraOuts', 'var') && isfield(extraOuts, 'QSizes')
+                obj.QSizeCellArr{end+1} = extraOuts.QSizes;
             else
-              obj.maxQSize = [obj.maxQSize, 0];
+                error('No field extraOuts.QSizes!');
             end
         end
         
@@ -288,7 +379,7 @@ classdef AvoidSet < handle
                 uOpt = obj.dynSys.optCtrl(x, current_deriv, obj.uMode); 
                 onBoundary = true;
             else
-                uOpt = zeros(2, 1);
+                uOpt = zeros(length(x), 1);
                 onBoundary = false;
             end
         end
