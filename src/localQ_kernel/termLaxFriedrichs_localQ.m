@@ -127,7 +127,6 @@ function [ ydot, stepBound, schemeData ] = termLaxFriedrichs_localQ(t, y, scheme
   end
 
   %---------------------------------------------------------------------------
-  tic;
   % Get upwinded and centered derivative approximations.
   derivL = cell(grid.dim, 1);
   derivR = cell(grid.dim, 1);
@@ -137,8 +136,6 @@ function [ ydot, stepBound, schemeData ] = termLaxFriedrichs_localQ(t, y, scheme
     [ derivL{i}, derivR{i} ] = feval(thisSchemeData.derivFunc, grid, data, i, Q);
     derivC{i} = 0.5 * (derivL{i} + derivR{i});
   end
-%   t1_int = toc;
-%   fprintf('Time taken to compute spatial derivative is %f \n', t1_int);
 
   %---------------------------------------------------------------------------
   % Analytic Hamiltonian with centered difference derivatives.
@@ -178,19 +175,10 @@ function [ ydot, stepBound, schemeData ] = termLaxFriedrichs_localQ(t, y, scheme
     otherwise
       error('hamFunc must return either one or two output arguments.');
   end
-%   t2_int = toc;
-%   fprintf('Time taken to compute hamiltonian is %f \n', t2_int-t1_int);
   
   % Lax-Friedrichs dissipative stabilization.
   [ diss, stepBound ] = ...
        feval(thisSchemeData.dissFunc, t, data, derivL, derivR, thisSchemeData, Q);
-%   t3_int = toc;
-%   fprintf('Time taken to compute dissipation is %f \n', t3_int-t2_int);
-  
-  % Calculate update: (unstable) analytic hamiltonian
-  %                   - (dissipative) stabiliziation.
-%   delta = ham;
-%   delta(Q) = delta(Q) - diss;
   delta = ham - diss;
   
   %---------------------------------------------------------------------------

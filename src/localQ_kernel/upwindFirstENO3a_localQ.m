@@ -97,14 +97,17 @@ else
     indices1{i} = 1:sizeData(i);
   end
   indices2 = indices1;
+  
+  % Convert Q to indicies
+  Qindicies = cell(grid.dim, 1);
+  [Qindicies{:}] = ind2sub(size(data), Q);
 
   %---------------------------------------------------------------------------
   % Need to figure out which approximation has the least oscillation.
   %   Note that L and R in this section refer to neighboring divided
   %   difference entries, not to left and right approximations.
 
-  % Pick out minimum modulus neighboring D2 term.
-  D2abs = abs(DD{2});
+  D2abs = abs(DD{2});  
   indices1{dim} = 1 : size(D2abs, dim) - 1;
   indices2{dim} = indices1{dim} + 1;
   smallerL = (D2abs(indices1{:}) < D2abs(indices2{:}));
@@ -112,7 +115,7 @@ else
 
   %---------------------------------------------------------------------------
   % Figure out smallest modulus D3 terms, 
-  %   given choice of smallest modulus D2 terms above.
+  %   given choice of smallest modulus D2 terms above
   D3abs = abs(DD{3});
   indices1{dim} = 1 : size(D3abs, dim) - 1;
   indices2{dim} = indices1{dim} + 1;
@@ -127,17 +130,17 @@ else
   smallerRR = smallerTemp(indices2{:}) & smallerR;
 
   smallerM = smallerRL | smallerLR;
-  
   %---------------------------------------------------------------------------
+  indices1 = Qindicies;
+  indices1_lin = sub2ind(size(smallerM), indices1{:});
   % Pick out the best third order approximation
-  indices1{dim} = 1 : size(smallerLL, dim) - 1;
-  derivL = (dL{1} .* smallerLL(indices1{:}) ...
-            + dL{2} .* smallerM(indices1{:})...
-            + dL{3} .* smallerRR(indices1{:}));
+  derivL = (dL{1} .* smallerLL(indices1_lin) ...
+            + dL{2} .* smallerM(indices1_lin)...
+            + dL{3} .* smallerRR(indices1_lin));
   
-  indices1{dim} = 2 : size(smallerLL, dim);
-  derivR = (dR{1} .* smallerLL(indices1{:}) ...
-            + dR{2} .* smallerM(indices1{:})...
-            + dR{3} .* smallerRR(indices1{:}));
-
+  indices1{dim} = indices1{dim} + 1;
+  indices1_lin = sub2ind(size(smallerM), indices1{:});
+  derivR = (dR{1} .* smallerLL(indices1_lin) ...
+            + dR{2} .* smallerM(indices1_lin)...
+            + dR{3} .* smallerRR(indices1_lin));  
 end

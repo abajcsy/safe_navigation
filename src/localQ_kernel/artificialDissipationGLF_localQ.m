@@ -73,21 +73,18 @@ function [ diss, stepBound ] = ...
   derivMin = cell(grid.dim, 1);
   derivMax = cell(grid.dim, 1);
   derivDiff = cell(grid.dim, 1);
-  for i = 1 : grid.dim
-    derivL_Q = derivL{i}(Q);
-    derivR_Q = derivR{i}(Q);
-    
+  for i = 1 : grid.dim    
     % Get derivative bounds over entire grid (scalars).
-    derivMinL = min(derivL_Q);
-    derivMinR = min(derivR_Q);
+    derivMinL = min(derivL{i});
+    derivMinR = min(derivR{i});
     derivMin{i} = min(derivMinL, derivMinR);
     
-    derivMaxL = max(derivL_Q);
-    derivMaxR = max(derivR_Q);
+    derivMaxL = max(derivL{i});
+    derivMaxR = max(derivR{i});
     derivMax{i} = max(derivMaxL, derivMaxR);
     
     % Get derivative differences at each node.
-    derivDiff{i} = derivR_Q - derivL_Q;
+    derivDiff{i} = derivR{i} - derivL{i};
   end
 
   %---------------------------------------------------------------------------

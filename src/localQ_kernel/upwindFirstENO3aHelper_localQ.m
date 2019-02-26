@@ -56,7 +56,6 @@ gdata = feval(grid.bdry{dim}, data, dim, stencil, grid.bdryData{dim});
 % Convert Q to indicies
 Qindicies = cell(grid.dim, 1);
 [Qindicies{:}] = ind2sub(size(data), Q);
-Qindicies{dim} = Qindicies{dim} + stencil;
 
 %---------------------------------------------------------------------------
 % Create cell array with array indices.
@@ -66,33 +65,17 @@ for i = 1 : grid.dim
   indices1{i} = 1:sizeData(i);
 end
 indices2 = indices1;
-% indices1 = Qindicies;
-% indices1_linear = sub2ind(size(gdata), indices1{:});
 
 %---------------------------------------------------------------------------
-tic;
 % First divided differences (first entry corresponds to D^1_{-3/2}).
 indices1{dim} = 2 : size(gdata, dim);
 indices2{dim} = indices1{dim} - 1;
-% indices3{dim} = indices2{dim} - 1;
-% indices4{dim} = indices3{dim} - 1;
-% 
-% indices_of_interest = cell(grid.dim, 1);
-% for i=1:grid.dim
-%   indices_of_interest_left{i} = [indices1{i}; indices2{i}; indices3{i}];
-%   indices_of_interest_right{i} = [indices2{i}; indices3{i}; indices4{i}];
-% end
-% indices_linear_left = unique(sub2ind(size(gdata), indices_of_interest_left));
-% indices_linear_right = unique(sub2ind(size(gdata), indices_of_interest_right));
-% D1 = dxInv * (gdata(indices1_linear) - gdata(indices2_linear));
 D1 = dxInv * (gdata(indices1{:}) - gdata(indices2{:}));
-% D1 is of size [36, 31, 21]
 
 % Second divided differences (first entry corresponds to D^2_{-1}).
 indices1{dim} = 2 : size(D1, dim);
 indices2{dim} = indices1{dim} - 1;
 D2 = 0.5 * dxInv * (D1(indices1{:}) - D1(indices2{:}));
-% D1 is of size [35, 31, 21]
 
 % Third divided differences (first entry corresponds to D^3_{-1/2}).
 indices1{dim} = 2 : size(D2, dim);
@@ -110,22 +93,17 @@ end
 % Now first entry corresponds to D^1_{1/2}.
 indices1{dim} = 3 : size(D1, dim) - 2;
 D1 = D1(indices1{:});
-% D1 is of size [32, 31, 21]
 
 % Second divided difference array has an extra entry at top and bottom
 %   (from stencil width 3), so strip them off.
 % Now first entry corresponds to D^2_0.
 indices1{dim} = 2 : size(D2, dim) - 1;
 D2 = D2(indices1{:});
-% D1 is of size [33, 31, 21]
 
 % If we want the stripped divided difference entries, make a copy now.
 if((nargout > 2) && stripDD)
   DD = { D1; D2; D3 };
 end
-t1_int = toc;
-fprintf('Time taken by Step-1 is %f \n', t1_int);
-
 %---------------------------------------------------------------------------
 % First order approx is just the first order divided differences.
 %   Make three copies for the three approximations
@@ -138,13 +116,29 @@ else
   dR = cell(3,1);
 end
 
-% Take leftmost grid.N(dim) entries for left approximation.
-indices1{dim} = 1 : size(D1, dim) - 1;
-[ dL{:} ] = deal(D1(indices1{:}));
+%--------------------------------------------------------------------------
+% Compute the indices for the left and the right neighbors for each order.  
+indicesL_D1 = Qindicies;
+indicesR_D1 = indicesL_D1;
+indicesR_D1{dim} = indicesR_D1{dim} + 1;
+indicesL_D1_lin = sub2ind(size(D1), indicesL_D1{:});
+indicesR_D1_lin = sub2ind(size(D1), indicesR_D1{:});
 
-% Take rightmost grid.N(dim) entries for right approximation.
-indices1{dim} = 2 : size(D1, dim);
-[ dR{:} ] = deal(D1(indices1{:}));
+indicesL_D2 = indicesR_D1;
+indicesR_D2 = indicesR_D1;
+indicesR_D2{dim} = indicesR_D2{dim} + 1;
+indicesL_D2_lin = sub2ind(size(D2), indicesL_D2{:});
+indicesR_D2_lin = sub2ind(size(D2), indicesR_D2{:});
+
+indicesL_D3 = indicesR_D2;
+indicesL_D3{dim} = indicesL_D3{dim} + 1;
+indicesL_D3_lin = sub2ind(size(D3), indicesL_D3{:});
+
+% Left approximation
+dL = {D1(indicesL_D1_lin), D1(indicesL_D1_lin), D1(indicesL_D1_lin)};
+
+% Right approximation
+dR = {D1(indicesR_D1_lin), D1(indicesR_D1_lin), D1(indicesR_D1_lin)};
 
 %---------------------------------------------------------------------------
 % Each copy gets modified by one of the second order terms.
@@ -158,25 +152,21 @@ indices1{dim} = 2 : size(D1, dim);
 coeffL = +1 * grid.dx(dim);
 coeffR = -1 * grid.dx(dim);
 
-indices1{dim} = 1 : size(D2, dim) - 2;
-indices2{dim} = 2 : size(D2, dim) - 1;
-dL{1} = dL{1} + coeffL * D2(indices1{:});
-dL{2} = dL{2} + coeffL * D2(indices1{:});
-dL{3} = dL{3} + coeffL * D2(indices2{:});
+indicesL_D1_lin = sub2ind(size(D2), indicesL_D1{:});
+indicesR_D1_lin = sub2ind(size(D2), indicesR_D1{:});
+dL{1} = dL{1} + coeffL * D2(indicesL_D1_lin);
+dL{2} = dL{2} + coeffL * D2(indicesL_D1_lin);
+dL{3} = dL{3} + coeffL * D2(indicesR_D1_lin);
 if(approx4)
-  dL{4} = dL{4} + coeffL * D2(indices2{:});
+  dL{4} = dL{4} + coeffL * D2(indicesR_D1_lin);
 end
 
-indices1{dim} = indices1{dim} + 1;
-indices2{dim} = indices2{dim} + 1;
-dR{1} = dR{1} + coeffR * D2(indices1{:});
-dR{2} = dR{2} + coeffR * D2(indices1{:});
-dR{3} = dR{3} + coeffR * D2(indices2{:});
+dR{1} = dR{1} + coeffR * D2(indicesL_D2_lin);
+dR{2} = dR{2} + coeffR * D2(indicesL_D2_lin);
+dR{3} = dR{3} + coeffR * D2(indicesR_D2_lin);
 if(approx4)
-  dR{4} = dR{4} + coeffR * D2(indices2{:});
+  dR{4} = dR{4} + coeffR * D2(indicesR_D2_lin);
 end
-t2_int = toc;
-fprintf('Time taken by Step-2 is %f \n', t2_int-t1_int);
 
 %---------------------------------------------------------------------------
 % Each copy gets modified by one of the third order terms.
@@ -193,24 +183,21 @@ coeffLR = -1 * grid.dx(dim)^2;
 coeffRL = -1 * grid.dx(dim)^2;
 coeffRR = +2 * grid.dx(dim)^2;
 
-indices1{dim} = 1 : size(D3, dim) - 3;
-dL{1} = dL{1} + coeffLL * D3(indices1{:});
-indices1{dim} = indices1{dim} + 1;
-dL{2} = dL{2} + coeffLL * D3(indices1{:});
-if(approx4)
-  dL{4} = dL{4} + coeffLR * D3(indices1{:});
-end
-indices1{dim} = indices1{dim} + 1;
-dL{3} = dL{3} + coeffLR * D3(indices1{:});
+indicesL_D1_lin = sub2ind(size(D3), indicesL_D1{:});
+indicesR_D1_lin = sub2ind(size(D3), indicesR_D1{:});
+indicesL_D2_lin = sub2ind(size(D3), indicesL_D2{:});
+indicesR_D2_lin = sub2ind(size(D3), indicesR_D2{:});
 
-indices1{dim} = 2 : size(D3, dim) - 2;
-dR{1} = dR{1} + coeffRL * D3(indices1{:});
-indices1{dim} = indices1{dim} + 1;
-dR{2} = dR{2} + coeffRL * D3(indices1{:});
+dL{1} = dL{1} + coeffLL * D3(indicesL_D1_lin);
+dL{2} = dL{2} + coeffLL * D3(indicesR_D1_lin);
 if(approx4)
-  dR{4} = dR{4} + coeffRR * D3(indices1{:});
+  dL{4} = dL{4} + coeffLR * D3(indicesR_D1_lin);
 end
-indices1{dim} = indices1{dim} + 1;
-dR{3} = dR{3} + coeffRR * D3(indices1{:});
-t3_int = toc;
-fprintf('Time taken by Step-3 is %f \n', t3_int-t2_int);
+dL{3} = dL{3} + coeffLR * D3(indicesR_D2_lin);
+
+dR{1} = dR{1} + coeffRL * D3(indicesR_D1_lin);
+dR{2} = dR{2} + coeffRL * D3(indicesR_D2_lin);
+if(approx4)
+  dR{4} = dR{4} + coeffRR * D3(indicesR_D2_lin);
+end
+dR{3} = dR{3} + coeffRR * D3(indicesL_D3_lin);

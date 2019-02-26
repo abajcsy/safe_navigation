@@ -1,5 +1,5 @@
 function [ t, y, schemeData ] = ...
-                            odeCFL3(schemeFunc, tspan, y0, options, schemeData, Q)
+                            odeCFL3_localQ(schemeFunc, tspan, y0, options, schemeData, Q)
 % odeCFL3: integrate a CFL constrained ODE (eg a PDE by method of lines).
 %
 % [ t, y, schemeData ] = odeCFL3(schemeFunc, tspan, y0, options, schemeData)
@@ -65,7 +65,6 @@ function [ t, y, schemeData ] = ...
 % Modified to add terminalEvent option, Ian Mitchell, 1/30/05.
 
   %---------------------------------------------------------------------------
-  tic
   % How close (relative) do we need to be to the final time?
   small = 100 * eps;
   
@@ -155,9 +154,6 @@ function [ t, y, schemeData ] = ...
         y1 = y;
         y1(Q) = y(Q) + deltaT * ydot{1};
       end
-      
-%       t1_int = toc;
-%       fprintf('Time taken by odeCFL3 Step-1 is %f \n', t1_int);
 
       % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       % Second substep: Forward Euler from t_{n+1} to t_{n+2}.
@@ -211,9 +207,6 @@ function [ t, y, schemeData ] = ...
       else
         yHalf = 0.25 * (3 * y + y2);
       end
-      
-%       t2_int = toc;
-%       fprintf('Time taken by odeCFL3 Step-2 is %f \n', t2_int-t1_int);
 
       % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       % Third substep: Forward Euler from t_{n+1/2} to t_{n+3/2}.
@@ -275,9 +268,6 @@ function [ t, y, schemeData ] = ...
       end
 
       steps = steps + 1;
-      
-%       t3_int = toc;
-%       fprintf('Time taken by odeCFL3 Step-3 is %f \n', t3_int-t2_int);
 
       % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       % If there is one or more post-timestep routines, call them.
@@ -312,9 +302,6 @@ function [ t, y, schemeData ] = ...
       fprintf('\t%d steps in %g seconds from %g to %g\n', ...
               steps, endTime - startTime, tspan(1), t);
     end
-    
-%     t4_int = toc;
-%     fprintf('Total time taken by odeCFL3 is %f \n', t4_int);
 
   %---------------------------------------------------------------------------
   elseif(numT > 2)

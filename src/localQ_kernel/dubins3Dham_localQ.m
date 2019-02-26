@@ -48,9 +48,9 @@ end
 
 % Extract the derivs and grid for Q only
 theta_Q = g.xs{3}(Q);
-deriv1_Q = deriv{1}(Q);
-deriv2_Q = deriv{2}(Q);
-deriv3_Q = deriv{3}(Q);
+deriv1_Q = deriv{1};
+deriv2_Q = deriv{2};
+deriv3_Q = deriv{3};
 
 %% Modify Hamiltonian control terms based on uMode
 if strcmp(schemeData.uMode, 'min')
