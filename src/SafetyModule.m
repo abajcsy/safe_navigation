@@ -35,6 +35,7 @@ classdef SafetyModule < handle
         QSizeCellArr    % (cell arr) all queue size achieved for each timestep
         fovCellArr      % (cell arr) stores the results of FMM
         solnTimes       % (array) total time to compute solution at each step
+        updateTimeArr   % (array) simulation timestamp for updating safe set
         
         unionL_2D_FMM           % Signed distance for the sensed occupancy map
     end
@@ -85,6 +86,7 @@ classdef SafetyModule < handle
             obj.QSizeCellArr = [];
             obj.solnTimes = [];
             obj.fovCellArr = [];
+            obj.updateTimeArr = [];
             
             % Specify which update method we are using.
             obj.updateMethod = updateMethod;
@@ -122,7 +124,7 @@ classdef SafetyModule < handle
         %   gMap                - grid structure associated with occuMap
         % Outputs:
         %   dataOut             - infinite-horizon (converged) value function 
-        function dataOut = computeAvoidSet(obj, signedDist)
+        function dataOut = computeAvoidSet(obj, signedDist, currTime)
             
             % Store the signed distance based on sensing info 
             % (for plotting, analysis etc.)
@@ -207,13 +209,16 @@ classdef SafetyModule < handle
             % Update internal variables.
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
-            obj.firstCompute = false;
             obj.solnTimes = [obj.solnTimes, end_t];
+            obj.updateTimeArr = [obj.updateTimeArr, currTime];
             if exist('extraOuts', 'var') && isfield(extraOuts, 'QSizes')
                 obj.QSizeCellArr{end+1} = extraOuts.QSizes;
             else
                 error('No field extraOuts.QSizes!');
             end
+            
+            % We've computed our first BRT.
+            obj.firstCompute = false;
         end
         
         %% Checks if state x is at the safety boundary. If it is, returns

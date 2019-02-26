@@ -825,10 +825,10 @@ for i = istart:length(tau)
     %% Main integration loop to get to the next tau(i)  
     % Stop updates if either converged AND have no more states to update. 
     while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
-        fprintf('\n');
+        %fprintf('\n');
         [sz,~] = size(Q);
-        fprintf('Q size: %f\n', sz);
-        fprintf('\n');
+        %fprintf('Q size: %f\n', sz);
+        %fprintf('\n');
         
         % Record the current Q size.
         extraOuts.QSizes = [extraOuts.QSizes, sz];

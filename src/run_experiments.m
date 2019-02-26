@@ -13,7 +13,7 @@ function run_experiments()
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    experiments = {@dubinsLocalQLidarExp1};%, ...
+    experiments = {@dubinsLocalQCameraExp1};%, ...
                   %@dubinsWarmCameraExp1, ...
                   %@dubinsHJICameraExp1, ...
                   %@dubinsLocalQLidarExp1};
@@ -45,7 +45,7 @@ function runExperiment(experimentFun)
         params.updateMethod, params.tMax);
 
     % Compute the first avoid set based on current sensing.
-    safety.computeAvoidSet(map.signed_dist_safety);
+    safety.computeAvoidSet(map.signed_dist_safety, 1);
 
     %% Setup Planner.
     if strcmp(params.plannerName, 'rrt')
@@ -120,8 +120,7 @@ function runExperiment(experimentFun)
         end
 
         % Apply control to dynamics.
-        ctrlDt = params.dt;
-        params.dynSys.updateState(u, ctrlDt, params.dynSys.x);
+        params.dynSys.updateState(u, params.dt, params.dynSys.x);
         x = params.dynSys.x;
 
         % Get the new sensing region.
@@ -144,7 +143,7 @@ function runExperiment(experimentFun)
 
         % If need to update the safety set, do so.  
         if dtSafe >= params.safetyFreq || forceUpdate
-            safety.computeAvoidSet(map.signed_dist_safety);
+            safety.computeAvoidSet(map.signed_dist_safety, t);
             prevSafeUpdate = t;
         end
 
@@ -176,10 +175,11 @@ function runExperiment(experimentFun)
         lxCellArr = safety.lxCellArr; 
         QSizeCellArr = safety.QSizeCellArr;
         solnTimes = safety.solnTimes;
+        updateTimeArr = safety.updateTimeArr;
         occuMaps = map.occuMapSafeCellArr;
         repo = what('safe_navigation');
         savePath = strcat(repo.path, '/data/', params.filename);
         save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
-            'solnTimes', 'occuMaps', 'states', 'paths');
+            'solnTimes', 'occuMaps', 'updateTimeArr', 'states', 'paths');
     end
 end
