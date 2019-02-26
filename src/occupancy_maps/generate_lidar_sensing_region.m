@@ -1,4 +1,4 @@
-function [occupancy_grid, sensed_region] = generate_camera_sensing_region(grid, obs, half_fov, vehicle_pos, vehicle_heading)
+function [occupancy_grid, sensed_region] = generate_lidar_sensing_region(grid, obs, sensing_radius, vehicle_pos)
 
 % ----- How to use this function -----
 %
@@ -7,9 +7,8 @@ function [occupancy_grid, sensed_region] = generate_camera_sensing_region(grid, 
 %                     needs to be computed. 
 %   obs            - A 2D occupancy map with (+1) for unoccupied 
 %                     regions and (-1) for occupied.
-%   half_fov       - The half field-of-view of the camera.
+%   sensing_radius - The sensing radius of the lidar.
 %   vehicle_pos    - The vehicle vehicle_position vector.
-%   vehicle_heading- The heading of the vehicle.
 % 
 % Outputs:
 %   u              - Signed distance over the grid.
@@ -20,8 +19,12 @@ occupancy_grid = -ones(size(grid.xs{1}));
 % Compute the angle of each points on the grid to the vehicle vehicle_position
 angle_to_source = atan2(grid.xs{2} - vehicle_pos(2), grid.xs{1} - vehicle_pos(1));
 
+% Compute the distance of each point from the vehicle
+dist_to_vehicle = (grid.xs{1}-vehicle_pos(1)).^2 + ...
+  (grid.xs{2} - vehicle_pos(2)).^2 - sensing_radius^2;
+
 % Find the points that are inside the field of view and set them to free
-indicies_inside_fov = find(abs(angle_to_source - vehicle_heading) < half_fov);
+indicies_inside_fov = find(dist_to_vehicle < 0);
 occupancy_grid(indicies_inside_fov) = 1;
 
 % Store the set of states (unoccluded) that we could see.
@@ -40,11 +43,10 @@ num_alphas = 10;
 alphas = linspace(0, 1, num_alphas);
 
 if ~isempty(obs_indicies_of_interest)
-  angle_for_obs = angle_to_source(obs_indicies_of_interest) - vehicle_heading;
-  max_stretch = min(max(angle_for_obs), half_fov);
-  min_stretch = max(min(angle_for_obs), -half_fov);
-  indicies_to_trace = find(((angle_to_source - vehicle_heading) <= max_stretch) .* ...
-    ((angle_to_source - vehicle_heading) >= min_stretch));
+  angle_for_obs = angle_to_source(obs_indicies_of_interest);
+  max_stretch = max(angle_for_obs);
+  min_stretch = min(angle_for_obs);
+  indicies_to_trace = find((angle_to_source <= max_stretch) .* (angle_to_source >= min_stretch) .* (dist_to_vehicle < 0));
 
   % Now let's do the ray tracing
   num_pts = size(indicies_to_trace);

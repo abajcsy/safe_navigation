@@ -1,6 +1,6 @@
 % Returns control to apply to dubins car at a particular time.
 % u = [v, omega]
-function u = getControlDubins(t)
+function u = getHandCodedControl(t)
     if t >= 1 && t < 35
         u = [1.0,-1.0];
     elseif t >= 35 && t < 40

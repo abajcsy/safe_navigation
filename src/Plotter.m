@@ -2,13 +2,9 @@ classdef Plotter < handle
     %PLOTTER Plots level sets and environment and stuff.
     
     properties
-        lowEnv      % lower (x,y) corner of environment
-        upEnv       % upper (x,y) corner of environment
-        lowObs      % if rectangle: lower left (x,y) point
-                    % if circle: center (x,y) of circle
-        upObs       % if rectangle: upper right (x,y) point
-                    % if circle: radius of circle 
-        obsShape    % shape of the obstacle (rectangle or circle)
+        lowEnv      % (arr) lower (x,y) corner of environment
+        upEnv       % (arr) upper (x,y) corner of environment
+        obstacles   % (cell arr) lower & upper corners of obstacles
         
         % figure handles
         figh
@@ -16,74 +12,77 @@ classdef Plotter < handle
         senseh
         carh
         vxh
-        firstPlot 
+        trajh
+        firstPlot   % (bool) if this is the first time we plotted
     end
     
     methods
         %% Constructor.
-        function obj = Plotter(lowEnv, upEnv, lowObs, upObs, obsShape)
+        function obj = Plotter(lowEnv, upEnv, obstacles)
             obj.lowEnv = lowEnv;
             obj.upEnv = upEnv;
-            obj.lowObs = lowObs;
-            obj.upObs = upObs;
-            obj.obsShape = obsShape;
+            obj.obstacles = obstacles;
             obj.envh = NaN;
             obj.senseh = NaN;
             obj.carh = NaN;
             obj.vxh = NaN;
+            obj.trajh = [];
             obj.firstPlot = true;
         end
         
         %% Updates the plot (environment, sensing, set, car)
         %  Input:
         %       x       -- state of dyn system
+        %       xgoal   -- goal state 
         %       setObj  -- avoid set object
-        function updatePlot(obj, x, setObj)
+        function updatePlot(obj, x, xgoal, valueFun, map)
             % Delete old plots
             if ~obj.firstPlot
-                delete(obj.envh);
                 delete(obj.senseh);
                 delete(obj.carh);
                 delete(obj.vxh);
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
+                c = [0.1,0.8,0.5];
+                scatter(xgoal(1),xgoal(2),[],c,'filled');
+                % Visualize environment 
+                obj.envh = obj.plotEnvironment();
             end
             
-            % Visualize environment and sensing and car
-            obj.envh = obj.plotEnvironment();
-            obj.senseh = obj.plotSensing(setObj.gFMM, setObj.unionL_2D_FMM);
+            % Note: we just grab a slice of signed_dist at any theta
+            obj.senseh = obj.plotSensing(map.gFMM, map.signed_dist_safety(:,:,1));
             obj.carh = obj.plotCar(x);
-            obj.plotBoundaryPadding(setObj.boundLow, setObj.boundUp);
+            obj.plotBoundaryPadding(map.boundLow, map.boundUp);
 
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
 
             if length(x) == 3
                 extraArgs.theta = x(3);
-                funcToPlot = setObj.valueFun(:,:,:,end);
+                funcToPlot = valueFun(:,:,:,end);
             else
-                funcToPlot = setObj.valueFun(:,:,end);
+                funcToPlot = valueFun(:,:,end);
             end
 
             visSet = true;
-            obj.vxh = obj.plotFuncLevelSet(setObj.grid, funcToPlot, visSet, extraArgs);
+            obj.vxh = obj.plotFuncLevelSet(map.grid, funcToPlot, visSet, extraArgs);
         end
         
         %% Plots the environment with the obstacle.
         % Output: 
         %   e - figure handle
         function e = plotEnvironment(obj)
-            % draw *actual* obstacle
-            if strcmp(obj.obsShape, 'rectangle')
-                width = obj.upObs(1) - obj.lowObs(1);
-                height = obj.upObs(2) - obj.lowObs(2);
-                obsCoord = [obj.lowObs(1), obj.lowObs(2), width, height];
-                e = rectangle('Position', obsCoord, 'Linewidth', 2.0, 'LineStyle', '--'); 
-            else
-                center = [obj.lowObs(1), obj.lowObs(2)];
-                rad = obj.upObs(1);
-                e = viscircles(center,rad, 'Color', 'k', 'Linewidth', 2.0, 'LineStyle', '--');
+            
+            for i=1:length(obj.obstacles)
+                lowObs = obj.obstacles{i}{1};
+                upObs = obj.obstacles{i}{2};
+                width = upObs(1) - lowObs(1);
+                height = upObs(2) - lowObs(2);
+                obsCoord = [lowObs(1), lowObs(2), width, height];
+                %e = rectangle('Position', obsCoord, 'Linewidth', 2.0, 'LineStyle', '--'); 
+                e = rectangle('Position', obsCoord, ...
+                    'FaceColor', [0.9,0.9,0.9], 'EdgeColor', [0.5,0.5,0.5]); 
             end
             
             % Setup the figure axes to represent the entire environment
@@ -185,8 +184,12 @@ classdef Plotter < handle
         % Ouput:
         %   h   - handle for figure
         function h = plotSensing(obj, grid, signed_distance_map)
-            s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
-            h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
+            posIdx = find(signed_distance_map > 0);
+            h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 20, ...
+                'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
+            
+            %s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
+            %h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
@@ -208,6 +211,38 @@ classdef Plotter < handle
             ylim([0,simHeight]);
         end
         
+        %% Plots optimal path
+        function plotTraj(obj, path)
+            if ~isempty(obj.trajh)
+                for i=1:length(obj.trajh)
+                    delete(obj.trajh(i));
+                end
+            end
+            obj.trajh = [];
+            i = 1;
+            xvals = [];
+            yvals = [];
+            while i < length(path)
+                x = path{i};
+                xvals = [xvals, x(1)];
+                yvals = [yvals, x(2)];
+                xnext = path{i+1};
+                % plot the line segments.
+                h = line([x(1), xnext(1)], [x(2), xnext(2)], 'Color', 'blue', 'LineWidth', 1.5);
+                obj.trajh = [obj.trajh, h];
+                i = i+1;
+            end
+            
+            % get final waypt.
+            x = path{i};
+            xvals = [xvals, x(1)];
+            yvals = [yvals, x(2)];
+            % plot the waypts.
+            s = scatter(xvals, yvals, 15, 'b', 'filled');
+            obj.trajh = [obj.trajh, s];
+        end
+        
+        
         %% Plots sensed obstacle.
         % Plots all parts that are <= 0.
         function plotObsShape(obj, obsShape)
@@ -227,7 +262,8 @@ classdef Plotter < handle
             width = boundUp(1) - boundLow(1);
             height = boundUp(2) - boundLow(2);
             boundCoord = [boundLow(1), boundLow(2), width, height];
-            rectangle('Position', boundCoord, 'Linewidth', 1.0, 'LineStyle', ':'); 
+            rectangle('Position', boundCoord, 'EdgeColor', [0.5,0.5,0.5], ...
+                'LineWidth', 1.0, 'LineStyle', ':'); 
         end
         
         %% Plots how a set becomes a cost function function.
