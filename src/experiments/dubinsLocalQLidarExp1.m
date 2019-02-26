@@ -51,6 +51,9 @@ params.updateEpsilon = 0.05;
 % Control is trying to maximize value function.
 params.uMode = 'max';
 
+% Time horizon to compute BRT for.
+params.tMax = 100;
+
 %% Sensing Params.
 params.senseShape = 'lidar';
 params.senseRad = 3;
@@ -69,13 +72,13 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.05;
+params.safetyTol = 0.2;
 
 %% Plotting Params.
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = false;
+params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..

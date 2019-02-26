@@ -51,6 +51,9 @@ params.updateEpsilon = 0.05;
 % Control is trying to maximize value function.
 params.uMode = 'max';
 
+% Time horizon to compute BRT for.
+params.tMax = 100;
+
 %% Sensing Params.
 params.senseShape = 'camera';
 params.initialR = 1.5; % The initial radius of the safe region

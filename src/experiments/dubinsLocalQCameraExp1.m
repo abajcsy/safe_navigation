@@ -51,6 +51,9 @@ params.updateEpsilon = 0.05;
 % Control is trying to maximize value function.
 params.uMode = 'max';
 
+% Time horizon to compute BRT for.
+params.tMax = 100;
+
 %% Sensing Params.
 params.senseShape = 'camera';
 params.initialR = 1.5; % The initial radius of the safe region
@@ -76,11 +79,11 @@ params.safetyTol = 0.05;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = false;
+params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = true;
+params.saveOutputData = false;
 
 % Create filename if we want to save things out.
 % Naming convention:

@@ -13,10 +13,10 @@ function run_experiments()
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    experiments = {@dubinsLocalQCameraExp1, ...
-                  @dubinsWarmCameraExp1, ...
-                  @dubinsHJICameraExp1, ...
-                  @dubinsLocalQLidarExp1};
+    experiments = {@dubinsLocalQLidarExp1};%, ...
+                  %@dubinsWarmCameraExp1, ...
+                  %@dubinsHJICameraExp1, ...
+                  %@dubinsLocalQLidarExp1};
     
     % Simulate each experiment.
     for i=1:length(experiments)
@@ -41,10 +41,24 @@ function runExperiment(experimentFun)
     %% Setup Safety Module.
     % Setup safety module object and compute first set.
     safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
-        params.dt, params.updateEpsilon, params.warmStart, params.updateMethod);
+        params.dt, params.updateEpsilon, params.warmStart, ...
+        params.updateMethod, params.tMax);
 
     % Compute the first avoid set based on current sensing.
     safety.computeAvoidSet(map.signed_dist_safety);
+
+    %% Setup Planner.
+    if strcmp(params.plannerName, 'rrt')
+        % Create RRT obj.
+        planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, ...
+            params.dx, params.rrtGoalEps);
+        % build rrt and get optimal path
+        [path, newpath] = planner.replan(params.xinit(1:2), params.xgoal(1:2));
+        
+        % Create PID controller to track RRT trajectory.
+        controller = PIDController(params.dynSys, params.dt);
+        controller.updatePath(path, 1, newpath);
+    end
 
     %% Plot initial conditions, sensing, and safe set.
 
@@ -54,28 +68,10 @@ function runExperiment(experimentFun)
 
         % Plot environment, car, and sensing.
         plt = Plotter(params.lowEnv, params.upEnv, params.obstacles);
-        plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, map);
+        plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, map, path);
         pause(params.dt);
     end
-
-    %% Setup Planner.
-    if strcmp(params.plannerName, 'rrt')
-        % Create RRT obj.
-        planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, ...
-            params.dx, params.rrtGoalEps);
-        % build rrt and get optimal path
-        [path, newpath] = planner.replan(params.xinit(1:2), params.xgoal(1:2));
-
-        if params.visualize
-            % (optional) plot optimal path
-            plt.plotTraj(path);
-        end
-
-        % Create PID controller to track RRT trajectory.
-        controller = PIDController(params.dynSys, params.dt);
-        controller.updatePath(path, 1, newpath);
-    end
-
+    
     %% Save out actual states and planned trajectory.
     if params.saveOutputData
         states = {};
@@ -119,11 +115,13 @@ function runExperiment(experimentFun)
         [uOpt, onBoundary] = safety.checkAndGetSafetyControl(x, params.safetyTol);
         if onBoundary
            u = uOpt;
+           fprintf('optimal controller: [%f, %f]\n', u(1), u(2));
            forcedReplan = true;
         end
 
         % Apply control to dynamics.
-        params.dynSys.updateState(u, params.dt, params.dynSys.x);
+        ctrlDt = params.dt;
+        params.dynSys.updateState(u, ctrlDt, params.dynSys.x);
         x = params.dynSys.x;
 
         % Get the new sensing region.
@@ -159,17 +157,13 @@ function runExperiment(experimentFun)
                 [path, newpath] = planner.replan(x(1:2), params.xgoal(1:2));
                 % Update path that controller is trying to track.
                 controller.updatePath(path, t, newpath);
-                if params.visualize
-                    % (optional) plot optimal path
-                    plt.plotTraj(path);
-                end
                 prevPlanUpdate = t;
             end
         end
 
         if params.visualize
             % Update plotting.
-            plt.updatePlot(x, params.xgoal, safety.valueFun, map);
+            plt.updatePlot(x, params.xgoal, safety.valueFun, map, path);
 
             % Pause based on timestep.
             pause(params.dt);
@@ -182,10 +176,10 @@ function runExperiment(experimentFun)
         lxCellArr = safety.lxCellArr; 
         QSizeCellArr = safety.QSizeCellArr;
         solnTimes = safety.solnTimes;
-        fovCellArr = safety.fovCellArr;
+        occuMaps = map.occuMapSafeCellArr;
         repo = what('safe_navigation');
         savePath = strcat(repo.path, '/data/', params.filename);
         save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
-            'solnTimes', 'fovCellArr', 'states', 'paths');
+            'solnTimes', 'occuMaps', 'states', 'paths');
     end
 end

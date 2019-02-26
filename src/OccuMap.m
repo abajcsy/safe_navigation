@@ -13,6 +13,8 @@ classdef OccuMap < handle
         occupancy_map_plan      % (array) occupancy map ysed by planning with -1 (obs) +1 (free)
         sensed_region           % (array) map of sensed states with -1 (unsensed) +1 (sensed)
         signed_dist_safety      % signed distance function representing sensed environment
+        
+        occuMapSafeCellArr      % (cell arr) saves out the set of sensed states.
     end
     
     methods
@@ -34,6 +36,7 @@ classdef OccuMap < handle
             obj.occupancy_map_safety = [];
             obj.occupancy_map_plan   = ones(transpose(obj.grid.N(1:2))); % everything is initially free for the planner
             obj.sensed_region        = -ones(transpose(obj.grid.N(1:2))); % everything is unsensed
+            obj.occuMapSafeCellArr   = {};
             
             % Create ground-truth obstacle costmap.
             obj.lReal = [];
@@ -179,6 +182,9 @@ classdef OccuMap < handle
             else
                error('Unrecognized sensor type');
             end
+            
+            % Save out the sensed region for plotting. 
+            obj.occuMapSafeCellArr{end+1} = obj.occupancy_map_safety;
             
             % We will use the FMM code to get the signed distance function. 
             % Since the FMM code works only on 2D, we will take a slice of 

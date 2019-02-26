@@ -35,26 +35,20 @@ classdef Plotter < handle
         %       x       -- state of dyn system
         %       xgoal   -- goal state 
         %       setObj  -- avoid set object
-        function updatePlot(obj, x, xgoal, valueFun, map)
+        function updatePlot(obj, x, xgoal, valueFun, map, path)
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.senseh);
-                delete(obj.carh);
+                delete(obj.carh{1});
+                delete(obj.carh{2});
                 delete(obj.vxh);
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
                 c = [0.1,0.8,0.5];
                 scatter(xgoal(1),xgoal(2),[],c,'filled');
-                % Visualize environment 
-                obj.envh = obj.plotEnvironment();
             end
             
-            % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(map.gFMM, map.signed_dist_safety(:,:,1));
-            obj.carh = obj.plotCar(x);
-            obj.plotBoundaryPadding(map.boundLow, map.boundUp);
-
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
 
@@ -67,6 +61,15 @@ classdef Plotter < handle
 
             visSet = true;
             obj.vxh = obj.plotFuncLevelSet(map.grid, funcToPlot, visSet, extraArgs);
+            
+            % Visualize environment 
+            obj.envh = obj.plotEnvironment();
+                
+            % Note: we just grab a slice of signed_dist at any theta
+            obj.senseh = obj.plotSensing(map.gFMM, map.signed_dist_safety(:,:,1));
+            obj.carh = obj.plotCar(x);
+            obj.plotBoundaryPadding(map.boundLow, map.boundUp);
+            obj.plotTraj(path);
         end
         
         %% Plots the environment with the obstacle.
@@ -137,6 +140,7 @@ classdef Plotter < handle
             % BELOW zero.
             if visSet
                 h = visSetIm(gPlot, dataPlot, edgeColor, 0);
+                %[~, h] = contourf(gPlot.xs{1}, gPlot.xs{2}, dataPlot, 0:0.1:5);
             else
                 alpha = 0.5;
                 h = visFuncIm(gPlot, dataPlot, edgeColor, alpha); %, edgeColor, 0.5);
@@ -156,7 +160,8 @@ classdef Plotter < handle
         % Ouput:
         %   c   - handle for figure
         function c = plotCar(obj, x)
-            c = plot(x(1), x(2), 'ko','MarkerSize', 5, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
+            c = {};
+            c{1} = plot(x(1), x(2), 'ko','MarkerSize', 5, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
             
             % Plot heading.
             center = x(1:2);
@@ -170,6 +175,7 @@ classdef Plotter < handle
                 hptRot = R*hpt + center;
                 p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'k', 'LineWidth', 1.5);
                 p2.Color(4) = 1.0;
+                c{2} = p2;
             end
             
             % Setup the figure axes to represent the entire environment

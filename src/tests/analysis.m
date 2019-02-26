@@ -13,7 +13,7 @@ clear all
 
 %% Choose which method you wanna analyze.
 %   HJI, localQ
-method = 'HJI';
+method = 'localQ';
 warm = true;
 
 %% Grab the data.
@@ -21,18 +21,18 @@ path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 if strcmp(method, 'HJI')
     if warm
         methodName = 'Warm Start HJI-VI';
-        filePath = strcat(path, 'HJIwarm.mat');
+        filePath = strcat(path, 'HJIwarmcamera_dawkins.mat');
         load(filePath);
         color = [0.1,0.1,1.0];
     else
         methodName = 'HJI-VI';
-        filePath = strcat(path, 'HJI.mat');
+        filePath = strcat(path, 'HJIcamera_dawkins.mat');
         load(filePath);
         color = [0,0,0];
     end
 elseif strcmp(method, 'localQ')
     methodName = 'Local Update Algorithm';
-    filePath = strcat(path, 'localQwarm.mat');
+    filePath = strcat(path, 'localQwarmcamera_dawkins.mat'); 
     load(filePath);
     color = [1.0,0.1,0.1];
 else
@@ -59,7 +59,7 @@ if strcmp(method, 'HJI') && ~warm
     numConservStates = 0;
 else
     otherValueFuns = valueFunCellArr;
-    filePath = strcat(path, 'HJI.mat');
+    filePath = strcat(path, 'HJIcamera_dawkins.mat');
     load(filePath);
     gtValueFuns = valueFunCellArr;
     epsilon = 0.01;

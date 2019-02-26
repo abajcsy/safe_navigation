@@ -43,7 +43,7 @@ classdef SafetyModule < handle
         %% Constructor. 
         % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
         function obj = SafetyModule(grid, dynSys, uMode, dt, ...
-                updateEpsilon, warmStart, updateMethod)
+                updateEpsilon, warmStart, updateMethod, tMax)
             % Setup computation grid.
             obj.grid = grid;
             
@@ -70,7 +70,6 @@ classdef SafetyModule < handle
             
             % Time vector.
             t0 = 0;
-            tMax = 100; % tMax = 100 means compute infinite-horizon solution
             obj.timeDisc = t0:obj.dt:tMax; 
             
             % Put grid and dynamic systems into schemeData.
@@ -127,7 +126,7 @@ classdef SafetyModule < handle
             
             % Store the signed distance based on sensing info 
             % (for plotting, analysis etc.)
-            obj.fovCellArr{end+1} = signedDist;
+            %obj.fovCellArr{end+1} = signedDist;
             
             % ------------- CONSTRUCT l(x) ----------- %
             lxOld = obj.lCurr;
@@ -183,7 +182,8 @@ classdef SafetyModule < handle
                 %  HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
                 %    obj.timeDisc, obj.schemeData, minWith, firstHJIextraArgs);
             else
-                start_t = now;
+                %start_t = now;
+                tic
                 if strcmp(obj.updateMethod, 'HJI') 
                     % Use typical HJI solver (with or without warm start).
                     [dataOut, tau, extraOuts] = ...
@@ -197,7 +197,7 @@ classdef SafetyModule < handle
                         obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
                         minWith, obj.HJIextraArgs);
                 end
-                end_t = now;
+                end_t = toc;
             end
 
             % only save out the final, 'converged' value function
@@ -208,7 +208,7 @@ classdef SafetyModule < handle
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
             obj.firstCompute = false;
-            obj.solnTimes = [obj.solnTimes, end_t - start_t];
+            obj.solnTimes = [obj.solnTimes, end_t];
             if exist('extraOuts', 'var') && isfield(extraOuts, 'QSizes')
                 obj.QSizeCellArr{end+1} = extraOuts.QSizes;
             else
@@ -223,13 +223,15 @@ classdef SafetyModule < handle
             % value function.
             value = eval_u(obj.grid, obj.valueFun(:,:,:,end), x);
             
-            % If the value is close to zero, we are close on the safety
+            % If the value is close to zero, we are close to the safety
             % boundary.
             if value < tol 
                 deriv = computeGradients(obj.grid, obj.valueFun(:,:,:,end));
                 % value of the derivative at that particular state
                 current_deriv = eval_u(obj.grid, deriv, x);
-                uOpt = obj.dynSys.optCtrl(x, current_deriv, obj.uMode); 
+                % NOTE: need all 5 arguments (including NaN's) to get 
+                % correct optimal control!
+                uOpt = obj.dynSys.optCtrl(NaN, x, current_deriv, obj.uMode, NaN); 
                 onBoundary = true;
             else
                 uOpt = zeros(length(x), 1);
