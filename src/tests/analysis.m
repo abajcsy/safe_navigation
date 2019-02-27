@@ -32,7 +32,7 @@ if strcmp(method, 'HJI')
     end
 elseif strcmp(method, 'localQ')
     methodName = 'Local Update Algorithm';
-    filePath = strcat(path, 'localQwarmcamera_dawkins.mat'); 
+    filePath = strcat(path, 'localQwarmcamera20193326_200220.mat'); %'localQwarmcamera_dawkins.mat'); 
     load(filePath);
     color = [1.0,0.1,0.1];
 else
@@ -50,7 +50,7 @@ avgNumStatesUpdated = mean(totalPerStep);
 
 %% Printing 
 fprintf('-------- %s --------\n', methodName);
-fprintf("avg total compute time (s): %f\n", mean(rem(solnTimes,1)*24*3600));
+fprintf("avg total compute time (s): %f\n", mean(solnTimes)); %mean(rem(solnTimes,1)*24*3600));
 fprintf("avg num states updated: %f\n", avgNumStatesUpdated);
 
 %% Compute num conservative states.

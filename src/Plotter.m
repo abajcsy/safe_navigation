@@ -18,22 +18,27 @@ classdef Plotter < handle
         % occupancy map fig handles
         safemaph
         planmaph
+        
+        boundLow
+        boundUp
     end
     
     methods
         %% Constructor.
-        function obj = Plotter(lowEnv, upEnv, obstacles)
+        function obj = Plotter(lowEnv, upEnv, boundLow, boundUp, obstacles)
             obj.lowEnv = lowEnv;
             obj.upEnv = upEnv;
             obj.obstacles = obstacles;
             obj.envh = NaN;
             obj.senseh = NaN;
-            obj.carh = NaN;
+            obj.carh = [];
             obj.vxh = NaN;
             obj.trajh = [];
             obj.firstPlot = true;
             obj.safemaph = [];
             obj.planmaph = [];
+            obj.boundLow = boundLow;
+            obj.boundUp = boundUp;
         end
         
         %% Updates the plot (environment, sensing, set, car)
@@ -41,11 +46,11 @@ classdef Plotter < handle
         %       x       -- state of dyn system
         %       xgoal   -- goal state 
         %       setObj  -- avoid set object
-        function updatePlot(obj, x, xgoal, valueFun, map, path)
+        function updatePlot(obj, x, xgoal, valueFun, g, gMap, occuMap, path)
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.senseh);
-                delete(obj.carh{1});
+                %delete(obj.carh{1});
                 delete(obj.carh{2});
                 delete(obj.vxh);
             else
@@ -67,15 +72,15 @@ classdef Plotter < handle
             end
 
             visSet = true;
-            obj.vxh = obj.plotFuncLevelSet(map.grid, funcToPlot, visSet, extraArgs);
+            obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
             
             % Visualize environment 
             obj.envh = obj.plotEnvironment();
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(map.gFMM, map.signed_dist_safety(:,:,1));
+            obj.senseh = obj.plotSensing(gMap, occuMap);
             obj.carh = obj.plotCar(x);
-            obj.plotBoundaryPadding(map.boundLow, map.boundUp);
+            obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
             obj.plotTraj(path);
         end
         
@@ -197,6 +202,11 @@ classdef Plotter < handle
         %   c   - handle for figure
         function c = plotCar(obj, x)
             c = {};
+            if ~isempty(obj.carh)
+                set(obj.carh{1}, 'Color', [0.7,0.7,0.7]);
+                set(obj.carh{1}, 'MarkerFaceColor', [0.7,0.7,0.7]);
+                set(obj.carh{1}, 'MarkerEdgeColor', [0.7,0.7,0.7]);
+            end
             c{1} = plot(x(1), x(2), 'ko','MarkerSize', 5, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
             
             % Plot heading.
@@ -227,7 +237,7 @@ classdef Plotter < handle
         %   h   - handle for figure
         function h = plotSensing(obj, grid, signed_distance_map)
             posIdx = find(signed_distance_map > 0);
-            h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 20, ...
+            h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
                 'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
             
             %s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);

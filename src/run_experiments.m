@@ -5,11 +5,12 @@ function run_experiments()
     clf 
     clc 
     clear 
-    close all
+    %close all
     
     % Compile FMM c-code.
-%     repo = what('safe_navigation');
-    repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+    whatRepo = what('safe_navigation');
+    repo = whatRepo.path;
+    %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
     filename = 'mexEikonalFMM.cpp';
     cppPath = strcat(repo, '/src/fmm/cversion/', filename);
     mex(cppPath);
@@ -71,8 +72,10 @@ function runExperiment(experimentFun)
         hold on
 
         % Plot environment, car, and sensing.
-        plt = Plotter(params.lowEnv, params.upEnv, params.obstacles);
-        plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, map, path);
+        plt = Plotter(params.lowEnv, params.upEnv, ...
+            map.boundLow, map.boundUp, params.obstacles);
+        plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, ...
+            map.grid, map.gFMM, map.occupancy_map_safety, path);
         pause(params.dt);
     end
     
@@ -166,10 +169,12 @@ function runExperiment(experimentFun)
 
         if params.visualize
             %plt.updateOccuMapSafe(map.gFMM, sign(safety.lCurr(:,:,1)));
-            plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
+            %plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
+            
             % Update plotting.
-            plt.updatePlot(x, params.xgoal, safety.valueFun, map, path);
-
+            plt.updatePlot(x, params.xgoal, safety.valueFun, ...
+                map.grid, map.gFMM, map.occupancy_map_safety, path);
+            
             % Pause based on timestep.
             pause(params.dt);
         end

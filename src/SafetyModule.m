@@ -177,6 +177,7 @@ classdef SafetyModule < handle
                 pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
                 %pathToInitialVx = '../data/initialVx.mat';
                 load(pathToInitialVx);
+                total_compute_t = 0;
                 
                 % (option 2) run the full, standard Vx computation
                 %firstHJIextraArgs = obj.HJIextraArgs;
@@ -190,9 +191,9 @@ classdef SafetyModule < handle
                 tic
                 if strcmp(obj.updateMethod, 'HJI') 
                     % Use typical HJI solver (with or without warm start).
-%                     [dataOut, tau, extraOuts] = ...
-%                      HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
-%                         minWith, obj.HJIextraArgs);
+                    %[dataOut, tau, extraOuts] = ...
+                    % HJIPDE_solve(data0, obj.timeDisc, obj.schemeData, ...
+                    %    minWith, obj.HJIextraArgs);
                     [dataOut, tau, extraOuts] = ...
                      HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
                        obj.timeDisc, obj.schemeData, minWith, ...
@@ -205,7 +206,7 @@ classdef SafetyModule < handle
                         obj.updateEpsilon, obj.timeDisc, obj.schemeData, ...
                         minWith, obj.HJIextraArgs);
                 end
-                end_t = toc;
+                total_compute_t = toc;
             end
 
             % only save out the final, 'converged' value function
@@ -215,7 +216,7 @@ classdef SafetyModule < handle
             % Update internal variables.
             obj.valueFun = dataOut;
             obj.computeTimes = tau;
-            obj.solnTimes = [obj.solnTimes, end_t];
+            obj.solnTimes = [obj.solnTimes, total_compute_t];
             obj.updateTimeArr = [obj.updateTimeArr, currTime];
             if exist('extraOuts', 'var') && isfield(extraOuts, 'QSizes')
                 obj.QSizeCellArr{end+1} = extraOuts.QSizes;
