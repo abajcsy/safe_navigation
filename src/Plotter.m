@@ -259,13 +259,15 @@ classdef Plotter < handle
                 i = i+1;
             end
             
-            % get final waypt.
-            x = path{i};
-            xvals = [xvals, x(1)];
-            yvals = [yvals, x(2)];
-            % plot the waypts.
-            s = scatter(xvals, yvals, 15, 'b', 'filled');
-            obj.trajh = [obj.trajh, s];
+            if length(path) ~= 0
+              % get final waypt.
+              x = path{i};
+              xvals = [xvals, x(1)];
+              yvals = [yvals, x(2)];
+              % plot the waypts.
+              s = scatter(xvals, yvals, 15, 'b', 'filled');
+              obj.trajh = [obj.trajh, s];
+            end
         end
         
         

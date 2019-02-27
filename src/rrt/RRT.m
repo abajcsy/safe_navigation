@@ -12,9 +12,9 @@ classdef RRT < handle
     methods
         %% Constructor.
         function obj = RRT(grid, occuGrid, maxIter, dx, goalEps)
-            load('seed.mat');
+%             load('seed.mat');
             % set random seed.
-            rng(s);
+            rng(1);
             obj.grid = grid;
             obj.occuGrid = occuGrid;
             obj.path = [];
@@ -39,23 +39,27 @@ classdef RRT < handle
 %                 % definitely need to replan if we dont have a path.
 %                 collFree = false;
 %             end
-%             
+            
 %             % if old path isn't collision-free need to replan.
 %             if ~collFree
-            showTree = false;
-            
-            % if we are close enough to the goal, just move straight to it.
-            dToGoal = norm(xinit - xgoal);
-            if dToGoal <= obj.goalEps
-                obj.path = {xinit, xgoal};
-                newpath = true;
-                path = obj.path;
-            else
-                nodes = obj.build(xinit, xgoal, showTree);
-                obj.path = nodes.getPath(xgoal);
-                newpath = true;
-                path = obj.path;
-            end
+              showTree = false;
+
+              % if we are close enough to the goal, just move straight to it.
+              dToGoal = norm(xinit - xgoal);
+              if dToGoal <= obj.goalEps
+                  obj.path = {xinit, xgoal};
+                  newpath = true;
+                  path = obj.path;
+              else
+                  nodes = obj.build(xinit, xgoal, showTree);
+                  obj.path = nodes.getPath(xgoal);
+                  newpath = true;
+                  path = obj.path;
+              end
+%             else
+%               path = obj.path;
+%             end
+
         end
         
         %% Creates the RRT starting from xinit. 

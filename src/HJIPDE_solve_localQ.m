@@ -669,8 +669,15 @@ end
 
 
 %% Extract cdynamical system if needed
-if isfield(schemeData, 'dynSys')
+% if isfield(schemeData, 'dynSys')
+%     schemeData.hamFunc = @genericHam;
+%     schemeData.partialFunc = @genericPartial;
+% end
+
+if ~isfield(schemeData, 'hamFunc')
     schemeData.hamFunc = @genericHam;
+end
+if ~isfield(schemeData, 'partialFunc')
     schemeData.partialFunc = @genericPartial;
 end
 
@@ -685,7 +692,7 @@ if isfield(extraArgs, 'stopConverge')
 end
 
 %% SchemeFunc and SchemeData
-schemeFunc = @termLaxFriedrichs;
+schemeFunc = @termLaxFriedrichs_localQ;
 % Extract accuracy parameter o/w set default accuracy
 accuracy = 'veryHigh';
 if isfield(schemeData, 'accuracy')
@@ -846,7 +853,7 @@ for i = istart:length(tau)
         % Solve hamiltonian and apply to value function (y) to get updated
         % value function
         [tNow, y] = feval(integratorFunc, schemeFunc, [tNow tau(i)], y, ...
-            integratorOptions, schemeData);
+            integratorOptions, schemeData, Q);
         
         if any(isnan(y))
             keyboard
@@ -1294,7 +1301,7 @@ function [dissFunc, integratorFunc, derivFunc] = ...
 % Dissipation
 switch(dissType)
     case 'global'
-        dissFunc = @artificialDissipationGLF;
+        dissFunc = @artificialDissipationGLF_localQ;
     case 'local'
         dissFunc = @artificialDissipationLLF;
     case 'locallocal'
@@ -1312,8 +1319,8 @@ switch(accuracy)
         derivFunc = @upwindFirstENO2;
         integratorFunc = @odeCFL2;
     case 'high'
-        derivFunc = @upwindFirstENO3;
-        integratorFunc = @odeCFL3;
+        derivFunc = @upwindFirstENO3_localQ;
+        integratorFunc = @odeCFL3_localQ;
     case 'veryHigh'
         derivFunc = @upwindFirstWENO5;
         integratorFunc = @odeCFL3;

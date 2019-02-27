@@ -5,15 +5,17 @@ function run_experiments()
     clf 
     clc 
     clear 
+    close all
     
     % Compile FMM c-code.
-    repo = what('safe_navigation');
+%     repo = what('safe_navigation');
+    repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
     filename = 'mexEikonalFMM.cpp';
-    cppPath = strcat(repo.path, '/src/fmm/cversion/', filename);
+    cppPath = strcat(repo, '/src/fmm/cversion/', filename);
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    experiments = {@dubinsHJICameraExp1};%, ...
+    experiments = {@dubinsLocalQCameraExp1};%, ...
                   %@dubinsWarmCameraExp1, ...
                   %@dubinsHJICameraExp1, ...
                   %@dubinsLocalQLidarExp1};
@@ -58,6 +60,8 @@ function runExperiment(experimentFun)
         % Create PID controller to track RRT trajectory.
         controller = PIDController(params.dynSys, params.dt);
         controller.updatePath(path, 1, newpath);
+    elseif strcmp(params.plannerName, 'hand')
+        path = {};
     end
 
     %% Plot initial conditions, sensing, and safe set.
@@ -162,7 +166,7 @@ function runExperiment(experimentFun)
 
         if params.visualize
             %plt.updateOccuMapSafe(map.gFMM, sign(safety.lCurr(:,:,1)));
-            %plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
+            plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
             % Update plotting.
             plt.updatePlot(x, params.xgoal, safety.valueFun, map, path);
 

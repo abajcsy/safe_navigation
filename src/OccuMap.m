@@ -177,8 +177,9 @@ classdef OccuMap < handle
                   %obj.sensed_region = max(obj.sensed_region, dataSense);
                   
                   % Update occupancy grid with newly sensed obstacles.
+                  obj.occupancy_map_plan = -dataSense;
                   sensedIndicies = find(dataSense > 0);
-                  obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
+                  obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies);
                 end
             elseif strcmp(senseShape, 'lidar') % if lidar sensing region
                 % It is assumed that the obstacle is only position

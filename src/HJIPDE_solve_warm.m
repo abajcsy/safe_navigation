@@ -1036,8 +1036,6 @@ for i = istart:length(tau)
                 unchangedIndicies = find(abs(y - y0(:)) > convergeThreshold);
                 Qold = Q;
                 Q = unchangedIndicies;
-                fprintf('Max change since last iteration: %f\n', change);
-                
                 if ~quiet
                     fprintf('Max change since last iteration: %f\n', change)
                 end
