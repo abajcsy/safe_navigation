@@ -52,7 +52,7 @@ params.updateEpsilon = 0.01;
 params.uMode = 'max';
 
 % Time horizon to compute BRT for.
-params.tMax = 100;
+params.tMax = 50;
 
 %% Sensing Params.
 params.senseShape = 'camera';

@@ -16,7 +16,7 @@ params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [2.0; 2.5; 0];
+params.xinit = [2.0; 2.5; pi/2];
 params.xgoal = [8.5; 2.5; -pi/2];
 
 %   hand-engineered trajectory      --> 'hand'
@@ -46,13 +46,13 @@ params.warmStart = true;
 % Update epislon
 %   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
-params.updateEpsilon = 0.05;
+params.updateEpsilon = 0.01;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
 
 % Time horizon to compute BRT for.
-params.tMax = 100;
+params.tMax = 50;
 
 %% Sensing Params.
 params.senseShape = 'camera';
@@ -79,7 +79,7 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = false;
+params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
