@@ -78,7 +78,7 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = true;
+params.visualize = false;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
