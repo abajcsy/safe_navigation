@@ -16,10 +16,9 @@ function run_experiments()
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    experiments = {@dubinsLocalQCameraExp1, ...
-                  @dubinsWarmCameraExp1, ...
-                  @dubinsHJICameraExp1, ...
-                  @dubinsLocalQLidarExp1};
+    experiments = {@dubinsLocalQCameraExp1}; %, ...
+                  %@dubinsWarmCameraExp1, ...
+                  %@dubinsHJICameraExp1;
     
     % Simulate each experiment.
     for i=1:length(experiments)
@@ -75,7 +74,7 @@ function runExperiment(experimentFun)
         plt = Plotter(params.lowEnv, params.upEnv, ...
             map.boundLow, map.boundUp, params.obstacles);
         plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, ...
-            map.grid, map.gFMM, map.occupancy_map_safety, path);
+            map.grid, map.gFMM, map.occupancy_map_safety, path, false);
         pause(params.dt);
     end
     
@@ -96,6 +95,8 @@ function runExperiment(experimentFun)
         forceUpdate = false;
         % Do we want to force a replan?
         forcedReplan = false;
+        % Did we use the optimal control? (used by plotting)
+        usedUOpt = false;
 
         % If we are saving, record the current state and plan
         if params.saveOutputData
@@ -124,6 +125,7 @@ function runExperiment(experimentFun)
            u = uOpt;
            fprintf('optimal controller: [%f, %f]\n', u(1), u(2));
            forcedReplan = true;
+           usedUOpt  = true;
         end
 
         % Apply control to dynamics.
@@ -173,7 +175,7 @@ function runExperiment(experimentFun)
             
             % Update plotting.
             plt.updatePlot(x, params.xgoal, safety.valueFun, ...
-                map.grid, map.gFMM, map.occupancy_map_safety, path);
+                map.grid, map.gFMM, map.occupancy_map_safety, path, usedUOpt);
             
             % Pause based on timestep.
             pause(params.dt);

@@ -13,26 +13,30 @@ clear all
 
 %% Choose which method you wanna analyze.
 %   HJI, localQ
-method = 'localQ';
-warm = true;
+method = 'HJI';
+warm = false;
+sensor = 'lidar';
 
 %% Grab the data.
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 if strcmp(method, 'HJI')
     if warm
         methodName = 'Warm Start HJI-VI';
-        filePath = strcat(path, 'HJIwarmcamera_dawkins.mat');
+        filename = strcat('HJIwarm', sensor, '_dawkins.mat');
+        filePath = strcat(path, filename);
         load(filePath);
         color = [0.1,0.1,1.0];
     else
         methodName = 'HJI-VI';
-        filePath = strcat(path, 'HJIcamera_dawkins.mat');
+        filename = strcat('HJI', sensor, '_dawkins.mat');
+        filePath = strcat(path, filename);
         load(filePath);
         color = [0,0,0];
     end
 elseif strcmp(method, 'localQ')
     methodName = 'Local Update Algorithm';
-    filePath = strcat(path, 'localQwarmcamera20193326_200220.mat'); %'localQwarmcamera_dawkins.mat'); 
+    filename = strcat('localQwarm', sensor, '_dawkins.mat');
+    filePath = strcat(path, filename);
     load(filePath);
     color = [1.0,0.1,0.1];
 else
@@ -49,8 +53,8 @@ avgNumStatesUpdated = mean(totalPerStep);
 
 
 %% Printing 
-fprintf('-------- %s --------\n', methodName);
-fprintf("avg total compute time (s): %f\n", mean(solnTimes)); %mean(rem(solnTimes,1)*24*3600));
+fprintf('-------- %s (%s)--------\n', methodName, sensor);
+fprintf("avg total compute time (s): %f\n", mean(solnTimes)); 
 fprintf("avg num states updated: %f\n", avgNumStatesUpdated);
 
 %% Compute num conservative states.
@@ -59,7 +63,8 @@ if strcmp(method, 'HJI') && ~warm
     numConservStates = 0;
 else
     otherValueFuns = valueFunCellArr;
-    filePath = strcat(path, 'HJIcamera_dawkins.mat');
+    filename = strcat('HJI', sensor, '_dawkins.mat');
+    filePath = strcat(path, filename);
     load(filePath);
     gtValueFuns = valueFunCellArr;
     epsilon = 0.01;

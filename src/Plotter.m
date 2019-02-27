@@ -46,7 +46,8 @@ classdef Plotter < handle
         %       x       -- state of dyn system
         %       xgoal   -- goal state 
         %       setObj  -- avoid set object
-        function updatePlot(obj, x, xgoal, valueFun, g, gMap, occuMap, path)
+        function updatePlot(obj, x, xgoal, valueFun, g, gMap, ...
+                occuMap, path, usedUOpt)
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.senseh);
@@ -59,7 +60,7 @@ classdef Plotter < handle
                 c = [0.1,0.8,0.5];
                 scatter(xgoal(1),xgoal(2),[],c,'filled');
             end
-            figure(obj.figh);
+            %figure(obj.figh);
             
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
@@ -73,13 +74,16 @@ classdef Plotter < handle
 
             visSet = true;
             obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
+            %[gPlot, dataPlot] = proj(g, funcToPlot, [0 0 1], extraArgs.theta);
+            %obj.vxh = visSetIm(gPlot, dataPlot, extraArgs.edgeColor , 0);
+            
             
             % Visualize environment 
             obj.envh = obj.plotEnvironment();
                 
             % Note: we just grab a slice of signed_dist at any theta
             obj.senseh = obj.plotSensing(gMap, occuMap);
-            obj.carh = obj.plotCar(x);
+            obj.carh = obj.plotCar(x, usedUOpt);
             obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
             obj.plotTraj(path);
         end
@@ -93,7 +97,7 @@ classdef Plotter < handle
             % clear figure
             clf(obj.safemaph);
             colormap('gray');
-            contourf(g.xs{1}, g.xs{2}, safeMap, -1:1:1);
+            contourf(g.xs{1}, g.xs{2}, safeMap, -1:2:1);
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
         end
@@ -106,7 +110,7 @@ classdef Plotter < handle
             figure(obj.planmaph);
             % clear figure
             clf(obj.planmaph);
-            contourf(g.xs{1}, g.xs{2}, planMap, -1:1:1);
+            contourf(g.xs{1}, g.xs{2}, planMap, -1:2:1);
             colormap('gray');
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
@@ -200,14 +204,27 @@ classdef Plotter < handle
         %   x [vector]  - 3D state of dubins car
         % Ouput:
         %   c   - handle for figure
-        function c = plotCar(obj, x)
+        function c = plotCar(obj, x, usedUOpt)
+            % color car red if we applied safe control
+            if usedUOpt
+                carColor = 'r';
+            else
+                carColor = 'k';
+            end
             c = {};
             if ~isempty(obj.carh)
-                set(obj.carh{1}, 'Color', [0.7,0.7,0.7]);
-                set(obj.carh{1}, 'MarkerFaceColor', [0.7,0.7,0.7]);
-                set(obj.carh{1}, 'MarkerEdgeColor', [0.7,0.7,0.7]);
+                if isequal(obj.carh{1}.MarkerFaceColor, [0, 0, 0]) 
+                    set(obj.carh{1}, 'Color', [0.7,0.7,0.7]);
+                    set(obj.carh{1}, 'MarkerFaceColor', [0.7,0.7,0.7]);
+                    set(obj.carh{1}, 'MarkerEdgeColor', [0.7,0.7,0.7]);
+                else
+                    set(obj.carh{1}, 'Color', [1.0,0.5,0.5]);
+                    set(obj.carh{1}, 'MarkerFaceColor', [1.0,0.5,0.5]);
+                    set(obj.carh{1}, 'MarkerEdgeColor', [1.0,0.5,0.5]);
+                end
             end
-            c{1} = plot(x(1), x(2), 'ko','MarkerSize', 5, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
+            c{1} = plot(x(1), x(2), 'ko','MarkerSize', 5, ...
+                'MarkerEdgeColor', carColor, 'MarkerFaceColor', carColor);
             
             % Plot heading.
             center = x(1:2);
@@ -219,7 +236,7 @@ classdef Plotter < handle
                 % Heading pt.
                 hpt = [0.5; 0];
                 hptRot = R*hpt + center;
-                p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'k', 'LineWidth', 1.5);
+                p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], carColor, 'LineWidth', 1.5);
                 p2.Color(4) = 1.0;
                 c{2} = p2;
             end
