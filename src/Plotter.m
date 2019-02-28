@@ -72,10 +72,13 @@ classdef Plotter < handle
                 if length(x) == 3
                     extraArgs.theta = x(3);
                     funcToPlot = valueFun(:,:,:,end);
+                elseif length(x) == 4
+                    extraArgs.theta = x(3);
+                    extraArgs.vel = x(4);
+                    funcToPlot = valueFun(:,:,:,:,end);
                 else
-                    funcToPlot = valueFun(:,:,end);
+                    error('I cannot visualize a %dD system!', length(x));
                 end
-
 
                 visSet = true;
                 obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
@@ -153,7 +156,10 @@ classdef Plotter < handle
         %   visSet [bool] - if true, plots 2D slice of func.
         %                   Otherwise plots 3D.
         %   extraArgs
-        %           .theta [float] - (if 3D system) angle for which to plot the level set
+        %           .theta [float] - (if 3D system) angle for which to 
+        %                           plot the level set
+        %           .vel [float]   - (if 4D system) velocity for which
+        %                           to plot the level set
         %           .edgeColor [vector or string] - color of level set boundary
         %           .cmap [string] - name of colormap to use
         % Outputs: 
@@ -161,9 +167,15 @@ classdef Plotter < handle
         function h = plotFuncLevelSet(obj, g, func, visSet, extraArgs)
             
             if isfield(extraArgs, 'theta')
-                % Grab slice at theta.
-                [gPlot, dataPlot] = proj(g, func, [0 0 1], extraArgs.theta);
+                if isfield(extraArgs, 'vel')
+                    % (4D system) Grab slice at theta & vel.
+                    [gPlot, dataPlot] = proj(g, func, [0 0 1 1], [extraArgs.theta, extraArgs.vel]);
+                else
+                    % (3D system) Grab slice at theta.
+                    [gPlot, dataPlot] = proj(g, func, [0 0 1], extraArgs.theta);
+                end
             else
+                % (2D system) Plot complete value function.
                 gPlot = g;
                 dataPlot = func;
             end
@@ -204,7 +216,7 @@ classdef Plotter < handle
         
         %% Plots dubins car point and heading.
         % Inputs:
-        %   x [vector]  - 3D state of dubins car
+        %   x [vector]  - 3D/4D state of dubins car
         % Ouput:
         %   c   - handle for figure
         function c = plotCar(obj, x, usedUOpt)
@@ -232,7 +244,7 @@ classdef Plotter < handle
             % Plot heading.
             center = x(1:2);
             
-            if length(x) == 3
+            if length(x) >= 3
                 % Rotation matrix.
                 R = [cos(x(3)) -sin(x(3)); 
                      sin(x(3)) cos(x(3))];
@@ -336,77 +348,77 @@ classdef Plotter < handle
                 'LineWidth', 1.0, 'LineStyle', ':'); 
         end
         
-        %% Plots how a set becomes a cost function function.
-        function plotSetToCostFun(obj, g, func, theta, edgeColor)
-             % Grab slice at theta.
-            [gPlot, dataPlot] = proj(g, func, [0 0 1], theta);
-            extraArgs.LineWidth = 2;
-
-            % Visualize final set.
-            % NOTE: plot -data because by default contourf plots all values
-            % that are ABOVE zero, but inside our obstacle we have values
-            % BELOW zero.
-            h = visSetIm(gPlot, -dataPlot, edgeColor, 0, extraArgs);
-            zlim([-3,3]);
-            
-            % Set up video
-            repo = what('safe_navigation');
-            path = strcat(repo.path, '/imgs/lab_mtg_imgs/');
-            video_filename = [path datestr(now,'YYYYMMDD_hhmmss') '.avi'];
-            vout = VideoWriter(video_filename,'Uncompressed AVI');
-
-            % Open video for writing
-            try
-                vout.open;
-            catch
-                error('cannot open file for writing')
-            end
-
-            % Grab initial frame, write to video
-            set(gcf, 'color', 'w');
-            current_frame = getframe(gcf); %gca does just the plot
-            writeVideo(vout,current_frame);
-            
-            % Start from viewing top-down 2D set view.
-            az = 0;
-            el = 90; 
-            view(az, el);
-            % we want to get to view(-20, 10)
-            while az > -20 || el > 10 
-                if az <= -20
-                    az = -20;
-                else
-                    az = az - 2;
-                end
-                if el <= 10
-                    el = 20;
-                else
-                     el = el - 2;
-                end
-                view(az, el);
-                %pause(0.05);
-                current_frame = getframe(gcf); %gca does just the plot
-                writeVideo(vout,current_frame);
-            end
-            
-            % After rotating to 3D, plot the corresponding cost function in
-            % 3D
-            alpha = 0.5;
-            visFuncIm(gPlot, dataPlot, edgeColor, alpha);
-            zlabel('l(x,y,\theta=\pi/2)');
-            current_frame = getframe(gcf); %gca does just the plot
-            writeVideo(vout,current_frame);
-            
-            i = 0;
-            while i < 100
-                current_frame = getframe(gcf); %gca does just the plot
-                writeVideo(vout,current_frame);
-                i = i +1;
-            end
-                
-            % Close video
-            vout.close
-        end
+%         %% Plots how a set becomes a cost function function.
+%         function plotSetToCostFun(obj, g, func, theta, edgeColor)
+%              % Grab slice at theta.
+%             [gPlot, dataPlot] = proj(g, func, [0 0 1], theta);
+%             extraArgs.LineWidth = 2;
+% 
+%             % Visualize final set.
+%             % NOTE: plot -data because by default contourf plots all values
+%             % that are ABOVE zero, but inside our obstacle we have values
+%             % BELOW zero.
+%             h = visSetIm(gPlot, -dataPlot, edgeColor, 0, extraArgs);
+%             zlim([-3,3]);
+%             
+%             % Set up video
+%             repo = what('safe_navigation');
+%             path = strcat(repo.path, '/imgs/lab_mtg_imgs/');
+%             video_filename = [path datestr(now,'YYYYMMDD_hhmmss') '.avi'];
+%             vout = VideoWriter(video_filename,'Uncompressed AVI');
+% 
+%             % Open video for writing
+%             try
+%                 vout.open;
+%             catch
+%                 error('cannot open file for writing')
+%             end
+% 
+%             % Grab initial frame, write to video
+%             set(gcf, 'color', 'w');
+%             current_frame = getframe(gcf); %gca does just the plot
+%             writeVideo(vout,current_frame);
+%             
+%             % Start from viewing top-down 2D set view.
+%             az = 0;
+%             el = 90; 
+%             view(az, el);
+%             % we want to get to view(-20, 10)
+%             while az > -20 || el > 10 
+%                 if az <= -20
+%                     az = -20;
+%                 else
+%                     az = az - 2;
+%                 end
+%                 if el <= 10
+%                     el = 20;
+%                 else
+%                      el = el - 2;
+%                 end
+%                 view(az, el);
+%                 %pause(0.05);
+%                 current_frame = getframe(gcf); %gca does just the plot
+%                 writeVideo(vout,current_frame);
+%             end
+%             
+%             % After rotating to 3D, plot the corresponding cost function in
+%             % 3D
+%             alpha = 0.5;
+%             visFuncIm(gPlot, dataPlot, edgeColor, alpha);
+%             zlabel('l(x,y,\theta=\pi/2)');
+%             current_frame = getframe(gcf); %gca does just the plot
+%             writeVideo(vout,current_frame);
+%             
+%             i = 0;
+%             while i < 100
+%                 current_frame = getframe(gcf); %gca does just the plot
+%                 writeVideo(vout,current_frame);
+%                 i = i +1;
+%             end
+%                 
+%             % Close video
+%             vout.close
+%         end
     end
 end
 

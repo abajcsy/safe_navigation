@@ -793,7 +793,11 @@ startTime = cputime;
 %% Inherit the vaues from l(x)
 % Store the (linear) indicies of all the states where the new cost
 % function has changed (i.e. we sensed free-space). 
-Q = find((lxOld <= 0).*(lx > 0));
+if isempty(lxOld)
+    Q = 1:numel(lx);
+else
+    Q = find((lxOld <= 0).*(lx > 0));
+end
 
 % Set values in warm-started value function that are free-space
 % to have the l(x) value -- need this for V(x) to change at all (in

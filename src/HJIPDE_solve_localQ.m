@@ -728,13 +728,27 @@ Q = find((lxOld <= 0).*(lx > 0));
 data0(Q) = lx(Q);
 
 % Vector that helps us convert from 3D to linear indicies.
-[nX, nY, nTheta] = size(data0);
-stride = [1, nX, nX*nY];
-maxLinIdx = nX*nY*nTheta;
+szDims = size(data0);
+if schemeData.dynSys.nx == 3
+    % For 3D system: [1, nX, nX*nY]
+    stride = [1, szDims(1), szDims(1)*szDims(2)];
+elseif schemeData.dynSys.nx == 4
+    % For 4D system: [1, nX, nX*nY, nX*nY*nTheta]
+    stride = [1, szDims(1), szDims(1)*szDims(2), szDims(1)*szDims(2)*szDims(3)];
+else
+    error('Cannot do localQ update for %dD system!', length(szDims));
+end
+
+% Ensures we won't look outside of grid bounds.
+maxLinIdx = prod(szDims);
+% Number of neighbors to look at (related to order of gradient approx)
 numNeighs = 3;
 
-% Get neighbors for all states in Q in each dimension (x,y,theta)
+% Get neighbors for all states in Q in each dimension 
+%   3D: (x,y,theta)
+%   4D: (x,y,theta,vel)
 neighbors = [];
+% Periodic dimenion is the 3rd dimension (theta).
 pDim = 3;
 for dim=1:schemeData.dynSys.nx
 	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, pDim);
@@ -834,8 +848,8 @@ for i = istart:length(tau)
     while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
         %fprintf('\n');
         [sz,~] = size(Q);
-        %fprintf('Q size: %f\n', sz);
-        %fprintf('\n');
+        fprintf('Q size: %f\n', sz);
+        fprintf('\n');
         
         % Record the current Q size.
         extraOuts.QSizes = [extraOuts.QSizes, sz];

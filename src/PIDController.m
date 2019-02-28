@@ -5,7 +5,6 @@ classdef PIDController < handle
         path            % (cell arr) waypoints
         dynSys          % (obj) dynamical system (dubins car)
         dt              % (float) time step
-        nextWayptIdx    % (int) idx into next candidate waypt
         K               % (matrix) 2x2 gain matrix
         ff              % (vector) 2x1 feed-forward term
         wayptTimes      % (arr) timestamps for each waypoint
@@ -18,20 +17,21 @@ classdef PIDController < handle
             obj.dt = dt;
             
             % Proportional gain matrix and feed-forward term
-            obj.K = [1 1 0; 0 0 1];
+            if dynSys.nx == 3
+                obj.K = [1 1 0; 
+                         0 0 1];
+            elseif dynSys.nx == 4
+                % TODO: tune these gains.
+                obj.K = [0 0 1 0; 
+                         -1 -1 0 1];
+            else
+                error('Cannot PID control for %dD system!', dynSys.nx);
+            end
             obj.ff = [0;0];
         end
         
         %% Updates internal path variable and sets up the next waypt to ctrl to
         function updatePath(obj, path, startT, newPath)
-            % reset the next candidate waypt
-            obj.path = path;
-            if length(obj.path) > 1
-                obj.nextWayptIdx = 2;
-            else
-                obj.nextWayptIdx = 1;
-            end
-            
             if newPath
                 % compute lengths of each segment in path
                 dTotal = 0;
@@ -70,9 +70,14 @@ classdef PIDController < handle
                  -sin(x(3)) cos(x(3))];
             errXY = R*(xystar - x(1:2));
             errTheta = atan2(errXY(2), errXY(1));
-
+            
             % Compute error.
             error = [errXY; errTheta];
+            
+            % If we have 4D system, need to add error in acceleration
+            if obj.dynSys.nx == 4
+                error = [error; x(4)];
+            end
 
             % compute u = [v, omega]
             u = obj.K*error + obj.ff;
@@ -111,21 +116,6 @@ classdef PIDController < handle
             end
             % hack.
             xref = obj.path{end};
-        end
-
-        %% Get closest waypoint along path to query point x.
-        function xClosest = getNextWaypt(obj, x)
-            xClosest = obj.path{obj.nextWayptIdx};
-            
-            distEps = 0.1;
-            % if we got close enough to the next waypoint, choose new one
-            if norm(xClosest - x(1:2)) < distEps
-                obj.nextWayptIdx = obj.nextWayptIdx + 1;
-                % if we are at the goal
-                if obj.nextWayptIdx > length(obj.path)
-                    obj.nextWayptIdx = length(obj.path);
-                end
-            end
         end
         
     end

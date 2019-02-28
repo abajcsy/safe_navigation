@@ -16,9 +16,11 @@ function run_experiments()
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    experiments = {@dubinsLocalQCameraExp1}; %, ...
-                  %@dubinsWarmCameraExp1, ...
-                  %@dubinsHJICameraExp1;
+    %experiments = {@car3DLocalQCamera, ...
+                  %@car3DWarmCamera, ...
+                  %@car3DHJICamera;
+                  
+    experiments = {@car4DLocalQCamera};
     
     % Simulate each experiment.
     for i=1:length(experiments)

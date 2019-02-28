@@ -101,8 +101,10 @@ classdef SafetyModule < handle
                 obj.HJIextraArgs.convergeThreshold = obj.updateEpsilon;
             elseif strcmp(obj.updateMethod, 'localQ')
                 obj.HJIextraArgs.stopConverge = 0;
-                obj.schemeData.hamFunc = @dubins3Dham_localQ;
-                obj.schemeData.partialFunc = @dubins3Dpartial_localQ;
+                if obj.grid.dim == 3
+                    obj.schemeData.hamFunc = @dubins3Dham_localQ;
+                    obj.schemeData.partialFunc = @dubins3Dpartial_localQ;
+                end
             else
                 msg = strcat('Your update method: ', obj.updateMethod, ... 
                     'is not a valid option.');
@@ -149,12 +151,14 @@ classdef SafetyModule < handle
                 if obj.warmStart
                     % If we are warm starting, use the old value function
                     % as initial V(x) and then the true/correct l(x) in targets
-                    if length(obj.grid.N) == 2
-                        % if our system is 2D
-                        data0 = obj.valueFun(:,:,end);
-                    else
+                    if obj.grid.dim == 3
                         % if our system is 3D
                         data0 = obj.valueFun(:,:,:,end);
+                    elseif obj.grid.dim == 4
+                        % if our system is 4D
+                        data0 = obj.valueFun(:,:,:,:,end);
+                    else
+                        error('Cannot update safe set for %dD system!', obj.grid.dim);
                     end
                 else
                     data0 = obj.lCurr;
@@ -173,19 +177,27 @@ classdef SafetyModule < handle
             
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                repo = what('safe_navigation');
-                pathToInitialVx = strcat(repo.path, '/data/initialVx.mat');
-                %pathToInitialVx = '../data/initialVx.mat';
-                load(pathToInitialVx);
-                total_compute_t = 0;
+%                 repo = what('safe_navigation');
+%                 if obj.grid.dim == 3
+%                     pathToInitialVx = strcat(repo.path, '/data/initialVx3D.mat');
+%                 else
+%                     error('Andrea: you havent generated the initial 4D safe set!');
+%                     pathToInitialVx = strcat(repo.path, '/data/initialVx4D.mat');  
+%                 end
+%                 load(pathToInitialVx);
+%                 total_compute_t = 0;
                 
                 % (option 2) run the full, standard Vx computation
-                %firstHJIextraArgs = obj.HJIextraArgs;
-                %firstHJIextraArgs.stopConverge = 1;
-                %firstHJIextraArgs.convergeThreshold = 0.01;
-                %[dataOut, tau, extraOuts] = ...
-                %  HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
-                %    obj.timeDisc, obj.schemeData, minWith, firstHJIextraArgs);
+                firstHJIextraArgs = obj.HJIextraArgs;
+                firstHJIextraArgs.stopConverge = 1;
+                firstHJIextraArgs.convergeThreshold = 0.01;
+                firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
+                firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+                firstWarmStart = false;
+                [dataOut, tau, extraOuts] = ...
+                 HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                   obj.timeDisc, obj.schemeData, minWith, ...
+                   firstWarmStart, firstHJIextraArgs);
             else
                 %start_t = now;
                 tic
@@ -210,7 +222,11 @@ classdef SafetyModule < handle
             end
 
             % only save out the final, 'converged' value function
-            obj.valueFunCellArr{end+1} = dataOut(:,:,:,end);
+            if obj.grid.dim == 3
+                obj.valueFunCellArr{end+1} = dataOut(:,:,:,end);
+            else
+                obj.valueFunCellArr{end+1} = dataOut(:,:,:,:,end);
+            end
             obj.lxCellArr{end+1} = obj.lCurr;
             
             % Update internal variables.
@@ -233,12 +249,17 @@ classdef SafetyModule < handle
         function [uOpt, onBoundary] = checkAndGetSafetyControl(obj, x, tol)
             % Grab the value at state x from the most recent converged 
             % value function.
-            value = eval_u(obj.grid, obj.valueFun(:,:,:,end), x);
+            if obj.grid.dim == 3
+                vx = obj.valueFun(:,:,:,end);
+            else
+                vx = obj.valueFun(:,:,:,:,end);
+            end
+            value = eval_u(obj.grid, vx, x);
             
             % If the value is close to zero, we are close to the safety
             % boundary.
             if value < tol 
-                deriv = computeGradients(obj.grid, obj.valueFun(:,:,:,end));
+                deriv = computeGradients(obj.grid, vx);
                 % value of the derivative at that particular state
                 current_deriv = eval_u(obj.grid, deriv, x);
                 % NOTE: need all 5 arguments (including NaN's) to get 
