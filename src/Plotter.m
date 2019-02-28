@@ -29,10 +29,10 @@ classdef Plotter < handle
             obj.lowEnv = lowEnv;
             obj.upEnv = upEnv;
             obj.obstacles = obstacles;
-            obj.envh = NaN;
-            obj.senseh = NaN;
+            obj.envh = [];
+            obj.senseh = [];
             obj.carh = [];
-            obj.vxh = NaN;
+            obj.vxh = [];
             obj.trajh = [];
             obj.firstPlot = true;
             obj.safemaph = [];
@@ -53,7 +53,9 @@ classdef Plotter < handle
                 delete(obj.senseh);
                 %delete(obj.carh{1});
                 delete(obj.carh{2});
-                delete(obj.vxh);
+                if ~isempty(obj.vxh)
+                    delete(obj.vxh);
+                end
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
@@ -65,18 +67,19 @@ classdef Plotter < handle
             % Plot value function
             extraArgs.edgeColor = [1,0,0];
 
-            if length(x) == 3
-                extraArgs.theta = x(3);
-                funcToPlot = valueFun(:,:,:,end);
-            else
-                funcToPlot = valueFun(:,:,end);
-            end
+            % If there is a value function to visualize, do so.
+            if ~isempty(valueFun)
+                if length(x) == 3
+                    extraArgs.theta = x(3);
+                    funcToPlot = valueFun(:,:,:,end);
+                else
+                    funcToPlot = valueFun(:,:,end);
+                end
 
-            visSet = true;
-            obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
-            %[gPlot, dataPlot] = proj(g, funcToPlot, [0 0 1], extraArgs.theta);
-            %obj.vxh = visSetIm(gPlot, dataPlot, extraArgs.edgeColor , 0);
-            
+
+                visSet = true;
+                obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
+            end
             
             % Visualize environment 
             obj.envh = obj.plotEnvironment();
@@ -253,6 +256,18 @@ classdef Plotter < handle
         % Ouput:
         %   h   - handle for figure
         function h = plotSensing(obj, grid, signed_distance_map)
+%             unsensedIndicies = find(signed_distance_map < 0);
+%             signed_distance_map(unsensedIndicies) = 0;
+%             newIm = imdilate(signed_distance_map, true(3)) - signed_distance_map;
+%             idxs = find(newIm == 1);
+%             xvals = grid.xs{1}(idxs);
+%             yvals = grid.xs{2}(idxs);
+%             p = polyshape(xvals, yvals);
+%             [xvals, yvals] = poly2cw(p.Vertices(:,1),p.Vertices(:,2));
+%             plot(p);
+%             fill(xvals,yvals,'m', ...
+%                 'FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
+            
             posIdx = find(signed_distance_map > 0);
             h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
                 'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');

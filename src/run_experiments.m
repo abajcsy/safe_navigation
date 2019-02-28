@@ -41,13 +41,18 @@ function runExperiment(experimentFun)
     map.updateMapAndCost(params.initSenseData, params.senseShape);
 
     %% Setup Safety Module.
-    % Setup safety module object and compute first set.
-    safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
-        params.dt, params.updateEpsilon, params.warmStart, ...
-        params.updateMethod, params.tMax);
+    if params.useSafety
+        % Setup safety module object and compute first set.
+        safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
+            params.dt, params.updateEpsilon, params.warmStart, ...
+            params.updateMethod, params.tMax);
 
-    % Compute the first avoid set based on current sensing.
-    safety.computeAvoidSet(map.signed_dist_safety, 1);
+        % Compute the first avoid set based on current sensing.
+        safety.computeAvoidSet(map.signed_dist_safety, 1);
+    else
+        % No value function :(
+        safety.valueFun = [];
+    end
 
     %% Setup Planner.
     if strcmp(params.plannerName, 'rrt')
@@ -118,14 +123,16 @@ function runExperiment(experimentFun)
             error('Cannot run unsupported planner! %s\n', plannerName);
         end
 
-        % Check if we are on boundary of safe set. If we are, apply safety 
-        % controller instead. 
-        [uOpt, onBoundary] = safety.checkAndGetSafetyControl(x, params.safetyTol);
-        if onBoundary
-           u = uOpt;
-           fprintf('optimal controller: [%f, %f]\n', u(1), u(2));
-           forcedReplan = true;
-           usedUOpt  = true;
+        if params.useSafety
+            % Check if we are on boundary of safe set. If we are, apply safety 
+            % controller instead. 
+            [uOpt, onBoundary] = safety.checkAndGetSafetyControl(x, params.safetyTol);
+            if onBoundary
+               u = uOpt;
+               fprintf('optimal controller: [%f, %f]\n', u(1), u(2));
+               forcedReplan = true;
+               usedUOpt  = true;
+            end
         end
 
         % Apply control to dynamics.
@@ -151,9 +158,11 @@ function runExperiment(experimentFun)
         dtPlan = t - prevPlanUpdate;
 
         % If need to update the safety set, do so.  
-        if dtSafe >= params.safetyFreq || forceUpdate
-            safety.computeAvoidSet(map.signed_dist_safety, t);
-            prevSafeUpdate = t;
+        if params.useSafety
+            if dtSafe >= params.safetyFreq || forceUpdate
+                safety.computeAvoidSet(map.signed_dist_safety, t);
+                prevSafeUpdate = t;
+            end
         end
 
         % If need to update the planner, do so.
@@ -184,15 +193,21 @@ function runExperiment(experimentFun)
 
     % Save out relevant data.
     if params.saveOutputData
-        valueFunCellArr = safety.valueFunCellArr; 
-        lxCellArr = safety.lxCellArr; 
-        QSizeCellArr = safety.QSizeCellArr;
-        solnTimes = safety.solnTimes;
-        updateTimeArr = safety.updateTimeArr;
         occuMaps = map.occuMapSafeCellArr;
         repo = what('safe_navigation');
         savePath = strcat(repo.path, '/data/', params.filename);
-        save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
-            'solnTimes', 'occuMaps', 'updateTimeArr', 'states', 'paths');
+        
+        % Save out safety analysis metrics if we were computing safe sets.
+        if params.useSafety
+            valueFunCellArr = safety.valueFunCellArr; 
+            lxCellArr = safety.lxCellArr; 
+            QSizeCellArr = safety.QSizeCellArr;
+            solnTimes = safety.solnTimes;
+            updateTimeArr = safety.updateTimeArr;
+            save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
+                'solnTimes', 'occuMaps', 'updateTimeArr', 'states', 'paths');
+        else
+            save(savePath, 'occuMaps');
+        end
     end
 end

@@ -13,8 +13,8 @@ clear all
 
 %% Choose which method you wanna analyze.
 %   HJI, localQ
-method = 'HJI';
-warm = false;
+method = 'localQ';
+warm = true;
 sensor = 'lidar';
 
 %% Grab the data.
@@ -54,7 +54,8 @@ avgNumStatesUpdated = mean(totalPerStep);
 
 %% Printing 
 fprintf('-------- %s (%s)--------\n', methodName, sensor);
-fprintf("avg total compute time (s): %f\n", mean(solnTimes)); 
+fprintf("avg total compute time (s): %f\n", mean(solnTimes));
+fprintf("median total compute time (s): %f\n", median(solnTimes));
 fprintf("avg num states updated: %f\n", avgNumStatesUpdated);
 
 %% Compute num conservative states.

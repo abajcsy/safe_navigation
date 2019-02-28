@@ -35,6 +35,10 @@ params.vrange = [0.5,1];
 params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
 
 %% Safety Update Params.
+
+% Use this to toggle the safety computation on/off.
+params.useSafety = false;
+
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
@@ -83,7 +87,7 @@ params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = true;
+params.saveOutputData = false;
 
 % Create filename if we want to save things out.
 % Naming convention:
