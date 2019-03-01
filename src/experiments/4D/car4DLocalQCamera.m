@@ -41,15 +41,15 @@ params.useSafety = true;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'HJI';
+params.updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
-params.warmStart = false;
+params.warmStart = true;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
-params.updateEpsilon = 0.01;
+params.updateEpsilon = 0.02;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';

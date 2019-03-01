@@ -33,6 +33,9 @@ classdef PIDController < handle
         %% Updates internal path variable and sets up the next waypt to ctrl to
         function updatePath(obj, path, startT, newPath)
             if newPath
+                % store new path.
+                obj.path = path;
+                
                 % compute lengths of each segment in path
                 dTotal = 0;
                 dists = [];
@@ -83,16 +86,30 @@ classdef PIDController < handle
             u = obj.K*error + obj.ff;
 
             % clip control based on bounds
-            if u(1) > obj.dynSys.vrange(2)
-                u(1) = obj.dynSys.vrange(2);
-            elseif u(1) < obj.dynSys.vrange(1)
-                u(1) = obj.dynSys.vrange(1);
-            end
+            if obj.dynSys.nx == 3
+                if u(1) > obj.dynSys.vrange(2)
+                    u(1) = obj.dynSys.vrange(2);
+                elseif u(1) < obj.dynSys.vrange(1)
+                    u(1) = obj.dynSys.vrange(1);
+                end
 
-            if u(2) > obj.dynSys.wMax
-                u(2) = obj.dynSys.wMax;
-            elseif u(2) < -obj.dynSys.wMax
-                u(2) = -obj.dynSys.wMax;
+                if u(2) > obj.dynSys.wMax
+                    u(2) = obj.dynSys.wMax;
+                elseif u(2) < -obj.dynSys.wMax
+                    u(2) = -obj.dynSys.wMax;
+                end
+            else % for 4D system
+                if u(1) > obj.dynSys.wMax
+                    u(1) = obj.dynSys.wMax;
+                elseif u(1) < -obj.dynSys.wMax
+                    u(1) = -obj.dynSys.wMax;
+                end
+
+                if u(2) > obj.dynSys.aRange(2)
+                    u(2) = obj.dynSys.aRange(2);
+                elseif u(2) < obj.dynSys.aRange(1)
+                    u(2) = obj.dynSys.aRange(1);
+                end
             end
             u = transpose(u);
         end

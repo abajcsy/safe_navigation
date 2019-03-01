@@ -1363,8 +1363,13 @@ function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, gr
 
     for n=1:numNeighs
       % Get right and left neighbors that are n gridcells away.
-      [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIndicies);
-      subIndicies = [subInd1, subInd2, subInd3];
+      if grid.dim == 3
+        [subInd1, subInd2, subInd3] = ind2sub(grid.shape, linIndicies);
+        subIndicies = [subInd1, subInd2, subInd3];
+      else % 4D
+        [subInd1, subInd2, subInd3, subInd4] = ind2sub(grid.shape, linIndicies);
+        subIndicies = [subInd1, subInd2, subInd3, subInd4];
+      end
       rightNeigh = subIndicies;
       leftNeigh = subIndicies;
       rightNeigh(:, dim) = rightNeigh(:, dim) + n;
