@@ -193,6 +193,7 @@ classdef SafetyModule < handle
                 firstHJIextraArgs.convergeThreshold = 0.01;
                 firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
                 firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+                firstHJIextraArgs.visualize.valueSet = 1;
                 firstWarmStart = false;
                 [dataOut, tau, extraOuts] = ...
                  HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...

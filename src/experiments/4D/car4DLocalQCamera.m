@@ -10,14 +10,14 @@ params.obstacles = {{[4;1], [7;4]}};
 
 %% Grid Params.
 gridLow = [params.lowEnv;-pi;0.0];
-gridUp = [params.upEnv;pi;1.5];
+gridUp = [params.upEnv;pi;0.6];
 N = [31;31;21;11];
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [2.0; 2.5; pi/2; 0];
-params.xgoal = [8.5; 2.5; -pi/2; 0];
+params.xinit = [2.0; 2.5; pi/2; 0.];
+params.xgoal = [8.5; 2.5; -pi/2; 0.];
 
 %   hand-engineered trajectory      --> 'hand'
 %   rapidly-exploring random-tree   --> 'rrt'
@@ -28,7 +28,7 @@ params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
 
 %% Dynamical System Params.
 params.wMax = 1.1;          % maxangular control
-params.aRange = [0.0,0.0];    % acceleration control range
+params.aRange = [-0.4, 0.4];    % acceleration control range
 
 % Define dynamic system. 
 params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange);

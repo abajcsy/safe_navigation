@@ -8,9 +8,9 @@ function run_experiments()
     %close all
     
     % Compile FMM c-code.
-    whatRepo = what('safe_navigation');
-    repo = whatRepo.path;
-    %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+%     whatRepo = what('safe_navigation');
+%     repo = whatRepo.path;
+    repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
     filename = 'mexEikonalFMM.cpp';
     cppPath = strcat(repo, '/src/fmm/cversion/', filename);
     mex(cppPath);
