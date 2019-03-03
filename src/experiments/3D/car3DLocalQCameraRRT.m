@@ -1,4 +1,4 @@
-function params = car3DHJILidar()
+function params = car3DLocalQCameraRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -42,10 +42,10 @@ params.useSafety = false;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'HJI';
+params.updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
-params.warmStart = false;
+params.warmStart = true;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
@@ -59,9 +59,10 @@ params.uMode = 'max';
 params.tMax = 50;
 
 %% Sensing Params.
-params.senseShape = 'lidar';
-params.senseRad = 3;
-params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseRad]};
+params.senseShape = 'camera';
+params.initialR = 1.5; % The initial radius of the safe region
+params.senseFOV = pi/6; % The (half) field-of-view of the camera
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.
@@ -86,7 +87,7 @@ params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = true;
+params.saveOutputData = false;
 
 % Create filename if we want to save things out.
 % Naming convention:

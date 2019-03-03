@@ -16,11 +16,11 @@ function run_experiments()
     mex(cppPath);
 
     % Setup all function handles to experimental setup.
-    %experiments = {@car3DLocalQCamera, ...
-                  %@car3DWarmCamera, ...
-                  %@car3DHJICamera;
+    %experiments = {@car3DLocalQCameraRRT, ...
+                  %@car3DWarmCameraRRT, ...
+                  %@car3DHJICameraRRT;
                   
-    experiments = {@car4DLocalQCamera};
+    experiments = {@car3DLocalQCameraSpline};
     
     % Simulate each experiment.
     for i=1:length(experiments)
@@ -68,7 +68,20 @@ function runExperiment(experimentFun)
         controller = PIDController(params.dynSys, params.dt);
         controller.updatePath(path, 1, newpath);
     elseif strcmp(params.plannerName, 'hand')
+        % Hand-coded plan has no path.
         path = {};
+    elseif strcmp(params.plannerName, 'spline')
+        % Create spline planner subscriber node.        
+        planner = SplinePlannerNode();
+        
+        % Replan. 
+        ucurr = [0,0];
+        [path, pathCtrls, newpath] = planner.replan(params.xinit, ...
+            ucurr,map.occupancy_map_plan,params.xgoal);
+        
+        % Create PID controller to track RRT trajectory.
+        controller = PIDController(params.dynSys, params.dt);
+        controller.updatePath(path, 1, newpath);
     end
 
     %% Plot initial conditions, sensing, and safe set.
@@ -119,7 +132,7 @@ function runExperiment(experimentFun)
         % Switch control and planning based on planner.
         if strcmp(params.plannerName, 'hand')
             u = getHandCodedControl(t);
-        elseif strcmp(params.plannerName, 'rrt')
+        elseif strcmp(params.plannerName, 'rrt') || strcmp(params.plannerName, 'spline')
             u = controller.getControl(t, x);
         else
             error('Cannot run unsupported planner! %s\n', plannerName);
@@ -174,6 +187,12 @@ function runExperiment(experimentFun)
                 planner.updateOccuGrid(map.occupancy_map_plan);
                 % Replan path.
                 [path, newpath] = planner.replan(x(1:2), params.xgoal(1:2));
+                % Update path that controller is trying to track.
+                controller.updatePath(path, t, newpath);
+                prevPlanUpdate = t;
+            elseif strcmp(params.plannerName, 'spline')
+                [path, ~, newpath] = planner.replan(x, u, ...
+                    map.occupancy_map_plan, params.xgoal);
                 % Update path that controller is trying to track.
                 controller.updatePath(path, t, newpath);
                 prevPlanUpdate = t;

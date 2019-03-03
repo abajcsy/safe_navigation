@@ -1,4 +1,4 @@
-function params = car3DHJICamera()
+function params = car4DLocalQCameraRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -9,15 +9,15 @@ params.obsShape = 'rectangle';
 params.obstacles = {{[4;1], [7;4]}};
 
 %% Grid Params.
-gridLow = [params.lowEnv;-pi];
-gridUp = [params.upEnv;pi];
-N = [31;31;21];
+gridLow = [params.lowEnv;-pi;0.0];
+gridUp = [params.upEnv;pi;0.6];
+N = [31;31;21;11];
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [2.0; 2.5; pi/2];
-params.xgoal = [8.5; 2.5; -pi/2];
+params.xinit = [2.0; 2.5; pi/2; 0.];
+params.xgoal = [8.5; 2.5; -pi/2; 0.];
 
 %   hand-engineered trajectory      --> 'hand'
 %   rapidly-exploring random-tree   --> 'rrt'
@@ -27,30 +27,29 @@ params.dx = 0.01;      % size of step along edges for collision-checking
 params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
 
 %% Dynamical System Params.
-params.wMax = 1;
-params.vrange = [0.5,1];
+params.wMax = 1.1;          % maxangular control
+params.aRange = [-0.4, 0.4];    % acceleration control range
 
-% Define dynamic system.            
-% Create dubins car where u = [v, w]
-params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
+% Define dynamic system. 
+params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange);
 
 %% Safety Update Params.
 
 % Use this to toggle the safety computation on/off.
-params.useSafety = false;
+params.useSafety = true;
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'HJI';
+params.updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
-params.warmStart = false;
+params.warmStart = true;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
-params.updateEpsilon = 0.01;
+params.updateEpsilon = 0.02;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
@@ -83,11 +82,11 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = false;
+params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = true;
+params.saveOutputData = false;
 
 % Create filename if we want to save things out.
 % Naming convention:

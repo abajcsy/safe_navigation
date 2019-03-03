@@ -1,4 +1,4 @@
-function params = car3DWarmLidar()
+function params = car3DWarmLidarRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];

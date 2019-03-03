@@ -1,4 +1,4 @@
-function params = car3DLocalQLidar()
+function params = car3DLocalQLidarRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
