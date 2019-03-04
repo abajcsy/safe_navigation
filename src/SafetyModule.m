@@ -184,9 +184,9 @@ classdef SafetyModule < handle
                 % (option 1) load offline-computed infinite-horizon safe set
                 repo = what('safe_navigation');
                 if obj.grid.dim == 3
-                    pathToInitialVx = strcat(repo.path, '/data/initialVx3D.mat');
+                    pathToInitialVx = strcat(repo.path, '/src/data/initialVx3D.mat');
                 else
-                    pathToInitialVx = strcat(repo.path, '/data/initialVx4D.mat');  
+                    pathToInitialVx = strcat(repo.path, '/src/data/initialVx4D.mat');  
                 end
                 load(pathToInitialVx);
                 total_compute_t = 0;

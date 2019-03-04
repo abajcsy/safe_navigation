@@ -14,13 +14,16 @@ function run_experiments()
     filename = 'mexEikonalFMM.cpp';
     cppPath = strcat(repo, '/src/fmm/cversion/', filename);
     mex(cppPath);
-
+ 
     % Setup all function handles to experimental setup.
     %experiments = {@car3DLocalQCameraRRT, ...
                   %@car3DWarmCameraRRT, ...
-                  %@car3DHJICameraRRT;
+                  %@car3DHJICameraRRT};
                   
-    experiments = {@car3DLocalQCameraSpline};
+    experiments = {car3DLocalQCameraRRT};%@car3DLocalQCameraSpline};
+                 %@car3DWarmCameraSpline, ...
+                 %@car3DHJICameraSpline};
+                 
     
     % Simulate each experiment.
     for i=1:length(experiments)

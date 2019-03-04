@@ -1,4 +1,4 @@
-function params = car3DLocalQCameraSpline()
+function params = car3DHJICameraSpline()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -40,10 +40,10 @@ params.useSafety = true;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'localQ';
+params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
-params.warmStart = true;
+params.warmStart = false;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
