@@ -28,15 +28,16 @@ classdef SafetyModuleNode < handle
             % Create a new node.
             rosinit 
             
-            obj.loadParameters()
-            obj.registerCallbacks()
+            % Load all the experimental parameters and setup ROS pub/sub.
+            obj.loadParameters();
+            obj.registerCallbacks();
             
             % Grab the ground-truth occupancy map from Python.
             msg = receive(obj.occuMapSub);
             [obj.trueOccuMap, obj.resolution, obj.origin] = obj.fromOccupancyGrid(msg);
             
             % Compute the first avoid set based on current sensing.
-            % obj.updateBeliefOccuMap(obj.params.xinit, obj.params.senseData, obj.params.senseShape);
+            % obj.updateBeliefOccuMap(obj.params.xinit, obj.params.initSenseData, obj.params.senseShape);
             % obj.updateSignedDist()
             % obj.safety.computeAvoidSet(signed_dist_safety, 1);
             
@@ -64,19 +65,16 @@ classdef SafetyModuleNode < handle
         % Create all the publishers and subscribers.
         function registerCallbacks(obj)
             % Publisher that publishes out verified trajectory.
-            verifiedTopicName = '/verified_traj';
             verifiedMsgType = 'safe_navigation_msgs/Trajectory';
-            obj.verifiedPub = rospublisher(verifiedTopicName,verifiedMsgType);
+            obj.verifiedPub = rospublisher(obj.params.verifiedTopicName,verifiedMsgType);
 
             % Subscriber that listens to occupancy grid.
-            occuMapTopicName = '/occu_map';
             occuMapMsgType = 'nav_msgs/OccupancyGrid';
-            obj.occuMapSub = rossubscriber(occuMapTopicName, occuMapMsgType);
+            obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, occuMapMsgType);
             
             % Subscriber that listens to planned trajectory
-            planTopicName = '/planned_traj';
             planMsgType = 'safe_navigation_msgs/Trajectory';
-            obj.planSub = rossubscriber(planTopicName, planMsgType, @obj.verifyPlanCallback);
+            obj.planSub = rossubscriber(obj.params.planTopicName, planMsgType, @obj.verifyPlanCallback);
             pause(2); 
         end
         
