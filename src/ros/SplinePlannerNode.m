@@ -40,6 +40,7 @@ classdef SplinePlannerNode < handle
             
             % Get the trajectory.s
             msg = receive(obj.trajSub);
+            fprintf('Got new trajectory of length %d!\n', length(msg.States));
             
             % Update the trajectory variables.
             stateCellArr = {};
