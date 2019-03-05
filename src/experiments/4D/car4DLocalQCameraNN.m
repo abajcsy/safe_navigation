@@ -6,7 +6,7 @@ params.upEnv = [10;7];
 
 %% ROS Params.
 params.verifiedTopicName = '/verified_traj';
-params.occuMapTopicName = '/occu_map';
+params.occuMapTopicName = '/map';
 params.planTopicName = '/planned_traj';
 
 %% Grid Params.

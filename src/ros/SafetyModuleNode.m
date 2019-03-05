@@ -33,7 +33,8 @@ classdef SafetyModuleNode < handle
             obj.registerCallbacks();
             
             % Grab the ground-truth occupancy map from Python.
-            msg = receive(obj.occuMapSub);
+            fprintf('Getting ground-truth occupancy map.\n');
+            msg = receive(obj.occuMapSub, 10);
             [obj.trueOccuMap, obj.resolution, obj.origin] = obj.fromOccupancyGrid(msg);
             
             % Compute the first avoid set based on current sensing.
@@ -54,7 +55,7 @@ classdef SafetyModuleNode < handle
         % Load all the parameters and construct safety object.
         function loadParameters(obj)
             % load up all the parameters
-            %obj.params = car3DLocalQCameraNN();
+            obj.params = car4DLocalQCameraNN();
 
             % Setup safety module object and compute first set.
             %obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, obj.params.uMode, ...
@@ -87,39 +88,52 @@ classdef SafetyModuleNode < handle
             initState = rosmessage('safe_navigation_msgs/State');
             initState.X = x0;
             
-            msg.states = [initState];
-            msg.controls = [];
+            msg.States = [initState];
+            msg.Controls = [];
             for i=1:length(controls)
                 control = rosmessage('safe_navigation_msgs/Control');
                 control.U = controls(i);
-                msg.controls = [msg.controls, control];
+                msg.Controls = [msg.Controls, control];
             end
         end
         
         % Converts from 1D OccupancyGrid ROS message to 2D grid array.
-        function [occuGrid, res, origin]= fromOccupancyGrid(obj, msg)
+        function [occuGrid, res, origin] = fromOccupancyGrid(obj, msg)
             % TODO.
-            res = msg.Info.Resolution;
+            res = double(msg.Info.Resolution);
             h = msg.Info.Height;
             w = msg.Info.Width;
             origin = [msg.Info.Origin.Position.X, msg.Info.Origin.Position.Y];
-            occuGrid = reshape(msg.Data, [h,w]);
+            %TODO: sanity check that the reshape does it right.
+            occuGrid = reshape(msg.Data, [h,w]); 
+            fprintf('Received ground truth map with: \n');
+            fprintf('    height: %f, # rows: %d\n', h, rows);
+            fprintf('    width: %f, # cols: %d\n', w, cols);
+            fprintf('    res: %f\n', res);
         end
         
         %% ------------------- ROS Callbacks  -------------------- %
         % Callback for when we get plans that need to be verified
         function verifyPlanCallback(obj, ~, msg)
-            currState = msg.states(1).X; % we only get initial state
-            controls = msg.controls; % these are Control[] msgs
+            if length(msg.States) == 1
+                currState = msg.States.X; % we only get initial state
+            elseif length(msg.States) > 1
+                currState = msg.States(1).X; % extract initial state
+            else
+                error('Did not get enough states! Got %d', length(msg.States));
+            end
+            controls = msg.Controls; % these are Control[] msgs
             
-%             verifiedU = [];
-%             x = currState;
-%             for i=1:length(controls) % TODO: this is wrong, as soon as we apply safety control, 
-%                                      % all the controls after are messed
-%                                      % up...
-%                 % grab candidate 
-%                 u = controls(i).U; 
-%                 
+            x = currState;
+            verifiedX0 = currState;
+            verifiedU = [];
+            
+            for i=1:length(controls) % TODO: this is wrong, as soon as we apply safety control, 
+                                     % all the controls after are messed
+                                     % up...
+                % grab candidate 
+                u = controls(i).U; 
+                
 %                 % update the occupancy map based on the current state
 %                 % check the safety of the state we reach by applying control
 %             
@@ -129,18 +143,17 @@ classdef SafetyModuleNode < handle
 %                 if onBoundary
 %                     u = uOpt;
 %                 end
-%                 % modify next control to apply to be safe control
-%                 verifiedU = [verifiedU, u];
+
+                % modify next control to apply to be safe control
+                verifiedU = [verifiedU, u];
 % 
 %             	% simulate the trajectory forward (applying safe or planned
 %                 % control)
 %                 obj.params.dynSys.updateState(u, obj.params.dt, x);
 %                 x = obj.params.dynSys.x;
-%             end
+            end
             
             % construct verified trajectory message
-            verifiedX0 = currState;
-            verifiedU = controls;
             verifiedMsg = obj.toTrajMsg(verifiedX0, verifiedU);
             
             % publish out the verified trajectory
