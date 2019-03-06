@@ -28,6 +28,7 @@ classdef SafetyModule < handle
         warmStart       % (bool) if we want to warm start with prior V(x)
         firstCompute    % (bool) flag to see if this is the first time we have done computation
         updateMethod    % (string) what kind of solution method to use
+        envType         % (string) what kind of environment are we doing safety for?
         
         % Utility variables and flags
         valueFunCellArr % (cell arr) stores sequence of V(x) 
@@ -36,21 +37,20 @@ classdef SafetyModule < handle
         fovCellArr      % (cell arr) stores the results of FMM
         solnTimes       % (array) total time to compute solution at each step
         updateTimeArr   % (array) simulation timestamp for updating safe set
-        
-        unionL_2D_FMM           % Signed distance for the sensed occupancy map
     end
     
     methods
         %% Constructor. 
         % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
         function obj = SafetyModule(grid, dynSys, uMode, dt, ...
-                updateEpsilon, warmStart, updateMethod, tMax)
+                updateEpsilon, warmStart, envType, updateMethod, tMax)
             % Setup computation grid.
             obj.grid = grid;
             
             obj.dt = dt;
             obj.updateEpsilon = updateEpsilon;
             obj.computeTimes = [];
+            obj.envType = envType;
             
             % Store the current estimate of the cost function (from
             % sensing).
@@ -183,28 +183,38 @@ classdef SafetyModule < handle
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
 %                 repo = what('safe_navigation');
-%                 whatRepo = what('safe_navigation');
-                repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
-                if obj.grid.dim == 3
-                    pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
-                else
-                    pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');  
-                end
-                load(pathToInitialVx);
-                total_compute_t = 0;
+%                 %whatRepo = what('safe_navigation');
+%                 %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+%                 if obj.grid.dim == 3
+%                     % if we are doing 3D system, we are doing the same
+%                     % simulated environment --> can use this initial Vx
+%                     pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
+%                 else
+%                     if strcmp(obj.envType, 'sbpd')
+%                         % if we are doing 4D simulation, it's in the
+%                         % stanford building data set environment.
+%                         pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD.mat');  
+%                     else
+%                         % if we are doing 4D real-world, it's the
+%                         % pre-mapped safe set.
+%                         error('You need to compute the 4D real-world set!');
+%                     end
+%                 end
+%                 load(pathToInitialVx);
+%                 total_compute_t = 0;
                 
                 % (option 2) run the full, standard Vx computation
-                %firstHJIextraArgs = obj.HJIextraArgs;
-                %firstHJIextraArgs.stopConverge = 1;
-                %firstHJIextraArgs.convergeThreshold = 0.01;
-                %firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
-                %firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
-                %firstHJIextraArgs.visualize.valueSet = 1;
-                %firstWarmStart = false;
-                %[dataOut, tau, extraOuts] = ...
-                % HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
-                %   obj.timeDisc, obj.schemeData, minWith, ...
-                %   firstWarmStart, firstHJIextraArgs);
+                firstHJIextraArgs = obj.HJIextraArgs;
+                firstHJIextraArgs.stopConverge = 1;
+                firstHJIextraArgs.convergeThreshold = 0.01;
+                firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
+                firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+                firstHJIextraArgs.visualize.valueSet = 1;
+                firstWarmStart = false;
+                [dataOut, tau, extraOuts] = ...
+                HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                  obj.timeDisc, obj.schemeData, minWith, ...
+                  firstWarmStart, firstHJIextraArgs);
             else
                 %start_t = now;
                 tic

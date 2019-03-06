@@ -17,7 +17,7 @@ map.updateMapAndCost(params.initSenseData, params.senseShape);
 %% Setup Safety Module.
 % Setup safety module object and compute first set.
 safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
-    params.dt, params.updateEpsilon, params.warmStart, params.updateMethod);
+    params.dt, params.updateEpsilon, params.warmStart, params.inSim, params.updateMethod);
 
 % Compute the first avoid set based on current sensing.
 safety.computeAvoidSet(map.signed_dist_safety);

@@ -3,6 +3,7 @@ classdef OccuMap < handle
     
     properties
         grid            % (obj) Computation grid struct
+        envType         % (string) Environment type
         lReal           % (float arr) Cost function representing TRUE environment
         boundLow        % (x,y) lower corner of boundary obstacle (for numerics)
         boundUp         % (x,y) upper corner of boundary obstacle (for numerics)
@@ -22,13 +23,21 @@ classdef OccuMap < handle
         % Inputs:
         %   grid        -- (struct) computation grid struct with min/max,
         %                   dimensions, etc.
-        %   obstacles   -- (cell arr) lower & upper bounds of each obstacle
+        %   envType     -- tells you what kinds of environments you are
+        %                   representing
+        %   extraArgs
+        %               .obstacles   -- (cell arr) [if envType is 'hand']
+        %                   lower & upper bounds of each obstacle
         %                   used to construct ground-truth environment.
         %                   NOTE: supports only square obstacles right now.
-        function obj = OccuMap(grid, obstacles)
+        %               .occuMap     -- (arr) [if envType is 'sbpd'] 
+        %                   2D array representing occupancy map of SBPD
+        %                   environment
+        function obj = OccuMap(grid, envType, extraArgs)
             % Computation grid
             obj.grid = grid;
             obj.firstCompute = true;
+            obj.envType = envType;
             
             % Initialize signed-distance and occupancy grid variables.
             obj.gFMM                 = [];
@@ -40,27 +49,40 @@ classdef OccuMap < handle
             
             % Create ground-truth obstacle costmap.
             obj.lReal = [];
-            for i=1:length(obstacles)
-                % Check what dim system we are dealing with.
-                if obj.grid.dim == 3
-                    lowObs = [obstacles{i}{1}; obj.grid.min(3)];
-                    upObs = [obstacles{i}{2}; obj.grid.max(3)];
-                    obsShape = shapeRectangleByCorners(obj.grid,lowObs,upObs);
-                elseif obj.grid.dim == 4
-                    lowObs = obstacles{i}{1};
-                    upObs = obstacles{i}{2};
-                    [g2D, ~] = proj(obj.grid, obj.grid.xs{1}, [0 0 1 1], [0 0]);
-                    obsShape = shapeRectangleByCorners(g2D,lowObs,upObs);
-                    obsShape = repmat(obsShape, 1, 1, obj.grid.N(3), obj.grid.N(4));
+            if strcmp(obj.envType, 'sbpd')
+                % Constructing based on stanford building occupancy map.
+                obsShape = extraArgs.occuMap;
+                if obj.grid.dim == 4
+                    obj.lReal = repmat(obsShape, 1, 1, obj.grid.N(3), obj.grid.N(4));
                 else
-                    error('Cannot construct signed distance function for %dD system!', obj.grid.dim);
+                    error('SBPD environment is not supported right now for %dD system.\n', obj.grid.dim);
                 end
-                
-                if isempty(obj.lReal)
-                    obj.lReal = obsShape;
-                else
-                    obj.lReal = shapeUnion(obj.lReal, obsShape);
+            elseif strcmp(obj.envType, 'hand')
+                % Constructing based on hand-specified obstacle map.
+                 for i=1:length(extraArgs.obstacles)
+                    % Check what dim system we are dealing with.
+                    if obj.grid.dim == 3
+                        lowObs = [extraArgs.obstacles{i}{1}; obj.grid.min(3)];
+                        upObs = [extraArgs.obstacles{i}{2}; obj.grid.max(3)];
+                        obsShape = shapeRectangleByCorners(obj.grid,lowObs,upObs);
+                    elseif obj.grid.dim == 4
+                        lowObs = extraArgs.obstacles{i}{1};
+                        upObs = extraArgs.obstacles{i}{2};
+                        [g2D, ~] = proj(obj.grid, obj.grid.xs{1}, [0 0 1 1], [0 0]);
+                        obsShape = shapeRectangleByCorners(g2D,lowObs,upObs);
+                        obsShape = repmat(obsShape, 1, 1, obj.grid.N(3), obj.grid.N(4));
+                    else
+                        error('Cannot construct signed distance function for %dD system!', obj.grid.dim);
+                    end
+
+                    if isempty(obj.lReal)
+                        obj.lReal = obsShape;
+                    else
+                        obj.lReal = shapeUnion(obj.lReal, obsShape);
+                    end
                 end
+            else
+                error('Cannot represent environment of type: %s\n', obj.envType);
             end
 
             % For numerics -- add a 1-grid-cell-sized obstacle along the 

@@ -15,33 +15,77 @@ classdef SafetyModuleNode < handle
         safety
         
         % Occupancy map data.
+        map             % (obj) OccuMap object that operates on occupancy grids.
         sbpdOccuMap     % (arr) Entire SBPD ground-truth occupancy map data.
         trueOccuMap     % (arr) (Localized) Ground-truth occupancy map data.
         res             % (float) Ground-truth dx resolution. 
         origin          % (arr) Ground-truth lower x,y coordinate.
-        beliefOccuMap   % (arr) Occupancy map based on what we have sensed.
-        signedDist      % (arr) Signed distance function based on beliefOccuMap. 
+        %beliefOccuMap   % (arr) Occupancy map based on what we have sensed.
+        %signedDist      % (arr) Signed distance function based on beliefOccuMap. 
+        
+        % Figure handles.
+        plt
+        carh
+        maph
+        safeh 
     end
     
     methods
         %% Constructor
         function obj = SafetyModuleNode()
+            clf
             % Create a new node.
             rosinit 
             
-            % Load all the experimental parameters and setup ROS pub/sub.
-            obj.loadParameters();
+            % Load up all the experimental parameters.
+            obj.params = car4DLocalQCameraNN();
+            
+            % Setup ROS pub/sub.
             obj.registerCallbacks();
             
-            % Grab the ground-truth occupancy map from Python.
-            fprintf('Getting ground-truth occupancy map.\n');
-            msg = receive(obj.occuMapSub, 10);
-            obj.saveGroundTruthOccupancyGrids(msg);
+            if obj.params.loadTrueOccuMaps 
+                % Load the saved ground-truth occupancy maps.
+                fprintf('Loading ground-truth SBPD occupancy map.\n');
+                repo = what('safe_navigation');
+                sbpdPath = strcat(repo.path, '/data/sbpdOccuMap.mat'); 
+                truePath = strcat(repo.path, '/data/trueOccuMap.mat'); 
+                load(sbpdPath);
+                load(truePath);
+                % note: need to transpose to get correct coordinates.
+                obj.sbpdOccuMap = sbpdOccuMap;
+                obj.trueOccuMap = trueOccuMap; 
+            else
+                % Grab the ground-truth occupancy map from Python.
+                fprintf('Listening over ROS to ground-truth SBPD occupancy map.\n');
+                msg = receive(obj.occuMapSub, 10);
+                obj.saveGroundTruthOccupancyGrids(msg);
+            end
             
-            % Compute the first avoid set based on current sensing.
-            obj.updateBeliefOccuMap(obj.params.initSenseData, obj.params.senseShape);
-            obj.updateSignedDist();
-            obj.safety.computeAvoidSet(obj.signedDist, 1);
+            % Setup safety module object and compute first set.
+            obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
+                            obj.params.uMode, obj.params.dt, ...
+                            obj.params.updateEpsilon, obj.params.warmStart, ...
+                            obj.params.envType, obj.params.updateMethod, obj.params.tMax);
+                        
+            extraArgs.occuMap = obj.trueOccuMap;
+            obj.map = OccuMap(obj.params.grid, obj.params.envType, extraArgs);
+            obj.plt = Plotter(obj.params.lowEnv, obj.params.upEnv,[],[],[]);
+            
+            % ----- Plot initial state of car and ground-truth occupancy
+            % map. -----
+            hold on
+            obj.maph = obj.plt.plotOccuMap(obj.params.grid, obj.trueOccuMap);
+            obj.carh = obj.plt.plotCar(obj.params.xinit, false);
+            
+            % Compute the first avoid set based on initial safe set.
+            obj.map.updateMapAndCost(obj.params.initSenseData, obj.params.senseShape);
+            obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
+            
+            % ---- Plot the safe set. -----
+            funToSee = obj.safety.valueFun(:,:,:,:,end);
+            extraArgs.theta = obj.params.xinit(3);
+            extraArgs.vel = obj.params.xinit(4);
+            obj.safeh = obj.plt.plotFuncLevelSet(obj.params.grid, funToSee, true, extraArgs);
             
             % Spin and let everything go.
             rate = rosrate(100);
@@ -52,30 +96,18 @@ classdef SafetyModuleNode < handle
         end
         
         %% ------------ ROS Subscriber/Publisher Functions ------------- %%
-                
-        % Load all the parameters and construct safety object.
-        function loadParameters(obj)
-            % load up all the parameters
-            obj.params = car4DLocalQCameraNN();
-
-            % Setup safety module object and compute first set.
-            obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, obj.params.uMode, ...
-                           obj.params.dt, obj.params.updateEpsilon, obj.params.warmStart, ...
-                           obj.params.updateMethod, obj.params.tMax);
-            
-            obj.beliefOccuMap = [];
-            obj.signedDist = [];
-        end
-        
+                        
         % Create all the publishers and subscribers.
         function registerCallbacks(obj)
             % Publisher that publishes out verified trajectory.
             verifiedMsgType = 'safe_navigation_msgs/Trajectory';
             obj.verifiedPub = rospublisher(obj.params.verifiedTopicName,verifiedMsgType);
 
-            % Subscriber that listens to occupancy grid.
-            occuMapMsgType = 'nav_msgs/OccupancyGrid';
-            obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, occuMapMsgType);
+            if obj.params.loadTrueOccuMaps
+                % Subscriber that listens to occupancy grid.
+                occuMapMsgType = 'nav_msgs/OccupancyGrid';
+                obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, occuMapMsgType);
+            end
             
             % Subscriber that listens to planned trajectory
             planMsgType = 'safe_navigation_msgs/Trajectory';
@@ -128,8 +160,9 @@ classdef SafetyModuleNode < handle
             mapBounds = [obj.origin(1), obj.origin(2), ...
                 obj.origin(1) + realWidth, obj.origin(2) + realHeight];
             obj.trueOccuMap = ...
-                generate_computation_grid(grid2D, obj.sbpdOccuMap, ...
+                generate_computation_grid(grid2D, obj.sbpdOccuMap', ...
                 obj.res, mapBounds);
+            %figure, imshow(flipud(obj.trueOccuMap'));
         end
         
         %% ------------------- ROS Callbacks  -------------------- %
@@ -216,7 +249,20 @@ classdef SafetyModuleNode < handle
                 error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
             end
             
-            if strcmp(senseShape, 'camera')
+            if strcmp(senseShape, 'circle')
+                % Record which states we have sensed. 
+                % (+1 sensed, -1 unsensed)
+                sensingShape = -shapeCylinder(obj.params.grid, [3,4], senseData{1}(1:2), senseData{2}(2));
+
+                % Union the sensed region with the actual obstacle.
+                unionL = shapeUnion(sensingShape, obj.lReal);
+                % Project the slice of unionL and create an occupancy map
+                [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
+
+                % also: subtract small epsilon in case we get zero's
+                epsilon = 1e-6;
+                obj.beliefOccuMap = sign(dataFMM-epsilon);
+            elseif strcmp(senseShape, 'camera')
                 [obj.beliefOccuMap, ~] = ...
                     generate_camera_sensing_region(gFMM, obj.trueOccuMap, ...
                         senseData{2}(1), senseData{1}(1:2), senseData{1}(3));

@@ -23,6 +23,7 @@ params.xgoal = [8.5; 2.5; -pi/2];
 %   rapidly-exploring random-tree   --> 'rrt'
 %   spline-based planner            --> 'spline'
 params.plannerName = 'spline';
+params.inSim = true; % if we are in simulation or in hardware
 
 %% Dynamical System Params.
 params.wMax = 1;

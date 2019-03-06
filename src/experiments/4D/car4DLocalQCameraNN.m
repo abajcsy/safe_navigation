@@ -4,14 +4,20 @@ function params = car4DLocalQCameraNN()
 params.lowEnv = [15;30];
 params.upEnv = [21;36];
 
+% Environment types include:
+%   hand-coded obstacles        --> 'hand'
+%   stanford building dataset   --> 'sbpd'
+%   SLAM environment            --> 'slam'
+params.envType = 'sbpd'; 
+
 %% ROS Params.
 params.verifiedTopicName = '/verified_traj';
 params.occuMapTopicName = '/map';
 params.planTopicName = '/planned_traj';
 
 %% Grid Params.
-gridLow = [params.lowEnv;-pi;0.0];
-gridUp = [params.upEnv;pi;0.6];
+gridLow = [params.lowEnv;-pi;-0.1];
+gridUp = [params.upEnv;pi;0.7];
 N = [41;41;11;11];
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
@@ -22,13 +28,15 @@ params.xgoal = [16.2; 34.6; 0.; 0.];
 
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
+params.loadTrueOccuMaps = true; % if we can load in ground-truth occupancy maps.
 
 %% Dynamical System Params.
 params.wMax = 1.1;              % maxangular control
 params.aRange = [-0.4, 0.4];    % acceleration control range
+params.vRange = [0.0, 0.6];     % speed range
 
 % Define dynamic system. 
-params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange);
+params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange, params.vRange);
 
 %% Safety Update Params.
 
@@ -38,10 +46,10 @@ params.useSafety = true;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'localQ';
+params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
-params.warmStart = true;
+params.warmStart = false;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
@@ -56,7 +64,7 @@ params.tMax = 50;
 
 %% Sensing Params.
 params.senseShape = 'camera';
-params.initialR = 1.5; % The initial radius of the safe region
+params.initialR = 0.5; % The initial radius of the safe region
 params.senseFOV = pi/6; % The (half) field-of-view of the camera
 params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
 

@@ -291,6 +291,15 @@ classdef Plotter < handle
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
         end
         
+        %% Plots an occupancy map.
+        function h = plotOccuMap(obj, grid, occuMap)
+            [gPlot, dataPlot] = proj(grid, grid.xs{1}, [0 0 1 1], [0 0]);
+            h = contourf(gPlot.xs{1}, gPlot.xs{2}, -occuMap, [0 0]);
+            xlim([obj.lowEnv(1) obj.upEnv(1)]);
+            ylim([obj.lowEnv(2) obj.upEnv(2)]);
+            colormap gray;
+        end
+        
         %% Plots optimal path
         function plotTraj(obj, path)
             if ~isempty(obj.trajh)

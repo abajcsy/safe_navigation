@@ -4,6 +4,12 @@ function params = car3DHJICameraRRT()
 params.lowEnv = [0;0];
 params.upEnv = [10;7];
 
+% Environment types include:
+%   hand-coded obstacles        --> 'hand'
+%   stanford building dataset   --> 'sbpd'
+%   SLAM environment            --> 'slam'
+params.envType = 'hand'; 
+
 % Obstacles lower & upper bounds in 2D
 params.obsShape = 'rectangle';
 params.obstacles = {{[4;1], [7;4]}};
@@ -25,6 +31,7 @@ params.plannerName = 'rrt';
 params.maxIter = 50;   % max number of iterations
 params.dx = 0.01;      % size of step along edges for collision-checking
 params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
+params.inSim = true; % if we are in simulation or in hardware
 
 %% Dynamical System Params.
 params.wMax = 1;
