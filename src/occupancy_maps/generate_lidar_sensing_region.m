@@ -75,4 +75,21 @@ if ~isempty(obs_indicies_of_interest)
   occupancy_grid(indicies_to_trace) = occupancy_status;
 end
 
+% Take care of weird lidar artifacts to only have a single big island
+components = bwconncomp(0.5*(occupancy_grid+1));
+pixel_components = components.PixelIdxList;
+num_pixel_components = length(pixel_components);
+if num_pixel_components > 1
+  max_length = 0;
+  for i=1:num_pixel_components
+    pixel_component_size = size(pixel_components{i});
+    if pixel_component_size(1) > max_length
+      max_length = pixel_component_size(1);
+      max_component_index = i;
+    end
+  end
+  occupancy_grid = -1 * ones(size(occupancy_grid));
+  occupancy_grid(pixel_components{max_component_index}) = 1;
+end
+
 end

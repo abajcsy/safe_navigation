@@ -228,7 +228,7 @@ classdef OccuMap < handle
                   % Record which states we have sensed. 
                   % (+1 sensed, -1 unsensed)                  
                   %obj.sensed_region = max(obj.sensed_region, dataSense);
-                  
+
                   % Update occupancy grid with newly sensed obstacles.
                   obj.occupancy_map_plan = -dataSense;
                   sensedIndicies = find(dataSense > 0);
