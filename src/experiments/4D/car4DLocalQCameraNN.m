@@ -1,8 +1,8 @@
 function params = car4DLocalQCameraNN()
 %% Environment Params.
 % Setup environment bounds.
-params.lowEnv = [0;0];
-params.upEnv = [10;7];
+params.lowEnv = [15;30];
+params.upEnv = [21;36];
 
 %% ROS Params.
 params.verifiedTopicName = '/verified_traj';
@@ -12,19 +12,19 @@ params.planTopicName = '/planned_traj';
 %% Grid Params.
 gridLow = [params.lowEnv;-pi;0.0];
 gridUp = [params.upEnv;pi;0.6];
-N = [31;31;21;11];
+N = [41;41;11;11];
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [2.0; 2.5; pi/2; 0.];
-params.xgoal = [8.5; 2.5; -pi/2; 0.];
+params.xinit = [19.05; 31.4; 0.; 0.];
+params.xgoal = [16.2; 34.6; 0.; 0.];
 
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
 
 %% Dynamical System Params.
-params.wMax = 1.1;          % maxangular control
+params.wMax = 1.1;              % maxangular control
 params.aRange = [-0.4, 0.4];    % acceleration control range
 
 % Define dynamic system. 

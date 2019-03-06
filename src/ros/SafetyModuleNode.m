@@ -205,9 +205,9 @@ classdef SafetyModuleNode < handle
         end
         
         %% ---------------- Occupancy Grid Functions ------------------- %
+        
+        % Updates the safety occupancy map. 
         function updateBeliefOccuMap(obj, senseData, senseShape)
-            % TODO.
-            
             % Project the slice of obstacle
             if obj.params.grid.dim == 4
                 % Note: we just need to grab 2D computation grid here.
@@ -231,7 +231,8 @@ classdef SafetyModuleNode < handle
         function updateSignedDist(obj)
             
             % TODO: obj.lReal needs to be generated from trueOccuGrid
-            [gFMM, ~] = proj(obj.params.grid, obj.lReal, [0 0 1 1], [0, 0]);
+            [gFMM, ~] = proj(obj.params.grid, obj.params.grid.xs{1}, [0 0 1 1], [0, 0]);
+            
             % We will use the FMM code to get the signed distance function. 
             % Since the FMM code works only on 2D, we will take a slice of 
             % the grid, compute FMM, and then project it back to a 3D array.
