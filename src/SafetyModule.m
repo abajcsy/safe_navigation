@@ -183,27 +183,31 @@ classdef SafetyModule < handle
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
 %                 repo = what('safe_navigation');
-%                 %whatRepo = what('safe_navigation');
-%                 %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+                %whatRepo = what('safe_navigation');
+%                 repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
 %                 if obj.grid.dim == 3
 %                     % if we are doing 3D system, we are doing the same
 %                     % simulated environment --> can use this initial Vx
 %                     pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
-%                 else
+%                 elseif obj.grid.dim == 4
 %                     if strcmp(obj.envType, 'sbpd')
 %                         % if we are doing 4D simulation, it's in the
 %                         % stanford building data set environment.
 %                         pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD.mat');  
+%                     elseif strcmp(obj.envType, 'hand')
+%                         % if we are doing 4D hand-designed environment,
+%                         % load pre-mapped safe set.
+%                         pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');
 %                     else
-%                         % if we are doing 4D real-world, it's the
-%                         % pre-mapped safe set.
 %                         error('You need to compute the 4D real-world set!');
 %                     end
+%                 else
+%                     error('We only support computation for 3D or 4D currently!');
 %                 end
 %                 load(pathToInitialVx);
 %                 total_compute_t = 0;
                 
-                % (option 2) run the full, standard Vx computation
+%                 % (option 2) run the full, standard Vx computation
                 firstHJIextraArgs = obj.HJIextraArgs;
                 firstHJIextraArgs.stopConverge = 1;
                 firstHJIextraArgs.convergeThreshold = 0.01;

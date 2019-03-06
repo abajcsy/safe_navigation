@@ -42,7 +42,8 @@ function runExperiment(experimentFun)
     params = experimentFun();
 
     %% Setup Obstacle Map Generator.
-    map = OccuMap(params.grid, params.obstacles);
+    extraArgs.obstacles = params.obstacles;
+    map = OccuMap(params.grid, params.envType, extraArgs);
 
     % Compute the first occupancy map.
     map.updateMapAndCost(params.initSenseData, params.senseShape);
@@ -51,7 +52,7 @@ function runExperiment(experimentFun)
     if params.useSafety
         % Setup safety module object and compute first set.
         safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
-            params.dt, params.updateEpsilon, params.warmStart, params.inSim, ...
+            params.dt, params.updateEpsilon, params.warmStart, params.envType, ...
             params.updateMethod, params.tMax);
 
         % Compute the first avoid set based on current sensing.
@@ -163,7 +164,7 @@ function runExperiment(experimentFun)
         if strcmp(params.senseShape, 'circle')
           senseData = {[x(1);x(2);x(3)], [params.senseRad; params.senseRad]};
         elseif strcmp(params.senseShape, 'camera')
-          senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR]};
+          senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR; params.farPlane]};
         elseif strcmp(params.senseShape, 'lidar')
           senseData = {[x(1);x(2);x(3)], [params.senseRad]};
         else

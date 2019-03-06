@@ -245,7 +245,7 @@ classdef OccuMap < handle
                   end
                   [obj.occupancy_map_safety, dataSense] = ...
                       generate_camera_sensing_region(obj.gFMM, obsSlice, ...
-                      senseData{2}(1), senseData{1}(1:2), senseData{1}(3));
+                      senseData{2}(1), senseData{1}(1:2), senseData{1}(3), senseData{2}(3));
                   
                   % Record which states we have sensed. 
                   % (+1 sensed, -1 unsensed)                  

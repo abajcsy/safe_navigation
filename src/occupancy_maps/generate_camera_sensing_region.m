@@ -1,4 +1,4 @@
-function [occupancy_grid, sensed_region] = generate_camera_sensing_region(grid, obs, half_fov, vehicle_pos, vehicle_heading)
+function [occupancy_grid, sensed_region] = generate_camera_sensing_region(grid, obs, half_fov, vehicle_pos, vehicle_heading, far_plane)
 
 % ----- How to use this function -----
 %
@@ -10,9 +10,14 @@ function [occupancy_grid, sensed_region] = generate_camera_sensing_region(grid, 
 %   half_fov       - The half field-of-view of the camera.
 %   vehicle_pos    - The vehicle vehicle_position vector.
 %   vehicle_heading- The heading of the vehicle.
+%   far_plane      - Clip the sensing region to the far plane.
 % 
 % Outputs:
 %   u              - Signed distance over the grid.
+
+if nargin < 6
+  far_plane = inf;
+end
 
 % Initialize the occupancy grid to be occupied everywhere
 occupancy_grid = -ones(size(grid.xs{1}));
@@ -20,8 +25,12 @@ occupancy_grid = -ones(size(grid.xs{1}));
 % Compute the angle of each points on the grid to the vehicle vehicle_position
 angle_to_source = atan2(grid.xs{2} - vehicle_pos(2), grid.xs{1} - vehicle_pos(1));
 
+% Compute the distance of each point from the vehicle
+dist_to_vehicle = (grid.xs{1}-vehicle_pos(1)).^2 + ...
+  (grid.xs{2} - vehicle_pos(2)).^2 - far_plane^2;
+
 % Find the points that are inside the field of view and set them to free
-indicies_inside_fov = find(abs(angle_to_source - vehicle_heading) < half_fov);
+indicies_inside_fov = find((abs(angle_to_source - vehicle_heading) < half_fov) .* (dist_to_vehicle <= 0));
 occupancy_grid(indicies_inside_fov) = 1;
 
 % Store the set of states (unoccluded) that we could see.
