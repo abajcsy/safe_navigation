@@ -184,41 +184,41 @@ classdef SafetyModule < handle
                 % (option 1) load offline-computed infinite-horizon safe set
 %                 repo = what('safe_navigation');
                 %whatRepo = what('safe_navigation');
-%                 repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
-%                 if obj.grid.dim == 3
-%                     % if we are doing 3D system, we are doing the same
-%                     % simulated environment --> can use this initial Vx
-%                     pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
-%                 elseif obj.grid.dim == 4
-%                     if strcmp(obj.envType, 'sbpd')
-%                         % if we are doing 4D simulation, it's in the
-%                         % stanford building data set environment.
-%                         pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD.mat');  
-%                     elseif strcmp(obj.envType, 'hand')
-%                         % if we are doing 4D hand-designed environment,
-%                         % load pre-mapped safe set.
-%                         pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');
-%                     else
-%                         error('You need to compute the 4D real-world set!');
-%                     end
-%                 else
-%                     error('We only support computation for 3D or 4D currently!');
-%                 end
-%                 load(pathToInitialVx);
-%                 total_compute_t = 0;
+                repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+                if obj.grid.dim == 3
+                    % if we are doing 3D system, we are doing the same
+                    % simulated environment --> can use this initial Vx
+                    pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
+                elseif obj.grid.dim == 4
+                    if strcmp(obj.envType, 'sbpd')
+                        % if we are doing 4D simulation, it's in the
+                        % stanford building data set environment.
+                        pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD.mat');  
+                    elseif strcmp(obj.envType, 'hand')
+                        % if we are doing 4D hand-designed environment,
+                        % load pre-mapped safe set.
+                        pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');
+                    else
+                        error('You need to compute the 4D real-world set!');
+                    end
+                else
+                    error('We only support computation for 3D or 4D currently!');
+                end
+                load(pathToInitialVx);
+                total_compute_t = 0;
                 
 %                 % (option 2) run the full, standard Vx computation
-                firstHJIextraArgs = obj.HJIextraArgs;
-                firstHJIextraArgs.stopConverge = 1;
-                firstHJIextraArgs.convergeThreshold = 0.01;
-                firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
-                firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
-                firstHJIextraArgs.visualize.valueSet = 1;
-                firstWarmStart = false;
-                [dataOut, tau, extraOuts] = ...
-                HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
-                  obj.timeDisc, obj.schemeData, minWith, ...
-                  firstWarmStart, firstHJIextraArgs);
+%                 firstHJIextraArgs = obj.HJIextraArgs;
+%                 firstHJIextraArgs.stopConverge = 1;
+%                 firstHJIextraArgs.convergeThreshold = 0.01;
+%                 firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
+%                 firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+%                 firstHJIextraArgs.visualize.valueSet = 1;
+%                 firstWarmStart = false;
+%                 [dataOut, tau, extraOuts] = ...
+%                 HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+%                   obj.timeDisc, obj.schemeData, minWith, ...
+%                   firstWarmStart, firstHJIextraArgs);
             else
                 %start_t = now;
                 tic

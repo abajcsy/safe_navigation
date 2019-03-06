@@ -33,9 +33,9 @@ function dx = dynamics_i(x, u, d, vRange, dims, dim)
 
 switch dim
   case 1
-    dx = x{dims==4} .* cos(x{dims==3}) + d{1};
+    dx = x{dims==4} .* cos(x{dims==3});
   case 2
-    dx = x{dims==4} .* sin(x{dims==3}) + d{2};
+    dx = x{dims==4} .* sin(x{dims==3});
   case 3
     dx = u{1};
   case 4
