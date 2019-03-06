@@ -282,6 +282,21 @@ classdef SafetyModule < handle
             end
         end
         
+        %% Gets the optimal control to apply at state x.
+        function uOpt = getSafetyControl(obj, x)
+            if obj.grid.dim == 3
+                vx = obj.valueFun(:,:,:,end);
+            else
+                vx = obj.valueFun(:,:,:,:,end);
+            end
+            deriv = computeGradients(obj.grid, vx);
+            % value of the derivative at that particular state
+            current_deriv = eval_u(obj.grid, deriv, x);
+            % NOTE: need all 5 arguments (including NaN's) to get 
+            % correct optimal control!
+            uOpt = obj.dynSys.optCtrl(NaN, x, current_deriv, obj.uMode, NaN); 
+        end
+        
     end
 end
 

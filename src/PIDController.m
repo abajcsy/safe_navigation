@@ -117,7 +117,7 @@ classdef PIDController < handle
         %% Get reference point from trajectory in time-parametrized way.
         function xref = getTimedWaypt(obj, t)
             if t > obj.wayptTimes(end)
-                xref = obj.path{end};
+                xref = obj.path{end}(1:2);
                 return;
             end
             % parametrize the trajectory in time.
@@ -125,14 +125,14 @@ classdef PIDController < handle
                 prevt = obj.wayptTimes(i);
                 nextt = obj.wayptTimes(i+1);
                 if t >= prevt && t < nextt
-                    prevpt = obj.path{i};
-                    nextpt = obj.path{i+1};
+                    prevpt = obj.path{i}(1:2);
+                    nextpt = obj.path{i+1}(1:2);
                     xref = (nextpt - prevpt)*((t-prevt)/(nextt - prevt)) + prevpt;
                     return;
                 end
             end
             % hack.
-            xref = obj.path{end};
+            xref = obj.path{end}(1:2);
         end
         
     end

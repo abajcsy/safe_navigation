@@ -1,4 +1,4 @@
-function params = car3DWarmCamera()
+function params = car3DLocalQCameraSpline()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -21,10 +21,8 @@ params.xgoal = [8.5; 2.5; -pi/2];
 
 %   hand-engineered trajectory      --> 'hand'
 %   rapidly-exploring random-tree   --> 'rrt'
-params.plannerName = 'rrt';
-params.maxIter = 50;   % max number of iterations
-params.dx = 0.01;      % size of step along edges for collision-checking
-params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
+%   spline-based planner            --> 'spline'
+params.plannerName = 'spline';
 
 %% Dynamical System Params.
 params.wMax = 1;
@@ -37,12 +35,12 @@ params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
 %% Safety Update Params.
 
 % Use this to toggle the safety computation on/off.
-params.useSafety = false;
+params.useSafety = true;
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'HJI';
+params.updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
 params.warmStart = true;
@@ -83,11 +81,11 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = false;
+params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = true;
+params.saveOutputData = false;
 
 % Create filename if we want to save things out.
 % Naming convention:

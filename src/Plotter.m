@@ -276,8 +276,8 @@ classdef Plotter < handle
 %             yvals = grid.xs{2}(idxs);
 %             p = polyshape(xvals, yvals);
 %             [xvals, yvals] = poly2cw(p.Vertices(:,1),p.Vertices(:,2));
-%             plot(p);
-%             fill(xvals,yvals,'m', ...
+%             %plot(p);
+%             h = fill(xvals,yvals,'m', ...
 %                 'FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
             
             posIdx = find(signed_distance_map > 0);

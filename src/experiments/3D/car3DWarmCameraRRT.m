@@ -1,4 +1,4 @@
-function params = car3DWarmLidar()
+function params = car3DWarmCameraRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -59,9 +59,10 @@ params.uMode = 'max';
 params.tMax = 50;
 
 %% Sensing Params.
-params.senseShape = 'lidar';
-params.senseRad = 3;
-params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseRad]};
+params.senseShape = 'camera';
+params.initialR = 1.5; % The initial radius of the safe region
+params.senseFOV = pi/6; % The (half) field-of-view of the camera
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.
@@ -82,7 +83,7 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = true;
+params.visualize = false;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..

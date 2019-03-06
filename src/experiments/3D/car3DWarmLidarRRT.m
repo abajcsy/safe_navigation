@@ -1,4 +1,4 @@
-function params = car3DHJILidar()
+function params = car3DWarmLidarRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -45,7 +45,7 @@ params.useSafety = false;
 params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
-params.warmStart = false;
+params.warmStart = true;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update

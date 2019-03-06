@@ -1,4 +1,4 @@
-function params = car3DHJICamera()
+function params = car3DLocalQCameraRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -37,15 +37,15 @@ params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
 %% Safety Update Params.
 
 % Use this to toggle the safety computation on/off.
-params.useSafety = false;
+params.useSafety = true;
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'HJI';
+params.updateMethod = 'localQ';
 
 % If we want to warm start with prior value function.
-params.warmStart = false;
+params.warmStart = true;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
@@ -83,11 +83,11 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = false;
+params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = true;
+params.saveOutputData = false;
 
 % Create filename if we want to save things out.
 % Naming convention:
