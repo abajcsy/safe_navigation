@@ -182,11 +182,13 @@ classdef SafetyModule < handle
             
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                repo = what('safe_navigation');
+%                 repo = what('safe_navigation');
+%                 whatRepo = what('safe_navigation');
+                repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
                 if obj.grid.dim == 3
-                    pathToInitialVx = strcat(repo.path, '/data/initialVx3D.mat');
+                    pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
                 else
-                    pathToInitialVx = strcat(repo.path, '/data/initialVx4D.mat');  
+                    pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');  
                 end
                 load(pathToInitialVx);
                 total_compute_t = 0;
@@ -271,6 +273,9 @@ classdef SafetyModule < handle
                 % correct optimal control!
                 uOpt = obj.dynSys.optCtrl(NaN, x, current_deriv, obj.uMode, NaN); 
                 onBoundary = true;
+                if obj.grid.dim == 4
+                  uOpt = [uOpt{1}; uOpt{2}];
+                end
             else
                 uOpt = zeros(length(x), 1);
                 onBoundary = false;

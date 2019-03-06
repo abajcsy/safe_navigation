@@ -803,6 +803,8 @@ end
 % to have the l(x) value -- need this for V(x) to change at all (in
 % theory!)
 data0(Q) = lx(Q);
+% Q1 = find(lxOld <= 0);
+% data0(Q1) = lx(Q1);
 
 % Store the old value for comparison
 Qold = [];

@@ -5,12 +5,12 @@ function run_experiments()
     clf 
     clc 
     clear 
-    %close all
+    close all
     
     % Compile FMM c-code.
-    whatRepo = what('safe_navigation');
-    repo = whatRepo.path;
-    %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+%     whatRepo = what('safe_navigation');
+%     repo = whatRepo.path;
+    repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
     filename = 'mexEikonalFMM.cpp';
     cppPath = strcat(repo, '/src/fmm/cversion/', filename);
     mex(cppPath);
@@ -19,6 +19,7 @@ function run_experiments()
     %experiments = {@car3DLocalQCamera, ...
                   %@car3DWarmCamera, ...
                   %@car3DHJICamera;
+%       experiments = {@car3DLocalQCamera};
                   
     experiments = {@car4DLocalQCamera};
     
@@ -181,8 +182,8 @@ function runExperiment(experimentFun)
         end
 
         if params.visualize
-            %plt.updateOccuMapSafe(map.gFMM, sign(safety.lCurr(:,:,1)));
-            %plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
+%             plt.updateOccuMapSafe(map.gFMM, sign(safety.lCurr(:,:,1)));
+%             plt.updateOccuMapPlan(map.gFMM, map.occupancy_map_plan);
             
             % Update plotting.
             plt.updatePlot(x, params.xgoal, safety.valueFun, ...

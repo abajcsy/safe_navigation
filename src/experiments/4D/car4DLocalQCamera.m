@@ -9,8 +9,8 @@ params.obsShape = 'rectangle';
 params.obstacles = {{[4;1], [7;4]}};
 
 %% Grid Params.
-gridLow = [params.lowEnv;-pi;0.0];
-gridUp = [params.upEnv;pi;0.6];
+gridLow = [params.lowEnv;-pi;-0.1];
+gridUp = [params.upEnv;pi;0.7];
 N = [31;31;21;11];
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
@@ -29,9 +29,10 @@ params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
 %% Dynamical System Params.
 params.wMax = 1.1;          % maxangular control
 params.aRange = [-0.4, 0.4];    % acceleration control range
+params.vRange = [0.0, 0.6];    % speed range
 
 % Define dynamic system. 
-params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange);
+params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange, params.vRange);
 
 %% Safety Update Params.
 

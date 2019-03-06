@@ -37,7 +37,7 @@ params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
 %% Safety Update Params.
 
 % Use this to toggle the safety computation on/off.
-params.useSafety = false;
+params.useSafety = true;
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'

@@ -726,6 +726,8 @@ Q = find((lxOld <= 0).*(lx > 0));
 % to have the l(x) value -- need this for V(x) to change at all (in
 % theory!)
 data0(Q) = lx(Q);
+% Q1 = find(lxOld <= 0);
+% data0(Q1) = lx(Q1);
 
 % Vector that helps us convert from 3D to linear indicies.
 szDims = size(data0);
@@ -752,7 +754,7 @@ neighbors = [];
 pDim = 3;
 for dim=1:schemeData.dynSys.nx
 	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, pDim);
-    neighbors = [neighbors; neighList];
+  neighbors = [neighbors; neighList];
 end
 Q = vertcat(Q, neighbors(:));
 Q = unique(Q);
@@ -1377,8 +1379,6 @@ function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, gr
 
       % Take into account periodic boundaries
       if dim == periodicDim
-        zero_indicies = find(leftNeigh(:, dim) <= 0);
-        leftNeigh(zero_indicies, dim) = leftNeigh(zero_indicies) - 1;
         rightNeigh(:, dim) = mod(rightNeigh(:, dim)-1, grid.shape(dim)) + 1;
         leftNeigh(:, dim) = mod(leftNeigh(:, dim)-1, grid.shape(dim)) + 1;
       end
@@ -1386,11 +1386,19 @@ function neighList = getNeigh(linIndicies, dim, numNeighs, stride, maxLinIdx, gr
       % Make sure we don't return neighbors that are outside of our
       % computation grid.
       valid_indicies = find((rightNeigh(:, dim) <= grid.shape(dim)) .* (rightNeigh(:, dim) > 0));
-      rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3));
+      if grid.dim == 3
+        rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3));
+      else
+        rightNeigh = sub2ind(grid.shape, rightNeigh(valid_indicies, 1), rightNeigh(valid_indicies, 2), rightNeigh(valid_indicies, 3), rightNeigh(valid_indicies, 4));
+      end
       neighList = [neighList; rightNeigh(:)];
 
       valid_indicies = find((leftNeigh(:, dim) <= grid.shape(dim)) .* (leftNeigh(:, dim) > 0));
-      leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3));
+      if grid.dim == 3
+        leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3));
+      else
+        leftNeigh = sub2ind(grid.shape, leftNeigh(valid_indicies, 1), leftNeigh(valid_indicies, 2), leftNeigh(valid_indicies, 3), leftNeigh(valid_indicies, 4));
+      end
       neighList = [neighList; leftNeigh(:)];
     end
 end

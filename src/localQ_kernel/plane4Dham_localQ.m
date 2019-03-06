@@ -21,15 +21,21 @@ checkStructureFields(schemeData, 'grid',  'dynSys')
 
 g = schemeData.grid;
 wMax = schemeData.dynSys.wMax;
-arange = schemeData.dynSys.aRange;
+aRange = schemeData.dynSys.aRange;
+vRange = schemeData.dynSys.vRange;
 
 v_Q = g.xs{4}(Q);
 theta_Q = g.xs{3}(Q);
+aeffMin = (v_Q > vRange(1)) .* aRange(1);
+aeffMax = (v_Q < vRange(2)) .* aRange(2);
 
-hamValue = deriv{1} .* (v_Q.*cos(theta_Q)) + ...
-  deriv{2} .* (v_Q.*sin(theta_Q)) + ...
-  -wMax * abs(deriv{3}) + ...
-  (deriv{4}>=0).*deriv{4}*arange(1) + (deriv{4}<0).*deriv{4}*arange(2);
+if strcmp(schemeData.uMode, 'max')
+
+  hamValue = deriv{1} .* (v_Q.*cos(theta_Q)) + ...
+    deriv{2} .* (v_Q.*sin(theta_Q)) + ...
+    wMax * abs(deriv{3}) + ...
+    (deriv{4}>=0).*deriv{4}.*aeffMax + (deriv{4}<0).*deriv{4}.*aeffMin;
+end
 
 hamValue = -hamValue;
 end
