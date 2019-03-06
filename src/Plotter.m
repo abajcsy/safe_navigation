@@ -191,7 +191,7 @@ classdef Plotter < handle
             if isfield(extraArgs, 'cmap')
                 cmap = extraArgs.cmap;
             else
-                cmap = 'hot';
+                cmap = 'gray';
             end
             
             % Visualize final set.
