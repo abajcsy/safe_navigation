@@ -18,7 +18,7 @@ params.planTopicName = '/planned_traj';
 %% Grid Params.
 gridLow = [params.lowEnv;-pi;-0.1];
 gridUp = [params.upEnv;pi;0.7];
-N = [41;41;11;11];
+N = [31;31;21;11]; %[41;41;11;11];
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
@@ -79,6 +79,6 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.01;
+params.safetyTol = 0.001;
 
 end

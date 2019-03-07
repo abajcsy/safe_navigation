@@ -36,5 +36,6 @@ g = processGrid(g);
 % Change the grid resolution
 occupancy_grid_trimmed = interp2(g.xs{1}', g.xs{2}', occupancy_grid_trimmed', ...
                                  grid.xs{1}, grid.xs{2});
-occupancy_grid_trimmed = sign(occupancy_grid_trimmed);
+free_space_threshold = 0.99;
+occupancy_grid_trimmed = sign(occupancy_grid_trimmed - free_space_threshold);
 end

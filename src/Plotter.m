@@ -62,8 +62,12 @@ classdef Plotter < handle
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
-                c = [0.1,0.8,0.5];
-                scatter(xgoal(1),xgoal(2),[],c,'filled');
+                c = [0.1,0.8,0.5,0.5];
+                %circles([xgoal(1), xgoal(2)],0.3, 'color', c);
+                rad = 0.3;
+                pos = [xgoal(1)-rad, xgoal(2)-rad, rad*2, rad*2];
+                rectangle('Position',pos,'Curvature',1.0,'FaceColor',c,'LineStyle','none');
+                scatter(xgoal(1),xgoal(2),[],[0.0,0.8,0.5],'filled');
             end
             %figure(obj.figh);
             

@@ -193,7 +193,14 @@ classdef SafetyModule < handle
                     if strcmp(obj.envType, 'sbpd')
                         % if we are doing 4D simulation, it's in the
                         % stanford building data set environment.
-                        pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD.mat');  
+                        if isequal(obj.grid.shape, [31 31 21 11])
+                            pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_31312111.mat'); 
+                        elseif isequal(obj.grid.shape, [41 41 11 11])
+                            pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_41411111.mat'); 
+                        else
+                            error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
+                                obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
+                        end
                     elseif strcmp(obj.envType, 'hand')
                         % if we are doing 4D hand-designed environment,
                         % load pre-mapped safe set.
@@ -207,7 +214,7 @@ classdef SafetyModule < handle
                 load(pathToInitialVx);
                 total_compute_t = 0;
                 
-%                 % (option 2) run the full, standard Vx computation
+                % (option 2) run the full, standard Vx computation
 %                 firstHJIextraArgs = obj.HJIextraArgs;
 %                 firstHJIextraArgs.stopConverge = 1;
 %                 firstHJIextraArgs.convergeThreshold = 0.01;
