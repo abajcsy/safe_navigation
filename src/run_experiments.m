@@ -98,7 +98,7 @@ function runExperiment(experimentFun)
 
         % Plot environment, car, and sensing.
         plt = Plotter(params.lowEnv, params.upEnv, ...
-            map.boundLow, map.boundUp, params.obstacles);
+            map.boundLow, map.boundUp, params.envType, params.obstacles);
         plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, ...
             map.grid, map.gFMM, map.occupancy_map_safety, path, false);
         pause(params.dt);

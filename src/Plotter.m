@@ -4,7 +4,8 @@ classdef Plotter < handle
     properties
         lowEnv      % (arr) lower (x,y) corner of environment
         upEnv       % (arr) upper (x,y) corner of environment
-        obstacles   % (cell arr) lower & upper corners of obstacles
+        envType     % (string) environment type 
+        obstacles   % either lower & upper corners of obstacles or obsmap
         
         % figure handles
         figh
@@ -25,9 +26,10 @@ classdef Plotter < handle
     
     methods
         %% Constructor.
-        function obj = Plotter(lowEnv, upEnv, boundLow, boundUp, obstacles)
+        function obj = Plotter(lowEnv, upEnv, boundLow, boundUp, envType, obstacles)
             obj.lowEnv = lowEnv;
             obj.upEnv = upEnv;
+            obj.envType = envType;
             obj.obstacles = obstacles;
             obj.envh = [];
             obj.senseh = [];
@@ -39,6 +41,7 @@ classdef Plotter < handle
             obj.planmaph = [];
             obj.boundLow = boundLow;
             obj.boundUp = boundUp;
+            hold on
         end
         
         %% Updates the plot (environment, sensing, set, car)
@@ -47,7 +50,7 @@ classdef Plotter < handle
         %       xgoal   -- goal state 
         %       setObj  -- avoid set object
         function updatePlot(obj, x, xgoal, valueFun, g, gMap, ...
-                occuMap, path, usedUOpt)
+                sensingMap, path, usedUOpt)
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.senseh);
@@ -85,13 +88,14 @@ classdef Plotter < handle
             end
             
             % Visualize environment 
-            obj.envh = obj.plotEnvironment();
+            obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(gMap, occuMap);
+            obj.senseh = obj.plotSensing(gMap, sensingMap);
+            obj.plotTraj(path);
             obj.carh = obj.plotCar(x, usedUOpt);
             obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
-            obj.plotTraj(path);
+            
         end
         
         %% Plots the occupancy map as understood by the safety module.
@@ -126,17 +130,23 @@ classdef Plotter < handle
         %% Plots the environment with the obstacle.
         % Output: 
         %   e - figure handle
-        function e = plotEnvironment(obj)
+        function e = plotEnvironment(obj, grid2D)
             
-            for i=1:length(obj.obstacles)
-                lowObs = obj.obstacles{i}{1};
-                upObs = obj.obstacles{i}{2};
-                width = upObs(1) - lowObs(1);
-                height = upObs(2) - lowObs(2);
-                obsCoord = [lowObs(1), lowObs(2), width, height];
-                %e = rectangle('Position', obsCoord, 'Linewidth', 2.0, 'LineStyle', '--'); 
-                e = rectangle('Position', obsCoord, ...
-                    'FaceColor', [0.9,0.9,0.9], 'EdgeColor', [0.5,0.5,0.5]); 
+            if strcmp(obj.envType, 'hand')
+                for i=1:length(obj.obstacles)
+                    lowObs = obj.obstacles{i}{1};
+                    upObs = obj.obstacles{i}{2};
+                    width = upObs(1) - lowObs(1);
+                    height = upObs(2) - lowObs(2);
+                    obsCoord = [lowObs(1), lowObs(2), width, height];
+                    %e = rectangle('Position', obsCoord, 'Linewidth', 2.0, 'LineStyle', '--'); 
+                    e = rectangle('Position', obsCoord, ...
+                        'FaceColor', [0.9,0.9,0.9], 'EdgeColor', [0.5,0.5,0.5]); 
+                end
+            elseif strcmp(obj.envType, 'sbpd')
+                e = contourf(grid2D.xs{1}, grid2D.xs{2}, -obj.obstacles, [0 0]);
+            else
+                error('Plotting does not support %s environments right now.', obj.envType);
             end
             
             % Setup the figure axes to represent the entire environment

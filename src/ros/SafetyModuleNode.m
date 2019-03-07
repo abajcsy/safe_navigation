@@ -20,28 +20,25 @@ classdef SafetyModuleNode < handle
         trueOccuMap     % (arr) (Localized) Ground-truth occupancy map data.
         res             % (float) Ground-truth dx resolution. 
         origin          % (arr) Ground-truth lower x,y coordinate.
-        %beliefOccuMap   % (arr) Occupancy map based on what we have sensed.
-        %signedDist      % (arr) Signed distance function based on beliefOccuMap. 
         
-        % Figure handles.
-        plt
-        carh
-        maph
-        safeh 
+        % Figure data.
+        plotter
     end
     
     methods
         %% Constructor
         function obj = SafetyModuleNode()
             clf
+            rmpath(genpath('/home/somilb/Documents/MATLAB/helperOC/'));
+            addpath(genpath('/home/somilb/Documents/MATLAB/helperOC_dev/'));
+            addpath(genpath('/home/somilb/Documents/Projects/visual_mpc/safe_navigation_ws/src/matlab_gen/'));
+            addpath(genpath('/home/somilb/Documents/Projects/safe_navigation/'));
+            
             % Create a new node.
             rosinit 
             
             % Load up all the experimental parameters.
             obj.params = car4DLocalQCameraNN();
-            
-            % Setup ROS pub/sub.
-            obj.registerCallbacks();
             
             if obj.params.loadTrueOccuMaps 
                 % Load the saved ground-truth occupancy maps.
@@ -55,6 +52,10 @@ classdef SafetyModuleNode < handle
                 obj.sbpdOccuMap = sbpdOccuMap;
                 obj.trueOccuMap = trueOccuMap; 
             else
+                % Subscriber that listens to occupancy grid.
+                occuMapMsgType = 'nav_msgs/OccupancyGrid';
+                obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, occuMapMsgType);
+                
                 % Grab the ground-truth occupancy map from Python.
                 fprintf('Listening over ROS to ground-truth SBPD occupancy map.\n');
                 msg = receive(obj.occuMapSub, 10);
@@ -66,26 +67,23 @@ classdef SafetyModuleNode < handle
                             obj.params.uMode, obj.params.dt, ...
                             obj.params.updateEpsilon, obj.params.warmStart, ...
                             obj.params.envType, obj.params.updateMethod, obj.params.tMax);
-                        
+            
+            % Create the map and plotting objects.
             extraArgs.occuMap = obj.trueOccuMap;
             obj.map = OccuMap(obj.params.grid, obj.params.envType, extraArgs);
-            obj.plt = Plotter(obj.params.lowEnv, obj.params.upEnv,[],[],[]);
-            
-            % ----- Plot initial state of car and ground-truth occupancy
-            % map. -----
-            hold on
-            obj.maph = obj.plt.plotOccuMap(obj.params.grid, obj.trueOccuMap);
-            obj.carh = obj.plt.plotCar(obj.params.xinit, false);
+            obj.plotter = Plotter(obj.params.lowEnv, obj.params.upEnv, ...
+                obj.map.boundLow, obj.map.boundUp, obj.params.envType, obj.trueOccuMap);
             
             % Compute the first avoid set based on initial safe set.
             obj.map.updateMapAndCost(obj.params.initSenseData, obj.params.senseShape);
             obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
             
-            % ---- Plot the safe set. -----
-            funToSee = obj.safety.valueFun(:,:,:,:,end);
-            extraArgs.theta = obj.params.xinit(3);
-            extraArgs.vel = obj.params.xinit(4);
-            obj.safeh = obj.plt.plotFuncLevelSet(obj.params.grid, funToSee, true, extraArgs);
+            % Update the plotting.
+            obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, obj.safety.valueFun, ...
+                obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
+            
+            % Setup ROS pub/sub for trajectories to verify.
+            obj.registerCallbacks();
             
             % Spin and let everything go.
             rate = rosrate(100);
@@ -103,12 +101,6 @@ classdef SafetyModuleNode < handle
             verifiedMsgType = 'safe_navigation_msgs/Trajectory';
             obj.verifiedPub = rospublisher(obj.params.verifiedTopicName,verifiedMsgType);
 
-            if obj.params.loadTrueOccuMaps
-                % Subscriber that listens to occupancy grid.
-                occuMapMsgType = 'nav_msgs/OccupancyGrid';
-                obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, occuMapMsgType);
-            end
-            
             % Subscriber that listens to planned trajectory
             planMsgType = 'safe_navigation_msgs/Trajectory';
             obj.planSub = rossubscriber(obj.params.planTopicName, planMsgType, @obj.verifyPlanCallback);
@@ -120,7 +112,7 @@ classdef SafetyModuleNode < handle
         function msg = toTrajMsg(obj, x0, controls)
             msg = rosmessage('safe_navigation_msgs/Trajectory');
             
-            % grab just first state
+            % send out just initial condition
             initState = rosmessage('safe_navigation_msgs/State');
             initState.X = x0;
             
@@ -128,8 +120,8 @@ classdef SafetyModuleNode < handle
             msg.Controls = [];
             for i=1:length(controls)
                 control = rosmessage('safe_navigation_msgs/Control');
-                control.U = controls(i);
-                msg.Controls = [msg.Controls, control];
+                control.U = controls{i};
+                msg.Controls(end+1) = control;
             end
         end
         
@@ -177,10 +169,23 @@ classdef SafetyModuleNode < handle
             end
             controls = msg.Controls; % extract safe_navigation_msgs/Control[] 
             
+            x0(3) = wrapToPi(x0(3)); % make sure we wrap to [-pi, pi]
             verifiedX0 = x0;    % stores initial state of planned traj
-            verifiedU = [];     % stores sequence of verified controls
+            verifiedU = {};     % stores sequence of verified controls
             xcurr = x0;         % state to start our verification from
+            xplan = x0;
             appliedUOpt = false;
+            
+            % just for visualization, store planned states.
+            planPath = {xplan};
+            for i=1:length(controls)
+                % (JUST FOR VISUALIZATION) simulate fwd with plan's
+                % control.
+                uplan = controls(i).U; 
+                obj.params.dynSys.updateState(uplan, obj.params.dt, xplan);
+                xplan = obj.params.dynSys.x;
+                planPath{end+1} = xplan;
+            end
             
             for i=1:length(controls) 
                 if appliedUOpt
@@ -194,7 +199,7 @@ classdef SafetyModuleNode < handle
                     
                     % check the safety of the state we reach by applying control
                     [uOpt, onBoundary] = ...
-                    obj.safety.checkAndGetSafetyControl(xcurr, obj.params.safetyTol);
+                        obj.safety.checkAndGetSafetyControl(xcurr, obj.params.safetyTol);
                     % if state we reach is unsafe
                     if onBoundary
                         u = uOpt;
@@ -205,23 +210,27 @@ classdef SafetyModuleNode < handle
                 % Get the new sensing region.
                 if strcmp(obj.params.senseShape, 'camera')
                   senseData = {[xcurr(1);xcurr(2);xcurr(3)], ...
-                      [obj.params.senseFOV; obj.params.initialR]};
+                      [obj.params.senseFOV; obj.params.initialR; obj.params.farPlane]};
                 else
                   error('Right now, I cannot use a %s with a %s planner\n', ...
                       obj.params.senseShape, obj.params.plannerName);
                 end  
                 
                 % update the occupancy map based on the current state
-                obj.updateBeliefOccuMap(senseData, obj.params.senseShape);
-                obj.updateSignedDist();
+                obj.map.updateMapAndCost(senseData, obj.params.senseShape);
                 
                 % modify verified control sequence.
-                verifiedU = [verifiedU, u];
-
+                verifiedU{end+1} = u;
+                
             	% simulate the trajectory forward (applying safe or planned
                 % control)
                 obj.params.dynSys.updateState(u, obj.params.dt, xcurr);
                 xcurr = obj.params.dynSys.x;
+                
+                % update plotting
+                obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.safety.valueFun, ...
+                    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
+                pause(obj.params.dt);
             end
             
             % construct verified trajectory message
@@ -234,62 +243,13 @@ classdef SafetyModuleNode < handle
             % robot will see assuming it will execute (exactly) the 
             % verified control sequence
             currTime = 1; % TODO: this is wrong, but doesn't really matter.
-            obj.safety.computeAvoidSet(obj.signedDist, currTime);
+            obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
+            
+            % update plotting after value function is updated
+            obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.safety.valueFun, ...
+                obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
         end
         
-        %% ---------------- Occupancy Grid Functions ------------------- %
-        
-        % Updates the safety occupancy map. 
-        function updateBeliefOccuMap(obj, senseData, senseShape)
-            % Project the slice of obstacle
-            if obj.params.grid.dim == 4
-                % Note: we just need to grab 2D computation grid here.
-                [gFMM, ~] = proj(obj.params.grid, obj.params.grid.xs{1}, [0 0 1 1], [0, 0]);
-            else
-                error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
-            end
-            
-            if strcmp(senseShape, 'circle')
-                % Record which states we have sensed. 
-                % (+1 sensed, -1 unsensed)
-                sensingShape = -shapeCylinder(obj.params.grid, [3,4], senseData{1}(1:2), senseData{2}(2));
-
-                % Union the sensed region with the actual obstacle.
-                unionL = shapeUnion(sensingShape, obj.lReal);
-                % Project the slice of unionL and create an occupancy map
-                [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
-
-                % also: subtract small epsilon in case we get zero's
-                epsilon = 1e-6;
-                obj.beliefOccuMap = sign(dataFMM-epsilon);
-            elseif strcmp(senseShape, 'camera')
-                [obj.beliefOccuMap, ~] = ...
-                    generate_camera_sensing_region(gFMM, obj.trueOccuMap, ...
-                        senseData{2}(1), senseData{1}(1:2), senseData{1}(3));
-            else
-                error('Right now, I cannot use a %s with the safety module.\n', ...
-                      obj.params.senseShape);
-            end
-        end
-        
-        % Updates signed distance function used by safety given the 
-        % current belief occupancy grid.
-        function updateSignedDist(obj)
-            
-            % TODO: obj.lReal needs to be generated from trueOccuGrid
-            [gFMM, ~] = proj(obj.params.grid, obj.params.grid.xs{1}, [0 0 1 1], [0, 0]);
-            
-            % We will use the FMM code to get the signed distance function. 
-            % Since the FMM code works only on 2D, we will take a slice of 
-            % the grid, compute FMM, and then project it back to a 3D array.
-            unionL_2D_FMM = compute_fmm_map(gFMM, obj.beliefOccuMap);
-            
-            if obj.params.grid.dim == 4
-                obj.signedDist = repmat(unionL_2D_FMM, 1, 1, obj.params.grid.N(3), obj.params.grid.N(4));
-            else
-                error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
-            end
-        end
     end
 end
 
