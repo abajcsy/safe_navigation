@@ -20,6 +20,8 @@ classdef SafetyModuleNode < handle
         trueOccuMap     % (arr) (Localized) Ground-truth occupancy map data.
         res             % (float) Ground-truth dx resolution. 
         origin          % (arr) Ground-truth lower x,y coordinate.
+        realWidth       % (float) real width of SBPD environment.
+        realHeight      % (float) real height of SBPD environment.
         
         % Figure data.
         plotter
@@ -44,13 +46,17 @@ classdef SafetyModuleNode < handle
                 % Load the saved ground-truth occupancy maps.
                 fprintf('Loading ground-truth SBPD occupancy map.\n');
                 repo = what('safe_navigation');
-                sbpdPath = strcat(repo.path, '/data/sbpdOccuMap.mat'); 
-                truePath = strcat(repo.path, '/data/trueOccuMap.mat'); 
+                sbpdPath = strcat(repo.path, '/data/sbpdOccuMapInfo.mat');  
                 load(sbpdPath);
-                load(truePath);
-                % note: need to transpose to get correct coordinates.
                 obj.sbpdOccuMap = sbpdOccuMap;
-                obj.trueOccuMap = trueOccuMap; 
+                obj.origin = sbpdOrigin;
+                obj.res = resolution;
+                obj.realHeight = realHeight;
+                obj.realWidth = realWidth;
+                
+                %truePath = strcat(repo.path, '/data/trueOccuMap.mat');
+                %obj.trueOccuMap = trueOccuMap; 
+                %load(truePath);
             else
                 % Subscriber that listens to occupancy grid.
                 occuMapMsgType = 'nav_msgs/OccupancyGrid';
@@ -61,6 +67,10 @@ classdef SafetyModuleNode < handle
                 msg = receive(obj.occuMapSub, 10);
                 obj.saveGroundTruthOccupancyGrids(msg);
             end
+            
+            % Extract the ground-truth occupancy map based on our compute
+            % grid.
+            obj.getTrueOccuMap();
             
             % Setup safety module object and compute first set.
             obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
@@ -130,31 +140,35 @@ classdef SafetyModuleNode < handle
             obj.res = double(msg.Info.Resolution);
             r = msg.Info.Height;
             c = msg.Info.Width;
-            realHeight = double(r*obj.res);
-            realWidth = double(c*obj.res);
+            obj.realHeight = double(r*obj.res);
+            obj.realWidth = double(c*obj.res);
             obj.origin = [double(msg.Info.Origin.Position.X), double(msg.Info.Origin.Position.Y)];
             
             % Save the entire SBPD ground-truth occupancy map
             obj.sbpdOccuMap = double(reshape(msg.Data, [r,c])); 
             
             fprintf('Received ground truth map with: \n');
-            fprintf('    height: %f, # rows: %d\n', realHeight, r);
-            fprintf('    width: %f, # cols: %d\n', realWidth, c);
+            fprintf('    height: %f, # rows: %d\n', obj.realHeight, r);
+            fprintf('    width: %f, # cols: %d\n', obj.realWidth, c);
             fprintf('    res: %f\n', obj.res);
             
-            % Extract just the ground-truth map relative to our 
-            % compute grid.
+            % Get just the part of the grid where we will be doing computations.
+            obj.getTrueOccuMap();
+            %figure, imshow(flipud(obj.trueOccuMap'));
+        end
+        
+        % Extracts ground-truth map relative to our compute grid.
+        function getTrueOccuMap(obj)
+            % Note: only works for 4D system right now.
             if obj.params.grid.dim == 4
                 [grid2D, ~] = proj(obj.params.grid, obj.params.grid.xs{1}, [0 0 1 1], [0 0]);
             else
                 error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
             end
-            mapBounds = [obj.origin(1), obj.origin(2), ...
-                obj.origin(1) + realWidth, obj.origin(2) + realHeight];
+            mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
             obj.trueOccuMap = ...
                 generate_computation_grid(grid2D, obj.sbpdOccuMap', ...
                 obj.res, mapBounds);
-            %figure, imshow(flipud(obj.trueOccuMap'));
         end
         
         %% ------------------- ROS Callbacks  -------------------- %

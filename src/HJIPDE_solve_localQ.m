@@ -754,7 +754,7 @@ neighbors = [];
 pDim = 3;
 for dim=1:schemeData.dynSys.nx
 	neighList = getNeigh(Q, dim, numNeighs, stride, maxLinIdx, schemeData.grid, pDim);
-  neighbors = [neighbors; neighList];
+    neighbors = [neighbors; neighList];
 end
 Q = vertcat(Q, neighbors(:));
 Q = unique(Q);

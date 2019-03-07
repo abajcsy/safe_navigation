@@ -54,7 +54,7 @@ params.warmStart = true;
 % Update epislon
 %   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
-params.updateEpsilon = 0.02;
+params.updateEpsilon = 0.05;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
@@ -65,7 +65,7 @@ params.tMax = 50;
 %% Sensing Params.
 params.senseShape = 'camera';
 params.initialR = 0.5; % The initial radius of the safe region
-params.senseFOV = pi/6; % The (half) field-of-view of the camera
+params.senseFOV = pi/4; % The (half) field-of-view of the camera
 params.farPlane = 20; % The far clipping plane of the camera
 params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
     [params.senseFOV; params.initialR; params.farPlane]};
@@ -79,6 +79,6 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.05;
+params.safetyTol = 0.01;
 
 end
