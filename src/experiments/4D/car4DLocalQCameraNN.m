@@ -54,7 +54,7 @@ params.warmStart = true;
 % Update epislon
 %   used in 'localQ' for determining which states to update
 %   used in 'HJI' for convergenceThreshold 
-params.updateEpsilon = 0.05;
+params.updateEpsilon = 0.01;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
@@ -79,6 +79,6 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.001;
+params.safetyTol = 0.1;
 
 end

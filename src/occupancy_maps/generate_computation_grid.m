@@ -33,9 +33,12 @@ g.bdry = grid.bdry;
 g.N = grid_size';
 g = processGrid(g);
 
-% Change the grid resolution
-occupancy_grid_trimmed = interp2(g.xs{1}', g.xs{2}', occupancy_grid_trimmed', ...
-                                 grid.xs{1}, grid.xs{2});
-free_space_threshold = 0.99;
-occupancy_grid_trimmed = sign(occupancy_grid_trimmed - free_space_threshold);
+% Compute the signed distance function for the finer grid
+signed_distance_map = compute_fmm_map(g, occupancy_grid_trimmed); 
+signed_distance_trimmed = interp2(g.xs{1}', g.xs{2}', signed_distance_map', ...
+                                grid.xs{1}, grid.xs{2});
+safety_threshold = 0.1; % As Andrea suggested
+occupancy_grid_trimmed = sign(signed_distance_trimmed - safety_threshold);
+
+%contourf(grid.xs{1}, grid.xs{2}, -sign(occupancy_grid_trimmed), [0 0], 'r');
 end
