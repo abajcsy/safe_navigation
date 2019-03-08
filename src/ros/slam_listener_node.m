@@ -29,5 +29,8 @@ function mapCallback(~, msg)
     fprintf('     origin: (%d, %d)\n', origin(1), origin(2));
     % Save the entire SBPD ground-truth occupancy map
     slamOccuMap = double(reshape(msg.Data, [r,c])); 
-    imagesc(slamOccuMap);
+
+     imagesc(slamOccuMap);
+    xlim([0,c]);
+    ylim([0,r]);
 end
