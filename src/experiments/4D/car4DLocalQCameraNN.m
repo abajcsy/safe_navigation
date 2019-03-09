@@ -18,7 +18,7 @@ params.planTopicName = '/planned_traj';
 %% Grid Params.
 gridLow = [params.lowEnv;-pi;-0.1];
 gridUp = [params.upEnv;pi;0.7];
-N = [31;31;21;11]; %[41;41;11;11];
+N = [31;31;21;11]; 
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
@@ -60,7 +60,7 @@ params.updateEpsilon = 0.01;
 params.uMode = 'max';
 
 % Time horizon to compute BRT for.
-params.tMax = 50;
+params.tMax = 20;
 
 %% Sensing Params.
 params.senseShape = 'camera';

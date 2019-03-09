@@ -20,7 +20,7 @@ function occupancy_grid_trimmed = generate_computation_grid(grid, occupancy_func
 % Crop the grid
 dx = occupancy_map_dx;
 min_indices = floor((grid.min' - occupancy_map_bounds_4(1:2))/dx)+1;
-max_indices = ceil((grid.max' - occupancy_map_bounds_4(1:2))/dx)+1;
+max_indices = ceil((grid.max' - occupancy_map_bounds_4(1:2))/dx);
 occupancy_grid_trimmed = occupancy_func_mn(min_indices(1):max_indices(1), ...
                                            min_indices(2):max_indices(2));
                                          
@@ -37,7 +37,7 @@ g = processGrid(g);
 signed_distance_map = compute_fmm_map(g, occupancy_grid_trimmed); 
 signed_distance_trimmed = interp2(g.xs{1}', g.xs{2}', signed_distance_map', ...
                                 grid.xs{1}, grid.xs{2});
-safety_threshold = 0.1; % As Andrea suggested
+safety_threshold = 0.05; % As Andrea suggested
 occupancy_grid_trimmed = sign(signed_distance_trimmed - safety_threshold);
 
 %contourf(grid.xs{1}, grid.xs{2}, -sign(occupancy_grid_trimmed), [0 0], 'r');

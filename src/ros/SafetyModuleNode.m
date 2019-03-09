@@ -201,6 +201,10 @@ classdef SafetyModuleNode < handle
                 planPath{end+1} = xplan;
             end
             
+            % How close to zero does the spatial derivative have to be
+            % to be considered = 0?
+            gradZeroTol = 0.01;
+            
             for i=1:length(controls) 
                 if appliedUOpt
                     % if we applied safety controller, then the 
@@ -212,10 +216,13 @@ classdef SafetyModuleNode < handle
                     u = controls(i).U; 
                     
                     % check the safety of the state we reach by applying control
-                    [uOpt, onBoundary] = ...
+                    [uOpt, onBoundary, deriv] = ...
                         obj.safety.checkAndGetSafetyControl(xcurr, obj.params.safetyTol);
+                    % extract just the theta and velocity derivative;
+                    deriv = deriv(3:4);
                     % if state we reach is unsafe
                     if onBoundary
+                        %u = uOpt.*(abs(deriv) > gradZeroTol) + u.*(abs(deriv) < gradZeroTol);
                         u = uOpt;
                         appliedUOpt = true;
                     end

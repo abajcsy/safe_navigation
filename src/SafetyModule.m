@@ -197,6 +197,8 @@ classdef SafetyModule < handle
                             pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_31312111.mat'); 
                         elseif isequal(obj.grid.shape, [41 41 11 11])
                             pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_41411111.mat'); 
+                        elseif isequal(obj.grid.shape, [41 41 21 11])
+                            pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_41412111.mat'); 
                         else
                             error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
@@ -274,7 +276,7 @@ classdef SafetyModule < handle
         
         %% Checks if state x is at the safety boundary. If it is, returns
         %  the optimal safety control to take. 
-        function [uOpt, onBoundary] = checkAndGetSafetyControl(obj, x, tol)
+        function [uOpt, onBoundary, current_deriv] = checkAndGetSafetyControl(obj, x, tol)
             % Grab the value at state x from the most recent converged 
             % value function.
             if obj.grid.dim == 3
@@ -296,6 +298,7 @@ classdef SafetyModule < handle
                 onBoundary = true;
                 uOpt = cell2mat(uOpt);
             else
+                current_deriv = [0.0;0.0;0.0;0.0];
                 uOpt = zeros(length(x), 1);
                 onBoundary = false;
             end
