@@ -54,10 +54,10 @@ function mapCallback(~, msg)
     % Grab the 2D grid.
     [grid2D, ~] = proj(grid, grid.xs{1}, [0 0 1 1], [0 0]);
         mapBounds = [origin(1), origin(2), origin(1) + realWidth, origin(2) + realHeight];
-     trueOccuMap = generate_computation_grid(grid2D, slamOccuMap', res, mapBounds);
+     trueOccuMap = generate_computation_grid(grid2D, slamOccuMap, res, mapBounds);
 
-    % Plot.
-    contourf(grid2D.xs{1}, grid2D.xs{2}, trueOccuMap, [0,0]);
+    % Plot (negate so we see obstacle part as filled in).
+    contourf(grid2D.xs{1}, grid2D.xs{2}, -trueOccuMap, [0,0]);
 
     %unsensedIndicies = find(slamOccuMap(:) < 0);
     %freeIndicies = find(slamOccuMap(:) == 0);
