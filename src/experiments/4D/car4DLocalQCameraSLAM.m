@@ -1,8 +1,9 @@
 function params = car4DLocalQCameraSLAM()
 %% Environment Params.
 % Setup environment bounds.
-params.lowEnv = [15;30];
-params.upEnv = [21;36];
+sideLength = 17;
+params.lowEnv = [0;-sideLength/2];
+params.upEnv = [sideLength;sideLength/2]; 
 
 % Environment types include:
 %   hand-coded obstacles        --> 'hand'
@@ -12,7 +13,7 @@ params.envType = 'slam';
 
 %% ROS Params.
 params.verifiedTopicName = '/verified_traj';
-params.occuMapTopicName = '/map';
+params.occuMapTopicName = '/slam_map';
 params.planTopicName = '/planned_traj';
 
 %% Grid Params.
@@ -23,12 +24,12 @@ params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [19.05; 31.4; 0.; 0.];
-params.xgoal = [16.2; 34.6; 0.; 0.];
+params.xinit = [0.; 0.; 0.; 0.];
+params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO:measure goal location
 
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
-params.loadTrueOccuMaps = true; % if we can load in ground-truth occupancy maps.
+params.loadTrueOccuMaps = false; % if we can load in ground-truth occupancy maps.
 
 %% Dynamical System Params.
 params.wMax = 1.1;              % maxangular control
