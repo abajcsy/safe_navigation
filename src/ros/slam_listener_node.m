@@ -1,7 +1,16 @@
 function slam_listener_node()
     clear all
     close all
-    setenv('ROS_MASTER_URI','http://128.32.38.83:11311')
+    
+    useTurtlebot = false; 
+    if useTurtlebot
+        % If receiving SLAM map from turtlebot, set the ROS_MASTER_URI to
+        % use the turtlebot IP address.
+        setenv('ROS_MASTER_URI','http://128.32.38.83:11311')
+    else
+        setenv('ROS_MASTER_URI','http://localhost:11311')
+    end
+    
     rosinit 
     
     % Subscriber that listens to occupancy grid.
@@ -47,7 +56,7 @@ function mapCallback(~, msg)
     slamOccuMap(find(slamOccuMap == 0)) = 1;
     
     % Grid stuff.
-    sideLength = 12' %17;
+    sideLength = 17;
     lowEnv = [0;-sideLength/2];
     upEnv = [sideLength;sideLength/2]; %[realWidth+origin(1);realHeight+origin(2)];
     gridLow = [lowEnv;-pi;-0.1];
