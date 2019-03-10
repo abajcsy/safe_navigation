@@ -141,7 +141,10 @@ classdef SafetyModule < handle
             
             % ------------- CONSTRUCT l(x) ----------- %
             lxOld = obj.lCurr;
-            if isempty(obj.lCurr)
+            if isempty(obj.lCurr) || strcmp(obj.envType, 'slam')
+                % SLAM always gives us the full history of what the system 
+                % has seen to be free, so just record that corresponding
+                % signed distance function.
                 obj.lCurr = signedDist;
             else
                 obj.lCurr = shapeIntersection(signedDist, obj.lCurr);
@@ -212,8 +215,10 @@ classdef SafetyModule < handle
                         % if we are doing 4D hand-designed environment,
                         % load pre-mapped safe set.
                         pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');
+                    elseif stcmp(obj.envType, 'slam')
+                        error('You need to compute the initial SLAM safe set!');
                     else
-                        error('You need to compute the 4D real-world set!');
+                        error('You must recompute initial Vx for env type: %s', obj.envType);
                     end
                 else
                     error('We only support computation for 3D or 4D currently!');
