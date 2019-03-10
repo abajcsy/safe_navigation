@@ -57,6 +57,14 @@ classdef OccuMap < handle
                 else
                     error('SBPD environment is not supported right now for %dD system.\n', obj.grid.dim);
                 end
+            elseif strcmp(obj.envType, 'slam')
+                % Constructing based on SLAM occupancy map.
+                obsShape = extraArgs.occuMap;
+                if obj.grid.dim == 4
+                    obj.lReal = repmat(obsShape, 1, 1, obj.grid.N(3), obj.grid.N(4));
+                else
+                    error('SLAM environment is not supported right now for %dD system.\n', obj.grid.dim);
+                end
             elseif strcmp(obj.envType, 'hand')
                 % Constructing based on hand-specified obstacle map.
                  for i=1:length(extraArgs.obstacles)
@@ -111,175 +119,197 @@ classdef OccuMap < handle
         
         %% Based on sensing, update occupancy grids and signed distances.
         % Inputs:
-        %   senseData [vector]      - if rectangle sensing region, 
-        %                           (x,y) coords of lower left sensing box and
-        %                           (x,y) coords of upper right sensing box.
-        %                           if circle sensing region, 
-        %                           (x,y) coords of center and radius
-        %   senseShape [string]     - either 'rectangle' or 'circle'
+        %   senseData      - [vector] if rectangle sensing region, 
+        %                    (x,y) coords of lower left sensing box and
+        %                    (x,y) coords of upper right sensing box.
+        %                    [vector] if circle sensing region, 
+        %                    (x,y) coords of center and radius
+        %                    [array] if environment type is SLAM, 
+        %                    then senseData contains the full new occupancy
+        %                    map generated from SLAM.
+        %   senseShape [string]     - type of sensing region. 
+        %                             options: 'rectangle', 'circle',
+        %                                      'lidar', 'camera'
         function updateMapAndCost(obj, senseData, senseShape)
             % Construct cost function for region outside sensing radius
             % or 'known' environment.
-            % 
-            % NOTE: need to negate the default shape function to make sure
-            %       free space is assigned (+) and unknown space is (-)
-            if strcmp(senseShape, 'rectangle')
-                lowSenseXY = senseData{1}(1:2);
-                upSenseXY = senseData{2};
-                if obj.grid.dim == 3
-                    lowObs = [lowSenseXY;obj.grid.min(3)];
-                    upObs = [upSenseXY;obj.grid.max(3)];
-                elseif obj.grid.dim == 4
-                    lowObs = [lowSenseXY;obj.grid.min(3);obj.grid.min(4)];
-                    upObs = [upSenseXY;obj.grid.max(3);obj.grid.max(4)];
-                else
-                    error('Cannot update map and cost for a %dD system!', obj.grid.dim);
-                end
-                sensingShape = -shapeRectangleByCorners(obj.grid,lowObs,upObs);
-                
-                % Record which states we have sensed. 
-                % (+1 sensed, -1 unsensed)
-                if obj.grid.dim == 3
-                    [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1], 0);
-                else
-                    [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1 1], [0, 0]);
-                end
-                %obj.sensed_region = max(obj.sensed_region, sign(dataSense));
-                
-                % Update occupancy grid with newly sensed obstacles.
-                %[~,realObs] = proj(obj.grid, obj.lReal, [0 0 1], 0);
-                %obj.occupancy_map_plan(find((obj.sensed_region > 0).*(realObs < 0))) = -1;
-                sensedIndicies = find(dataSense > 0);
-                obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
-                
-                % Union the sensed region with the actual obstacle.
-                unionL = shapeUnion(sensingShape, obj.lReal);
-                % Project the slice of unionL and create an occupancy map
-                if obj.grid.dim == 3
-                    [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
-                else
-                    [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
-                end
-                % also: subtract small epsilon in case we get zero's
-                epsilon = 1e-6;
-                obj.occupancy_map_safety = sign(dataFMM-epsilon);
-
-            elseif strcmp(senseShape, 'circle') % if circular sensing region
-                center = senseData{1}(1:2);
-                radius = senseData{2}(1);
-                
-                % Record which states we have sensed. 
-                % (+1 sensed, -1 unsensed)
-                if obj.grid.dim == 3
-                    sensingShape = -shapeCylinder(obj.grid, 3, center, radius);
-                    [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1], 0);
-                else % 4D
-                    sensingShape = -shapeCylinder(obj.grid, [3,4], center, radius);
-                    [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1 1], [0, 0]);
-                end
-                %obj.sensed_region = max(obj.sensed_region, sign(dataSense));
-                
-                % Update occupancy grid with newly sensed obstacles.
-                sensedIndicies = find(dataSense > 0);
-                obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
-                %[~,realObs] = proj(obj.grid, obj.lReal, [0 0 1], 0);
-                %obj.occupancy_map_plan(find((obj.sensed_region > 0).*(realObs < 0))) = -1;
-                
-                % Union the sensed region with the actual obstacle.
-                unionL = shapeUnion(sensingShape, obj.lReal);
-                % Project the slice of unionL and create an occupancy map
-                if obj.grid.dim == 3
-                    [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
-                else
-                    [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
-                end
-                                  
-                % also: subtract small epsilon in case we get zero's
-                epsilon = 1e-6;
-                obj.occupancy_map_safety = sign(dataFMM-epsilon);
-                  
-            elseif strcmp(senseShape, 'camera') % if camera sensing region
-                % It is assumed that the obstacle is only position
-                % dependent in this computation.
-                
-                % If this is the first computation, use a circle; 
-                % otherwise use a camera
-                if obj.firstCompute
-                  
-                  % Record which states we have sensed. 
-                  % (+1 sensed, -1 unsensed)
-                  if obj.grid.dim == 3
-                    sensingShape = -shapeCylinder(obj.grid, 3, senseData{1}(1:2), senseData{2}(2));
-                    [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1], 0);
-                  else % 4D
-                    sensingShape = -shapeCylinder(obj.grid, [3,4], senseData{1}(1:2), senseData{2}(2));
-                    [g2D, dataSense] = proj(obj.grid, sensingShape, [0 0 1 1], [0, 0]);
-                  end
-                  %obj.sensed_region = max(obj.sensed_region, sign(dataSense));
-                  
-                  % Union the sensed region with the actual obstacle.
-                  unionL = shapeUnion(sensingShape, obj.lReal);
-                  % Project the slice of unionL and create an occupancy map
-                  if obj.grid.dim == 3
-                    [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
-                  else
-                    [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
-                  end
-                  
-                  % also: subtract small epsilon in case we get zero's
-                  epsilon = 1e-6;
-                  obj.occupancy_map_safety = sign(dataFMM-epsilon);
-                  
-                  % Do the actual camera sensing next time.
-                  obj.firstCompute = false;
-                  
-                  % Update occupancy grid with newly sensed obstacles.
-                  sensedIndicies = find(dataSense > 0);
-                  obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
-                else
-                  % Project the slice of obstacle
-                  if obj.grid.dim == 3
-                    [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
-                  else
-                    [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1 1], [0, 0]);
-                  end
-                  [obj.occupancy_map_safety, dataSense] = ...
-                      generate_camera_sensing_region(obj.gFMM, obsSlice, ...
-                      senseData{2}(1), senseData{1}(1:2), senseData{1}(3), senseData{2}(3));
-                  
-                  % Record which states we have sensed. 
-                  % (+1 sensed, -1 unsensed)                  
-                  %obj.sensed_region = max(obj.sensed_region, dataSense);
-
-                  % Update occupancy grid with newly sensed obstacles.
-                  obj.occupancy_map_plan = -dataSense;
-                  sensedIndicies = find(dataSense > 0);
-                  obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies);
-                end
-            elseif strcmp(senseShape, 'lidar') % if lidar sensing region
-                % It is assumed that the obstacle is only position
-                % dependent in this computation.
-                % Project the slice of obstacle
-                if obj.grid.dim == 3
-                    [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
-                else
-                    [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1 1], [0, 0]);
-                end
-                [obj.occupancy_map_safety, dataSense] = ...
-                    generate_lidar_sensing_region(obj.gFMM, obsSlice, ...
-                    senseData{2}(1), senseData{1}(1:2));
-              
-                % Record which states we have sensed. 
-                % (+1 sensed, -1 unsensed)                  
-                %obj.sensed_region = max(obj.sensed_region, dataSense);
-
-                % Update occupancy grid with newly sensed obstacles.
-                sensedIndicies = find(dataSense > 0);
-                obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
-            else
-               error('Unrecognized sensor type');
-            end
             
+            if strcmp(obj.envType, 'slam')
+                % If we are using SLAM to produce the occupancy map, 
+                % we have direct measurements of the most recent occupancy
+                % map that we have sensed and can use for safety.
+                if obj.grid.dim == 3
+                    [obj.gFMM, ~] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                else
+                    [obj.gFMM, ~] = proj(obj.grid, obj.lReal, [0 0 1 1], [0, 0]);
+                end
+                obj.occupancy_map_safety = senseData;
+                % NOTE: we never set obj.occupancy_map_plan here, since
+                % we don't support running the matlab planners using SLAM. 
+            else
+                % If we are using a simulated environment and sensor, 
+                % we need to grab the occupancy map that we would have 
+                % sensed at the current state, using the current sensor.
+                if strcmp(senseShape, 'rectangle')
+                    lowSenseXY = senseData{1}(1:2);
+                    upSenseXY = senseData{2};
+                    if obj.grid.dim == 3
+                        lowObs = [lowSenseXY;obj.grid.min(3)];
+                        upObs = [upSenseXY;obj.grid.max(3)];
+                    elseif obj.grid.dim == 4
+                        lowObs = [lowSenseXY;obj.grid.min(3);obj.grid.min(4)];
+                        upObs = [upSenseXY;obj.grid.max(3);obj.grid.max(4)];
+                    else
+                        error('Cannot update map and cost for a %dD system!', obj.grid.dim);
+                    end
+                    % NOTE: need to negate the default shape function to make sure
+                    %       free space is assigned (+) and unknown space is (-)
+                    sensingShape = -shapeRectangleByCorners(obj.grid,lowObs,upObs);
+
+                    % Record which states we have sensed. 
+                    % (+1 sensed, -1 unsensed)
+                    if obj.grid.dim == 3
+                        [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1], 0);
+                    else
+                        [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1 1], [0, 0]);
+                    end
+                    %obj.sensed_region = max(obj.sensed_region, sign(dataSense));
+
+                    % Update occupancy grid with newly sensed obstacles.
+                    %[~,realObs] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                    %obj.occupancy_map_plan(find((obj.sensed_region > 0).*(realObs < 0))) = -1;
+                    sensedIndicies = find(dataSense > 0);
+                    obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
+
+                    % Union the sensed region with the actual obstacle.
+                    unionL = shapeUnion(sensingShape, obj.lReal);
+                    % Project the slice of unionL and create an occupancy map
+                    if obj.grid.dim == 3
+                        [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                    else
+                        [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
+                    end
+                    % also: subtract small epsilon in case we get zero's
+                    epsilon = 1e-6;
+                    obj.occupancy_map_safety = sign(dataFMM-epsilon);
+
+                elseif strcmp(senseShape, 'circle') % if circular sensing region
+                    center = senseData{1}(1:2);
+                    radius = senseData{2}(1);
+
+                    % Record which states we have sensed. 
+                    % (+1 sensed, -1 unsensed)
+                    if obj.grid.dim == 3
+                        sensingShape = -shapeCylinder(obj.grid, 3, center, radius);
+                        [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1], 0);
+                    else % 4D
+                        sensingShape = -shapeCylinder(obj.grid, [3,4], center, radius);
+                        [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1 1], [0, 0]);
+                    end
+                    %obj.sensed_region = max(obj.sensed_region, sign(dataSense));
+
+                    % Update occupancy grid with newly sensed obstacles.
+                    sensedIndicies = find(dataSense > 0);
+                    obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
+                    %[~,realObs] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                    %obj.occupancy_map_plan(find((obj.sensed_region > 0).*(realObs < 0))) = -1;
+
+                    % Union the sensed region with the actual obstacle.
+                    unionL = shapeUnion(sensingShape, obj.lReal);
+                    % Project the slice of unionL and create an occupancy map
+                    if obj.grid.dim == 3
+                        [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                    else
+                        [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
+                    end
+
+                    % also: subtract small epsilon in case we get zero's
+                    epsilon = 1e-6;
+                    obj.occupancy_map_safety = sign(dataFMM-epsilon);
+
+                elseif strcmp(senseShape, 'camera') % if camera sensing region
+                    % It is assumed that the obstacle is only position
+                    % dependent in this computation.
+
+                    % If this is the first computation, use a circle; 
+                    % otherwise use a camera
+                    if obj.firstCompute
+
+                      % Record which states we have sensed. 
+                      % (+1 sensed, -1 unsensed)
+                      if obj.grid.dim == 3
+                        sensingShape = -shapeCylinder(obj.grid, 3, senseData{1}(1:2), senseData{2}(2));
+                        [~, dataSense] = proj(obj.grid, sensingShape, [0 0 1], 0);
+                      else % 4D
+                        sensingShape = -shapeCylinder(obj.grid, [3,4], senseData{1}(1:2), senseData{2}(2));
+                        [g2D, dataSense] = proj(obj.grid, sensingShape, [0 0 1 1], [0, 0]);
+                      end
+                      %obj.sensed_region = max(obj.sensed_region, sign(dataSense));
+
+                      % Union the sensed region with the actual obstacle.
+                      unionL = shapeUnion(sensingShape, obj.lReal);
+                      % Project the slice of unionL and create an occupancy map
+                      if obj.grid.dim == 3
+                        [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1], 0);
+                      else
+                        [obj.gFMM, dataFMM] = proj(obj.grid, unionL, [0 0 1 1], [0, 0]);
+                      end
+
+                      % also: subtract small epsilon in case we get zero's
+                      epsilon = 1e-6;
+                      obj.occupancy_map_safety = sign(dataFMM-epsilon);
+
+                      % Do the actual camera sensing next time.
+                      obj.firstCompute = false;
+
+                      % Update occupancy grid with newly sensed obstacles.
+                      sensedIndicies = find(dataSense > 0);
+                      obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
+                    else
+                      % Project the slice of obstacle
+                      if obj.grid.dim == 3
+                        [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                      else
+                        [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1 1], [0, 0]);
+                      end
+                      [obj.occupancy_map_safety, dataSense] = ...
+                          generate_camera_sensing_region(obj.gFMM, obsSlice, ...
+                          senseData{2}(1), senseData{1}(1:2), senseData{1}(3), senseData{2}(3));
+
+                      % Record which states we have sensed. 
+                      % (+1 sensed, -1 unsensed)                  
+                      %obj.sensed_region = max(obj.sensed_region, dataSense);
+
+                      % Update occupancy grid with newly sensed obstacles.
+                      obj.occupancy_map_plan = -dataSense;
+                      sensedIndicies = find(dataSense > 0);
+                      obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies);
+                    end
+                elseif strcmp(senseShape, 'lidar') % if lidar sensing region
+                    % It is assumed that the obstacle is only position
+                    % dependent in this computation.
+                    % Project the slice of obstacle
+                    if obj.grid.dim == 3
+                        [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1], 0);
+                    else
+                        [obj.gFMM, obsSlice] = proj(obj.grid, obj.lReal, [0 0 1 1], [0, 0]);
+                    end
+                    [obj.occupancy_map_safety, dataSense] = ...
+                        generate_lidar_sensing_region(obj.gFMM, obsSlice, ...
+                        senseData{2}(1), senseData{1}(1:2));
+
+                    % Record which states we have sensed. 
+                    % (+1 sensed, -1 unsensed)                  
+                    %obj.sensed_region = max(obj.sensed_region, dataSense);
+
+                    % Update occupancy grid with newly sensed obstacles.
+                    sensedIndicies = find(dataSense > 0);
+                    obj.occupancy_map_plan(sensedIndicies) = obj.occupancy_map_safety(sensedIndicies); 
+                else
+                   error('Unrecognized sensor type');
+                end
+            end
+ 
             % Save out the sensed region for plotting. 
             obj.occuMapSafeCellArr{end+1} = obj.occupancy_map_safety;
             

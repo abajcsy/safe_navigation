@@ -16,12 +16,13 @@ classdef SafetyModuleNode < handle
         
         % Occupancy map data.
         map             % (obj) OccuMap object that operates on occupancy grids.
-        sbpdOccuMap     % (arr) Entire SBPD ground-truth occupancy map data.
+        rawOccuMap      % (arr) Entire SBPD or SLAM ground-truth occupancy map data.
         trueOccuMap     % (arr) (Localized) Ground-truth occupancy map data.
         res             % (float) Ground-truth dx resolution. 
         origin          % (arr) Ground-truth lower x,y coordinate.
         realWidth       % (float) real width of SBPD environment.
         realHeight      % (float) real height of SBPD environment.
+        firstMap        % (bool) if this is the first map we have received.
         
         % Figure data.
         plotter
@@ -36,41 +37,62 @@ classdef SafetyModuleNode < handle
             addpath(genpath('/home/somilb/Documents/Projects/visual_mpc/safe_navigation_ws/src/matlab_gen/'));
             addpath(genpath('/home/somilb/Documents/Projects/safe_navigation/'));
             
+            % Load up all the experimental parameters.
+            %obj.params = car4DLocalQCameraNN();    % run inside of SBPD
+            obj.params = car4DLocalQCameraSLAM();   % run SLAM environment
+            
+            % If we are running SLAM, we are using the turtlebot, 
+            % so we need to set the ROS master uri to the turtlebot.
+            if strcmp(obj.params.envType, 'slam')
+                setenv('ROS_MASTER_URI','http://128.32.38.83:11311');
+            end
+            
             % Create a new node.
             rosinit 
             
-            % Load up all the experimental parameters.
-            obj.params = car4DLocalQCameraNN();
+            % We are receiving the first map.
+            obj.firstMap = true;
+            obj.rawOccuMap = [];
             
-            if obj.params.loadTrueOccuMaps 
+            if strcmp(obj.params.envType, 'sbpd') && obj.params.loadTrueOccuMaps 
                 % Load the saved ground-truth occupancy maps.
                 fprintf('Loading ground-truth SBPD occupancy map.\n');
                 repo = what('safe_navigation');
                 sbpdPath = strcat(repo.path, '/data/sbpdOccuMapInfo.mat');  
                 load(sbpdPath);
-                obj.sbpdOccuMap = sbpdOccuMap;
+                obj.rawOccuMap = sbpdOccuMap;
                 obj.origin = sbpdOrigin;
                 obj.res = resolution;
                 obj.realHeight = realHeight;
                 obj.realWidth = realWidth;
                 
-                %truePath = strcat(repo.path, '/data/trueOccuMap.mat');
-                %obj.trueOccuMap = trueOccuMap; 
-                %load(truePath);
-            else
-                % Subscriber that listens to occupancy grid.
+                % Extract the ground-truth occupancy map based on our 
+                % compute grid.
+                obj.getTrueOccuMap();
+            elseif strcmp(obj.params.envType, 'sbpd') && ~obj.params.loadTrueOccuMaps
+                % Listen on the map topic for ground-truth occupancy maps.
                 occuMapMsgType = 'nav_msgs/OccupancyGrid';
                 obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, occuMapMsgType);
                 
                 % Grab the ground-truth occupancy map from Python.
                 fprintf('Listening over ROS to ground-truth SBPD occupancy map.\n');
                 msg = receive(obj.occuMapSub, 10);
-                obj.saveGroundTruthOccupancyGrids(msg);
+                obj.saveSBPDGroundTruthOccupancyGrids(msg);
+                
+                % Extract the ground-truth occupancy map based on our 
+                % compute grid.
+                obj.getTrueOccuMap();
+            elseif strcmp(obj.params.envType, 'slam')
+                % Subscriber that listens to SLAM occupancy maps.
+                occuMapMsgType = 'nav_msgs/OccupancyGrid';
+                obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, ...
+                    occuMapMsgType, @obj.slamMapCallback);
+                pause(2);
+                % TODO: WE MAY NEED TO SPIN HERE UNTIL WE GET CALLBACK...
+            else
+                error('SafetyModuleNode does not currently support environment: %s\n', ...
+                    obj.params.envType);
             end
-            
-            % Extract the ground-truth occupancy map based on our compute
-            % grid.
-            obj.getTrueOccuMap();
             
             % Setup safety module object and compute first set.
             obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
@@ -78,14 +100,25 @@ classdef SafetyModuleNode < handle
                             obj.params.updateEpsilon, obj.params.warmStart, ...
                             obj.params.envType, obj.params.updateMethod, obj.params.tMax);
             
-            % Create the map and plotting objects.
-            extraArgs.occuMap = obj.trueOccuMap;
+            % Create the occupancy map handler.
+            % TODO: THIS MAY NOT BE SET BEFORE....
+            extraArgs.occuMap = obj.trueOccuMap; 
             obj.map = OccuMap(obj.params.grid, obj.params.envType, extraArgs);
             obj.plotter = Plotter(obj.params.lowEnv, obj.params.upEnv, ...
                 obj.map.boundLow, obj.map.boundUp, obj.params.envType, obj.trueOccuMap);
             
+            % Update the occupancy map and the corresponding signed
+            % distance function. 
+            if strcmp(obj.params.envType, 'sbpd')
+                obj.map.updateMapAndCost(obj.params.initSenseData, obj.params.senseShape);
+            elseif strcmp(obj.params.envType, 'slam')
+                obj.map.updateMapAndCost(obj.trueOccuMap, obj.params.senseShape);
+            else
+                error('SafetyModuleNode does not currently support environment: %s\n', ...
+                    obj.params.envType);
+            end
+            
             % Compute the first avoid set based on initial safe set.
-            obj.map.updateMapAndCost(obj.params.initSenseData, obj.params.senseShape);
             obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
             
             % Update the plotting.
@@ -136,7 +169,7 @@ classdef SafetyModuleNode < handle
         end
         
         % Converts from 1D OccupancyGrid ROS message to 2D grid array.
-        function saveGroundTruthOccupancyGrids(obj, msg)
+        function saveSBPDGroundTruthOccupancyGrids(obj, msg)
             obj.res = double(msg.Info.Resolution);
             r = msg.Info.Height;
             c = msg.Info.Width;
@@ -145,7 +178,7 @@ classdef SafetyModuleNode < handle
             obj.origin = [double(msg.Info.Origin.Position.X), double(msg.Info.Origin.Position.Y)];
             
             % Save the entire SBPD ground-truth occupancy map
-            obj.sbpdOccuMap = double(reshape(msg.Data, [r,c])); 
+            obj.rawOccuMap = double(reshape(msg.Data, [r,c])); 
             
             fprintf('Received ground truth map with: \n');
             fprintf('    height: %f, # rows: %d\n', obj.realHeight, r);
@@ -157,6 +190,75 @@ classdef SafetyModuleNode < handle
             %figure, imshow(flipud(obj.trueOccuMap'));
         end
         
+        % Grabs the most recent SLAM occupancy map and converts it into 
+        % a compatible representation for safety computations.
+        function slamMapCallback(obj, ~, msg)
+            obj.res = double(msg.Info.Resolution);
+            numY = msg.Info.Height;
+            numX = msg.Info.Width;
+            obj.realHeight = double(numY)*double(obj.res);
+            obj.realWidth = double(numX)*double(obj.res);
+            obj.origin = [double(msg.Info.Origin.Position.X), double(msg.Info.Origin.Position.Y)];
+
+            fprintf('Got SLAM occupancy map message with info:\n');
+            fprintf('     realH: %f, # rows: %d\n', obj.realHeight, numY);
+            fprintf('     realW: %f, # cols: %d\n', obj.realWidth, numX);
+            fprintf('     origin: (%d, %d)\n', obj.origin(1), obj.origin(2));
+
+            % Grab the SLAM-generated occupancy map.
+            % Convention for SLAM map values:
+            %   > 0     -- sensed obstacle
+            %   = 0     -- sensed free-space
+            %   < 0     -- unsensed map space.
+            slamOccuMap = double(reshape(msg.Data, [numX,numY])); 
+
+            % Convert to convention with (+1) to be free-space and (-1) to be
+            % obstacle.
+            slamOccuMap(find(slamOccuMap > 0)) = -1; 
+            slamOccuMap(find(slamOccuMap == 0)) = 1;
+            
+            receivedNewMapVals = false;
+            if isempty(obj.rawOccuMap)
+                % If this is the first time we get the SLAM map, need
+                % to store it and go through all the signed dist computations.
+                receivedNewMapVals = true;
+            else
+                % If SLAM has updated the map, then we also need to store
+                % it and go through all the signed dist computations.
+                if ~isequal(obj.rawOccuMap, slamOccuMap)
+                    receivedNewMapVals = slamOccuMap;
+                end
+            end
+            
+            if receivedNewMapVals 
+                % Store the correct representation of the full SLAM map.
+                obj.rawOccuMap = slamOccuMap;
+
+                % Crop and resize the SLAM map to match compute grid size.
+                if obj.params.grid.dim == 4
+                    [grid2D, ~] = proj(obj.params.grid, obj.params.grid.xs{1}, [0 0 1 1], [0 0]);
+                else
+                    error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
+                end
+                mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
+
+                % Crop and interpolate the raw occupancy map from SBPD or SLAM
+                % into the correct size for the computation grid.
+                obj.trueOccuMap = ...
+                    generate_computation_grid(grid2D, obj.rawOccuMap, ...
+                    obj.res, mapBounds);
+
+                if ~obj.firstCompute
+                    % Update the signed distance function.
+                    obj.map.updateMapAndCost(obj.trueOccuMap, obj.params.senseShape);
+                else
+                    % we are still setting up parameters, and the map object
+                    % doesn't exist yet.
+                    obj.firstCompute = false;
+                end
+            end
+        end
+        
         % Extracts ground-truth map relative to our compute grid.
         function getTrueOccuMap(obj)
             % Note: only works for 4D system right now.
@@ -166,8 +268,16 @@ classdef SafetyModuleNode < handle
                 error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
             end
             mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
+            if strcmp(obj.params.envType, 'sbpd')
+                bigMap = obj.rawOccuMap'; % need to transpose for sbpd 
+            else
+                bigMap = obj.rawOccuMap;
+            end
+            
+            % Crop and interpolate the raw occupancy map from SBPD or SLAM
+            % into the correct size for the computation grid.
             obj.trueOccuMap = ...
-                generate_computation_grid(grid2D, obj.sbpdOccuMap', ...
+                generate_computation_grid(grid2D, bigMap, ...
                 obj.res, mapBounds);
         end
         
@@ -229,17 +339,22 @@ classdef SafetyModuleNode < handle
                 end
                 
                 % Get the new sensing region.
-                if strcmp(obj.params.senseShape, 'camera')
-                  senseData = {[xcurr(1);xcurr(2);xcurr(3)], ...
+                if strcmp(obj.params.envType, 'sbpd') && strcmp(obj.params.senseShape, 'camera')
+                    senseData = {[xcurr(1);xcurr(2);xcurr(3)], ...
                       [obj.params.senseFOV; obj.params.initialR; obj.params.farPlane]};
-                else
-                  error('Right now, I cannot use a %s with a %s planner\n', ...
-                      obj.params.senseShape, obj.params.plannerName);
-                end  
+                  
+                    % update the occupancy map based on the current state
+                    % in simulation.
+                    obj.map.updateMapAndCost(senseData, obj.params.senseShape);
+                end 
+                %elseif strcmp(obj.params.envType, 'slam') && strcmp(obj.params.senseShape, 'camera')
+                %    senseData = obj.trueOccuMap;
+                %else
+                %    error('Right now, SafetyModuleNode cannot use a %s in a %s environment\n', ...
+                %      obj.params.senseShape, obj.params.envType);
+                %end  
                 
-                % update the occupancy map based on the current state
-                obj.map.updateMapAndCost(senseData, obj.params.senseShape);
-                
+
                 % modify verified control sequence.
                 verifiedU{end+1} = u;
                 

@@ -88,14 +88,12 @@ function mapCallback(~, msg)
     
     %% Dynamical System Params.
     xinit = [19.05; 31.4; 0.; 0.];
-    wMax = 1.1;          % maxangular control
+    wMax = 1.1;             % maxangular control
     aRange = [-0.4, 0.4];    % acceleration control range
     vRange = [0.0, 0.6];    % speed range
 
     % Define dynamic system. 
     dynSys = Plane4D(xinit, wMax, aRange, vRange);
-    
-
 
     schemeData.grid = grid;
     schemeData.dynSys = dynSys;
