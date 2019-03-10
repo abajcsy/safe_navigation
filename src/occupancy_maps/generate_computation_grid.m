@@ -19,8 +19,8 @@ function occupancy_grid_trimmed = generate_computation_grid(grid, occupancy_func
 
 % Crop the grid
 dx = occupancy_map_dx;
-min_indices = floor((grid.min' - occupancy_map_bounds_4(1:2))/dx)+1;
-max_indices = ceil((grid.max' - occupancy_map_bounds_4(1:2))/dx);
+min_indices = floor((grid.min' - occupancy_map_bounds_4(1:2))/dx + 1e-4)+1;
+max_indices = ceil((grid.max' - occupancy_map_bounds_4(1:2))/dx + 1e-4);
 occupancy_grid_trimmed = occupancy_func_mn(min_indices(1):max_indices(1), ...
                                            min_indices(2):max_indices(2));
                                          

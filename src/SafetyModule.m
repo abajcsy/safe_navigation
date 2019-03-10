@@ -186,9 +186,14 @@ classdef SafetyModule < handle
                 repo = whatRepo.path;
                 %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
                 if obj.grid.dim == 3
-                    % if we are doing 3D system, we are doing the same
-                    % simulated environment --> can use this initial Vx
-                    pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
+                    if strcmp(obj.envType, 'hand')
+                        % if we are doing 3D system, we are doing the same
+                        % simulated environment --> can use this initial Vx
+                        pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
+                    else
+                        error('You must recompute initial Vx for grid shape: %d, %d, %d', ...
+                                obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3));
+                    end
                 elseif obj.grid.dim == 4
                     if strcmp(obj.envType, 'sbpd')
                         % if we are doing 4D simulation, it's in the
