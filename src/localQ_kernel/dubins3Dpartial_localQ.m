@@ -20,6 +20,8 @@ checkStructureFields(schemeData, 'grid');
 
 g = schemeData.grid;
 vMax = max(schemeData.dynSys.vrange);
+if strcmp(schemeData.dMode, 'min')
+  dMax = schemeData.dynSys.dMax;
 
 switch dim
   case 1
@@ -27,10 +29,8 @@ switch dim
     alpha = vMax*abs(cos(g.xs{3}(Q)));
     
     % Disturbance if needed
-    if isfield(schemeData, 'dMax')
-      dMax = schemeData.dMax;
-      alpha = alpha + ...
-        dMax(1) * abs(derivMax{1}) / sqrt(derivMax{1}.^2 + derivMax{2}.^2);
+    if strcmp(schemeData.dMode, 'min')
+      alpha = alpha + dMax(1);
     end
     
   case 2
@@ -38,10 +38,8 @@ switch dim
     alpha = vMax*abs(sin(g.xs{3}(Q))); 
     
     % Disturbance if needed
-    if isfield(schemeData, 'dMax')
-      dMax = schemeData.dMax;
-      alpha = alpha + ...
-        dMax(1) * abs(derivMax{2}) / sqrt(derivMax{1}.^2 + derivMax{2}.^2);
+    if strcmp(schemeData.dMode, 'min')
+      alpha = alpha + dMax(2);
     end
     
   case 3
@@ -49,9 +47,8 @@ switch dim
     alpha = schemeData.dynSys.wMax;
     
     % Disturbance if needed
-    if isfield(schemeData, 'dMax')
-      dMax = schemeData.dMax;
-      alpha = alpha + dMax(2);
+    if strcmp(schemeData.dMode, 'min')
+      alpha = alpha + dMax(3);
     end
 end
 end
