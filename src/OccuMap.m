@@ -16,6 +16,7 @@ classdef OccuMap < handle
         signed_dist_safety      % signed distance function representing sensed environment
         
         occuMapSafeCellArr      % (cell arr) saves out the set of sensed states.
+        occuMapPlanCellArr      % (cell arr) saves out the occupancy map used by planner.
     end
     
     methods
@@ -45,7 +46,9 @@ classdef OccuMap < handle
             obj.occupancy_map_safety = [];
             obj.occupancy_map_plan   = ones(transpose(obj.grid.N(1:2))); % everything is initially free for the planner
             %obj.sensed_region        = -ones(transpose(obj.grid.N(1:2))); % everything is unsensed
+            
             obj.occuMapSafeCellArr   = {};
+            obj.occuMapPlanCellArr   = {};
             
             % Create ground-truth obstacle costmap.
             obj.lReal = [];
@@ -310,8 +313,9 @@ classdef OccuMap < handle
                 end
             end
  
-            % Save out the sensed region for plotting. 
+            % Save out the occupancy maps for plotting.
             obj.occuMapSafeCellArr{end+1} = obj.occupancy_map_safety;
+            obj.occuMapPlanCellArr{end+1} = obj.occupancy_map_plan;
             
             % We will use the FMM code to get the signed distance function. 
             % Since the FMM code works only on 2D, we will take a slice of 

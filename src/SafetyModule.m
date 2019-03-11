@@ -36,8 +36,8 @@ classdef SafetyModule < handle
         lxCellArr       % (cell arr) stores sequence of l(x)
         QSizeCellArr    % (cell arr) all queue size achieved for each timestep
         fovCellArr      % (cell arr) stores the results of FMM
-        solnTimes       % (array) total time to compute solution at each step
-        updateTimeArr   % (array) simulation timestamp for updating safe set
+        solnTimes       % (array) total time to compute solution at each step (in seconds)
+        updateTimeArr   % (array) simulation timestamp for updating safe set 
     end
     
     methods
