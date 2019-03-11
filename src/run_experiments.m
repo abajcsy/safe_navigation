@@ -161,8 +161,11 @@ function runExperiment(experimentFun)
             end
         end
 
+        % Grab random disturbance. 
+        d = params.dynSys.uniformDstb();
+        
         % Apply control to dynamics.
-        params.dynSys.updateState(u, params.dt, params.dynSys.x);
+        params.dynSys.updateState(u, params.dt, params.dynSys.x, d);
         x = params.dynSys.x;
 
         % Get the new sensing region.
@@ -225,7 +228,8 @@ function runExperiment(experimentFun)
 
     % Save out relevant data.
     if params.saveOutputData
-        occuMaps = map.occuMapSafeCellArr;
+        safeOccuMaps = map.occuMapSafeCellArr;
+        planOccuMaps = map.occuMapPlanCellArr;
         repo = what('safe_navigation');
         savePath = strcat(repo.path, '/data/', params.filename);
         
@@ -237,7 +241,7 @@ function runExperiment(experimentFun)
             solnTimes = safety.solnTimes;
             updateTimeArr = safety.updateTimeArr;
             save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
-                'solnTimes', 'occuMaps', 'updateTimeArr', 'states', 'paths');
+                'solnTimes', 'safeOccuMaps', 'planOccuMaps', 'updateTimeArr', 'states', 'paths');
         else
             save(savePath, 'occuMaps');
         end
