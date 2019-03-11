@@ -60,6 +60,7 @@ params.updateEpsilon = 0.02;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
+params.dMode = [];  % we don't want to compute with disturbance.
 
 % Time horizon to compute BRT for.
 params.tMax = 50;

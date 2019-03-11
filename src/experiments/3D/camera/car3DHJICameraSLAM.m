@@ -37,11 +37,12 @@ params.loadTrueOccuMaps = true; % if we can load in ground-truth occupancy maps.
 
 %% Dynamical System Params.
 params.wMax = 1;
-params.vrange = [0.5,1];
+params.vrange = [0,1];
+params.dMax = [0.1, 0.1, 0]; % max disturbance in (x,y,theta)
 
 % Define dynamic system.            
 % Create dubins car where u = [v, w]
-params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
+params.dynSys = Plane(params.xinit, params.wMax, params.vrange, params.dMax);
 
 %% Safety Update Params.
 
@@ -63,6 +64,7 @@ params.updateEpsilon = 0.01;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
+params.dMode = 'min';
 
 % Time horizon to compute BRT for.
 params.tMax = 50;

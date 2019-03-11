@@ -104,8 +104,8 @@ classdef Plotter < handle
             obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            %obj.senseh = obj.plotSensing(gMap, sensingMap);
-            %obj.plotTraj(path);
+            obj.senseh = obj.plotSensing(gMap, sensingMap);
+            obj.plotTraj(path);
             obj.carh = obj.plotCar(x, usedUOpt);
             %obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
 

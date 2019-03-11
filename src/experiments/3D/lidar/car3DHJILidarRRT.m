@@ -1,4 +1,4 @@
-function params = car3DLocalQLidarRRT()
+function params = car3DHJILidarRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -8,7 +8,7 @@ params.upEnv = [10;7];
 %   hand-coded obstacles        --> 'hand'
 %   stanford building dataset   --> 'sbpd'
 %   SLAM environment            --> 'slam'
-params.envType = 'hand'; 
+params.envType = 'hand';
 
 % Obstacles lower & upper bounds in 2D
 params.obsShape = 'rectangle';
@@ -35,11 +35,12 @@ params.inSim = true; % if we are in simulation or in hardware
 
 %% Dynamical System Params.
 params.wMax = 1;
-params.vrange = [0.5,1];
+params.vrange = [0,1];
+params.dMax = [0.1, 0.1, 0]; % max disturbance in (x,y,theta)
 
 % Define dynamic system.            
 % Create dubins car where u = [v, w]
-params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
+params.dynSys = Plane(params.xinit, params.wMax, params.vrange, params.dMax);
 
 %% Safety Update Params.
 
@@ -49,10 +50,10 @@ params.useSafety = false;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'localQ';
+params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
-params.warmStart = true;
+params.warmStart = false;
 
 % Update epislon
 %   used in 'localQ' for determining which states to update
@@ -61,6 +62,7 @@ params.updateEpsilon = 0.01;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
+params.dMode = 'min';
 
 % Time horizon to compute BRT for.
 params.tMax = 50;

@@ -14,6 +14,7 @@ classdef SafetyModule < handle
         computeTimes    % (float arr) Stores the computation times
         dynSys          % (obj) Dynamical system (dubins car)
         uMode           % (string) is control max or min-ing l(x)? 
+        dMode           % (string) is disturbance max or min-ing l(x)?
         
         % Cost function representation
         lCurr           % (float arr) Current cost function representation
@@ -42,7 +43,7 @@ classdef SafetyModule < handle
     methods
         %% Constructor. 
         % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
-        function obj = SafetyModule(grid, dynSys, uMode, dt, ...
+        function obj = SafetyModule(grid, dynSys, uMode, dMode, dt, ...
                 updateEpsilon, warmStart, envType, updateMethod, tMax)
             % Setup computation grid.
             obj.grid = grid;
@@ -69,6 +70,11 @@ classdef SafetyModule < handle
             obj.dynSys = dynSys;
             obj.uMode = uMode;
             
+            % Setup distrubance if we are computing with it.
+            if ~isempty(dMode)
+                obj.dMode = dMode;
+            end
+            
             % Time vector.
             t0 = 0;
             obj.timeDisc = t0:obj.dt:tMax; 
@@ -78,6 +84,9 @@ classdef SafetyModule < handle
             obj.schemeData.dynSys = obj.dynSys;
             obj.schemeData.accuracy = 'high'; % Set accuracy.
             obj.schemeData.uMode = obj.uMode;
+            if ~isempty(dMode)
+                obj.schemeData.dMode = obj.dMode;
+            end
             
             % Save out sequence of value functions as system moves through
             % space as well as the cost functions and the max Q size (if using Q method). 
@@ -189,10 +198,10 @@ classdef SafetyModule < handle
                 repo = whatRepo.path;
                 %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
                 if obj.grid.dim == 3
-                    if strcmp(obj.envType, 'hand')
+                    if strcmp(obj.envType, 'hand') 
                         % if we are doing 3D system, we are doing the same
                         % simulated environment --> can use this initial Vx
-                        pathToInitialVx = strcat(repo, '/data/initialVx3D.mat');
+                        pathToInitialVx = strcat(repo, '/initial_sets/vx3D_hand_withd_313121.mat');
                     else
                         error('You must recompute initial Vx for grid shape: %d, %d, %d', ...
                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3));
@@ -202,11 +211,11 @@ classdef SafetyModule < handle
                         % if we are doing 4D simulation, it's in the
                         % stanford building data set environment.
                         if isequal(obj.grid.shape, [31 31 21 11])
-                            pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_31312111.mat'); 
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_31312111.mat'); 
                         elseif isequal(obj.grid.shape, [41 41 11 11])
-                            pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_41411111.mat'); 
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_41411111.mat'); 
                         elseif isequal(obj.grid.shape, [41 41 21 11])
-                            pathToInitialVx = strcat(repo, '/data/initialVx4D_SBPD_41412111.mat'); 
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_41412111.mat'); 
                         else
                             error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
@@ -214,7 +223,12 @@ classdef SafetyModule < handle
                     elseif strcmp(obj.envType, 'hand')
                         % if we are doing 4D hand-designed environment,
                         % load pre-mapped safe set.
-                        pathToInitialVx = strcat(repo, '/data/initialVx4D.mat');
+                        if isequal(obj.grid.shape, [31 31 21 11])
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_31312111.mat');
+                        else
+                            error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
+                                obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
+                        end
                     elseif stcmp(obj.envType, 'slam')
                         error('You need to compute the initial SLAM safe set!');
                     else
@@ -230,8 +244,16 @@ classdef SafetyModule < handle
 %                 firstHJIextraArgs = obj.HJIextraArgs;
 %                 firstHJIextraArgs.stopConverge = 1;
 %                 firstHJIextraArgs.convergeThreshold = 0.01;
-%                 firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
-%                 firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+%                 if obj.grid.dim == 3
+%                     firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0];
+%                     firstHJIextraArgs.visualize.plotData.projpt = [0];
+%                 elseif obj.grid.dim == 4
+%                     firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
+%                     firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+%                 else
+%                     error('Unsure what states to project for visualization for %dD system.', ...
+%                         obj.grid.dim);
+%                 end
 %                 firstHJIextraArgs.visualize.valueSet = 1;
 %                 firstWarmStart = false;
 %                 [dataOut, tau, extraOuts] = ...

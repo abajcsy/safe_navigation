@@ -1,4 +1,4 @@
-function params = car3DWarmLidarRRT()
+function params = car3DWarmCameraRRT()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -35,11 +35,12 @@ params.inSim = true; % if we are in simulation or in hardware
 
 %% Dynamical System Params.
 params.wMax = 1;
-params.vrange = [0.5,1];
+params.vrange = [0,1];
+params.dMax = [0.1, 0.1, 0]; % max disturbance in (x,y,theta)
 
 % Define dynamic system.            
 % Create dubins car where u = [v, w]
-params.dynSys = Plane(params.xinit, params.wMax, params.vrange);
+params.dynSys = Plane(params.xinit, params.wMax, params.vrange, params.dMax);
 
 %% Safety Update Params.
 
@@ -61,14 +62,18 @@ params.updateEpsilon = 0.01;
 
 % Control is trying to maximize value function.
 params.uMode = 'max';
+params.dMode = 'min';
 
 % Time horizon to compute BRT for.
 params.tMax = 50;
 
 %% Sensing Params.
-params.senseShape = 'lidar';
-params.senseRad = 3;
-params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseRad]};
+params.senseShape = 'camera';
+params.initialR = 1.5; % The initial radius of the safe region
+params.senseFOV = pi/6; % The (half) field-of-view of the camera
+params.farPlane = 20; % The far clipping plane of the camera
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
+    [params.senseFOV; params.initialR; params.farPlane]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.
@@ -89,7 +94,7 @@ params.safetyTol = 0.2;
 
 % Do we want to visualize the simulation?
 % (say false if you want to save on speed and just save out results).
-params.visualize = true;
+params.visualize = false;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
