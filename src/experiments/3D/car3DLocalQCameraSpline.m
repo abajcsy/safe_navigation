@@ -4,6 +4,12 @@ function params = car3DLocalQCameraSpline()
 params.lowEnv = [0;0];
 params.upEnv = [10;7];
 
+% Environment types include:
+%   hand-coded obstacles        --> 'hand'
+%   stanford building dataset   --> 'sbpd'
+%   SLAM environment            --> 'slam'
+params.envType = 'hand'; 
+
 % Obstacles lower & upper bounds in 2D
 params.obsShape = 'rectangle';
 params.obstacles = {{[4;1], [7;4]}};
@@ -61,7 +67,9 @@ params.tMax = 50;
 params.senseShape = 'camera';
 params.initialR = 1.5; % The initial radius of the safe region
 params.senseFOV = pi/6; % The (half) field-of-view of the camera
-params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
+params.farPlane = 20; % The far clipping plane of the camera
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
+    [params.senseFOV; params.initialR; params.farPlane]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.

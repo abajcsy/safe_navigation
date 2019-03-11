@@ -4,6 +4,12 @@ function params = car3DWarmLidarRRT()
 params.lowEnv = [0;0];
 params.upEnv = [10;7];
 
+% Environment types include:
+%   hand-coded obstacles        --> 'hand'
+%   stanford building dataset   --> 'sbpd'
+%   SLAM environment            --> 'slam'
+params.envType = 'hand'; 
+
 % Obstacles lower & upper bounds in 2D
 params.obsShape = 'rectangle';
 params.obstacles = {{[4;1], [7;4]}};

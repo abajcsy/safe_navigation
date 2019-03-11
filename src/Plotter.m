@@ -62,12 +62,21 @@ classdef Plotter < handle
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
+                
+                % visualize goal region.
                 c = [0.1,0.8,0.5,0.5];
-                %circles([xgoal(1), xgoal(2)],0.3, 'color', c);
                 rad = 0.3;
                 pos = [xgoal(1)-rad, xgoal(2)-rad, rad*2, rad*2];
                 rectangle('Position',pos,'Curvature',1.0,'FaceColor',c,'LineStyle','none');
                 scatter(xgoal(1),xgoal(2),[],[0.0,0.8,0.5],'filled');
+                    
+                % setup size of figure and tick mark stuff.
+                set(gca,'XTick',[obj.lowEnv(1) obj.upEnv(1)]);
+                set(gca,'YTick',[obj.lowEnv(2) obj.upEnv(2)]);
+                widthMeters = abs(obj.lowEnv(1) - obj.upEnv(1));
+                heightMeters = abs(obj.lowEnv(2) - obj.upEnv(2));
+                set(gcf, 'Position',  [100, 100, widthMeters*100*0.7, heightMeters*100*0.7])
+                axis tight;
             end
             %figure(obj.figh);
             
@@ -95,11 +104,11 @@ classdef Plotter < handle
             obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(gMap, sensingMap);
-            obj.plotTraj(path);
+            %obj.senseh = obj.plotSensing(gMap, sensingMap);
+            %obj.plotTraj(path);
             obj.carh = obj.plotCar(x, usedUOpt);
-            obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
-            
+            %obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
+
         end
         
         %% Plots the occupancy map as understood by the safety module.
@@ -157,8 +166,8 @@ classdef Plotter < handle
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);
             
-            xlabel('$p_x$', 'Interpreter','latex');
-            ylabel('$p_y$', 'Interpreter','latex');
+            xlabel('$p_x$', 'Interpreter','latex', 'fontsize', 16);
+            ylabel('$p_y$', 'Interpreter','latex', 'fontsize', 16);
             set(gca,'TickLength',[0 0]);
             box on
         end
@@ -213,7 +222,8 @@ classdef Plotter < handle
             % that are ABOVE zero, but inside our obstacle we have values
             % BELOW zero.
             if visSet
-                h = visSetIm(gPlot, dataPlot, edgeColor, 0);
+                visExtraArgs.LineWidth = 2.0;
+                h = visSetIm(gPlot, dataPlot, edgeColor, 0, visExtraArgs);
                 %[~, h] = contourf(gPlot.xs{1}, gPlot.xs{2}, dataPlot, 0:0.1:5);
             else
                 alpha = 0.5;

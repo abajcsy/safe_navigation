@@ -69,7 +69,9 @@ params.tMax = 50;
 params.senseShape = 'camera';
 params.initialR = 1.5; % The initial radius of the safe region
 params.senseFOV = pi/6; % The (half) field-of-view of the camera
-params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseFOV; params.initialR]};
+params.farPlane = 20; % The far clipping plane of the camera
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
+    [params.senseFOV; params.initialR; params.farPlane]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.
