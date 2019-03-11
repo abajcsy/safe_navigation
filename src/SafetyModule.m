@@ -224,7 +224,7 @@ classdef SafetyModule < handle
                         % if we are doing 4D hand-designed environment,
                         % load pre-mapped safe set.
                         if isequal(obj.grid.shape, [31 31 21 11])
-                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_31312111.mat');
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_hand_31312111.mat');
                         else
                             error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
