@@ -328,7 +328,9 @@ classdef SafetyModule < handle
                 % correct optimal control!
                 uOpt = obj.dynSys.optCtrl(NaN, x, current_deriv, obj.uMode, NaN); 
                 onBoundary = true;
-                uOpt = cell2mat(uOpt);
+                if iscell(uOpt)
+                    uOpt = cell2mat(uOpt);
+                end
             else
                 current_deriv = [0.0;0.0;0.0;0.0];
                 uOpt = zeros(length(x), 1);

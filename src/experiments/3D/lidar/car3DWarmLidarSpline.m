@@ -1,4 +1,4 @@
-function params = car3DLocalQCameraRRT()
+function params = car3DWarmLidarSpline()
 %% Environment Params.
 % Setup environment bounds.
 params.lowEnv = [0;0];
@@ -27,9 +27,8 @@ params.xgoal = [8.5; 2.5; -pi/2];
 
 %   hand-engineered trajectory      --> 'hand'
 %   rapidly-exploring random-tree   --> 'rrt'
-params.plannerName = 'rrt';
-params.maxIter = 50;   % max number of iterations
-params.dx = 0.01;      % size of step along edges for collision-checking
+%   spline-based planner            --> 'spline'
+params.plannerName = 'spline';
 
 %% Dynamical System Params.
 params.wMax = 1;
@@ -48,7 +47,7 @@ params.useSafety = true;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'localQ';
+params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
 params.warmStart = true;
@@ -66,12 +65,9 @@ params.dMode = 'min';
 params.tMax = 50;
 
 %% Sensing Params.
-params.senseShape = 'camera';
-params.initialR = 1.5; % The initial radius of the safe region
-params.senseFOV = pi/6; % The (half) field-of-view of the camera
-params.farPlane = 20; % The far clipping plane of the camera
-params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
-    [params.senseFOV; params.initialR; params.farPlane]};
+params.senseShape = 'lidar';
+params.senseRad = 3;
+params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [params.senseRad]};
 
 %% Simulation Params.
 % Timestep for computation and simulation.

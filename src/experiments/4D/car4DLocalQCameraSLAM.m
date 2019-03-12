@@ -19,7 +19,7 @@ params.planTopicName = '/planned_traj';
 %% Grid Params.
 gridLow = [params.lowEnv;-pi;-0.1];
 gridUp = [params.upEnv;pi;0.7];
-N = [31;31;21;11]; %[41;41;11;11];
+N = [31;31;21;11]; 
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
@@ -30,6 +30,7 @@ params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO:measure goal location
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
 params.loadTrueOccuMaps = false; % if we can load in ground-truth occupancy maps.
+params.goalEps = 0.3; % threshold for when we are considered close enough to goal.
 
 %% Dynamical System Params.
 params.wMax = 1.1;              % maxangular control

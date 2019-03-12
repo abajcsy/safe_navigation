@@ -12,9 +12,8 @@ classdef RRT < handle
     methods
         %% Constructor.
         function obj = RRT(grid, occuGrid, maxIter, dx, goalEps)
-%             load('seed.mat');
             % set random seed.
-            rng(1);
+            rng(7);
             obj.grid = grid;
             obj.occuGrid = occuGrid;
             obj.path = [];

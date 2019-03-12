@@ -30,6 +30,7 @@ function run_experiments()
                         @car3DWarmLidarSpline, ...
                         @car3DHJILidarSpline};
     
+                    
     experiments = cameraExperiments;
     
     % Simulate each experiment.
@@ -71,7 +72,7 @@ function runExperiment(experimentFun)
     if strcmp(params.plannerName, 'rrt')
         % Create RRT obj.
         planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, ...
-            params.dx, params.rrtGoalEps);
+            params.dx, params.goalEps);
         % build rrt and get optimal path
         [path, newpath] = planner.replan(params.xinit(1:2), params.xgoal(1:2));
         
@@ -103,7 +104,8 @@ function runExperiment(experimentFun)
 
         % Plot environment, car, and sensing.
         plt = Plotter(params.lowEnv, params.upEnv, ...
-            map.boundLow, map.boundUp, params.envType, params.obstacles);
+            map.boundLow, map.boundUp, params.envType, ...
+            params.obstacles, params.goalEps);
         plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, ...
             map.grid, map.gFMM, map.occupancy_map_safety, path, false);
         pause(params.dt);
@@ -137,6 +139,7 @@ function runExperiment(experimentFun)
 
         % If we are close enough to the goal, stop simulation.
         if norm(x(1:2) - params.xgoal(1:2)) < params.goalEps
+            fprintf('Reached the goal!');
             break;
         end
 
@@ -241,9 +244,10 @@ function runExperiment(experimentFun)
             solnTimes = safety.solnTimes;
             updateTimeArr = safety.updateTimeArr;
             save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
-                'solnTimes', 'safeOccuMaps', 'planOccuMaps', 'updateTimeArr', 'states', 'paths');
+                'solnTimes', 'safeOccuMaps', 'planOccuMaps', 'updateTimeArr', ...
+                'states', 'paths', 'params');
         else
-            save(savePath, 'occuMaps');
+            save(savePath, 'safeOccuMaps', 'planOccuMap', 'params');
         end
     end
 end

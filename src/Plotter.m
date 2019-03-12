@@ -6,6 +6,7 @@ classdef Plotter < handle
         upEnv       % (arr) upper (x,y) corner of environment
         envType     % (string) environment type 
         obstacles   % either lower & upper corners of obstacles or obsmap
+        goalEps     % (float) how close to the goal we need to be 
         
         % figure handles
         figh
@@ -26,7 +27,7 @@ classdef Plotter < handle
     
     methods
         %% Constructor.
-        function obj = Plotter(lowEnv, upEnv, boundLow, boundUp, envType, obstacles)
+        function obj = Plotter(lowEnv, upEnv, boundLow, boundUp, envType, obstacles, goalEps)
             obj.lowEnv = lowEnv;
             obj.upEnv = upEnv;
             obj.envType = envType;
@@ -41,6 +42,7 @@ classdef Plotter < handle
             obj.planmaph = [];
             obj.boundLow = boundLow;
             obj.boundUp = boundUp;
+            obj.goalEps = goalEps;
             hold on
         end
         
@@ -65,8 +67,7 @@ classdef Plotter < handle
                 
                 % visualize goal region.
                 c = [0.1,0.8,0.5,0.5];
-                rad = 0.3;
-                pos = [xgoal(1)-rad, xgoal(2)-rad, rad*2, rad*2];
+                pos = [xgoal(1)-obj.goalEps, xgoal(2)-obj.goalEps, obj.goalEps*2, obj.goalEps*2];
                 rectangle('Position',pos,'Curvature',1.0,'FaceColor',c,'LineStyle','none');
                 scatter(xgoal(1),xgoal(2),[],[0.0,0.8,0.5],'filled');
                     
@@ -78,7 +79,6 @@ classdef Plotter < handle
                 set(gcf, 'Position',  [100, 100, widthMeters*100*0.7, heightMeters*100*0.7])
                 axis tight;
             end
-            %figure(obj.figh);
             
             % Plot value function
             extraArgs.edgeColor = [1,0,0];

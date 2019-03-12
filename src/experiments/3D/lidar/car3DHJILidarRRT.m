@@ -30,12 +30,10 @@ params.xgoal = [8.5; 2.5; -pi/2];
 params.plannerName = 'rrt';
 params.maxIter = 50;   % max number of iterations
 params.dx = 0.01;      % size of step along edges for collision-checking
-params.rrtGoalEps = 0.3;    % how close RRT has to sample to goal.
-params.inSim = true; % if we are in simulation or in hardware
 
 %% Dynamical System Params.
 params.wMax = 1;
-params.vrange = [0,1];
+params.vrange = [0.1, 1];
 params.dMax = [0.1, 0.1, 0]; % max disturbance in (x,y,theta)
 
 % Define dynamic system.            
@@ -45,7 +43,7 @@ params.dynSys = Plane(params.xinit, params.wMax, params.vrange, params.dMax);
 %% Safety Update Params.
 
 % Use this to toggle the safety computation on/off.
-params.useSafety = false;
+params.useSafety = true;
 
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
@@ -75,17 +73,17 @@ params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], [para
 %% Simulation Params.
 % Timestep for computation and simulation.
 params.dt = 0.05;
-params.T = 800; 
+params.T = 2000; 
 
 % Threshold for when we are considered close enough to goal, we stop simulation.
-params.goalEps = 0.4;
+params.goalEps = 0.3;
 
 % Variables for determining when to replan & reupdate safe set.
 params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.2;
+params.safetyTol = 0.1;
 
 %% Plotting Params.
 
@@ -99,15 +97,17 @@ params.saveOutputData = true;
 
 % Create filename if we want to save things out.
 % Naming convention:
-%   [updateMethod][warm][sensing][date].mat
+%   [updateMethod][warm][planner][sensing][environment][dimension][date].mat
 if params.saveOutputData
     if params.warmStart
         name = strcat(params.updateMethod, 'warm');
     else
         name = params.updateMethod;
     end
-    name = strcat(name, params.senseShape);
-    name = strcat(name, params.dynSys.nx, 'D');
+    name = strcat(name, '_', params.plannerName);
+    name = strcat(name, '_', params.senseShape);
+    name = strcat(name, '_', params.envType);
+    name = strcat(name, '_', params.dynSys.nx, 'D');
     params.filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 end
 end

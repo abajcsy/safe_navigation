@@ -10,34 +10,41 @@ sensor = 'lidar';
 %% Grab the data from both local updates.
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 % Load the compute grid.
-load(strcat(path, 'grid.mat'));
-if strcmp(method, 'HJI')
-    if warm
-        title('Warm Start HJI-VI', 'Interpreter','latex', 'fontsize',16);
-        filename = strcat('HJIwarm', sensor, '_dawkins.mat');
-        filePath = strcat(path, filename);
-        load(filePath);
-        color = [0.1,0.1,1.0];
-        params = dubinsWarmCameraExp1();
-    else
-        title('HJI-VI', 'Interpreter','latex', 'fontsize',16);
-        filename = strcat('HJI', sensor, '_dawkins.mat');
-        filePath = strcat(path, filename);
-        load(filePath);
-        color = [0,0,0];
-        params = dubinsHJICameraExp1();
-    end
-elseif strcmp(method, 'localQ')
-    title('Local Update Algorithm', 'Interpreter','latex', 'fontsize',16);
-    filename = strcat('localQwarm', sensor, '_dawkins.mat');
-    filePath = strcat(path, filename);
-    load(filePath);
-    color = [1.0,0.1,0.1];
-    params = dubinsLocalQCameraExp1();
-else
-    error('Unsupported method type.');
-end
+% load(strcat(path, 'grid.mat'));
+% if strcmp(method, 'HJI')
+%     if warm
+%         title('Warm Start HJI-VI', 'Interpreter','latex', 'fontsize',16);
+%         filename = strcat('HJIwarm', sensor, '_dawkins.mat');
+%         filePath = strcat(path, filename);
+%         load(filePath);
+%         color = [0.1,0.1,1.0];
+%         params = dubinsWarmCameraExp1();
+%     else
+%         title('HJI-VI', 'Interpreter','latex', 'fontsize',16);
+%         filename = strcat('HJI', sensor, '_dawkins.mat');
+%         filePath = strcat(path, filename);
+%         load(filePath);
+%         color = [0,0,0];
+%         params = dubinsHJICameraExp1();
+%     end
+% elseif strcmp(method, 'localQ')
+%     title('Local Update Algorithm', 'Interpreter','latex', 'fontsize',16);
+%     filename = strcat('localQwarm', sensor, '_dawkins.mat');
+%     filePath = strcat(path, filename);
+%     load(filePath);
+%     color = [1.0,0.1,0.1];
+%     params = dubinsLocalQCameraExp1();
+% else
+%     error('Unsupported method type.');
+% end
 
+filename = strcat('localQwarm_rrt_camera_hand_D20195411_150336.mat');
+filePath = strcat(path, filename);
+load(filePath);
+color = [1.0,0.1,0.1];
+params = car3DLocalQCameraRRT();
+
+grid = params.grid;
 valueFuns = valueFunCellArr;
 
 %% Visualize
@@ -48,7 +55,7 @@ offsetY = (grid.max(2) - grid.min(2))/grid.N(2);
 boundLow = [grid.min(1)+offsetX, grid.min(2)+offsetY, grid.min(3)];
 boundUp = [grid.max(1)-offsetX, grid.max(2)-offsetY, grid.max(3)];
 
-plt = Plotter(params.lowEnv, params.upEnv, boundLow, boundUp, params.obstacles);
+plt = Plotter(params.lowEnv, params.upEnv, boundLow, boundUp, params.envType, params.obstacles, params.goalEps);
 
 hold on;
 idx = 1;
@@ -63,7 +70,7 @@ for i=1:length(states)
     % grab important variables.
     x = states{i};
     path = paths{i};
-    occuMap = occuMaps{i};
+    occuMap = safeOccuMaps{i};
     [g2D, ~] = proj(grid, currFun, [0 0 1], x(3));
     
     % see if we applied optimal control

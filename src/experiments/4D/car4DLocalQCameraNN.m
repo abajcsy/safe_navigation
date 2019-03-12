@@ -29,6 +29,7 @@ params.xgoal = [16.2; 34.6; 0.; 0.];
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
 params.loadTrueOccuMaps = true; % if we can load in ground-truth occupancy maps.
+params.goalEps = 0.3; % threshold for when we are considered close enough to goal.
 
 %% Dynamical System Params.
 params.wMax = 1.1;              % maxangular control
