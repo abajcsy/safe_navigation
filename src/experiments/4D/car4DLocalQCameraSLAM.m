@@ -1,9 +1,11 @@
 function params = car4DLocalQCameraSLAM()
 %% Environment Params.
 % Setup environment bounds.
-sideLength = 17;
-params.lowEnv = [0;-sideLength/2];
-params.upEnv = [sideLength;sideLength/2]; 
+sideLength = 17; % side length of the safety occupancy map
+slamMapMinX = -15; % min x value of the SLAM map
+slamMapMinY = -15; % min y value of the SLAM Map
+params.lowEnv = [13; 10]; % [8.8; 0];
+params.upEnv = [31.8; 28.8]; % [28.8; 20]; 
 
 % Environment types include:
 %   hand-coded obstacles        --> 'hand'

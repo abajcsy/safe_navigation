@@ -96,7 +96,7 @@ classdef SafetyModuleNode < handle
             
             % Setup safety module object and compute first set.
             obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
-                            obj.params.uMode, obj.params.dt, ...
+                            obj.params.uMode, obj.params.dMode, obj.params.dt, ...
                             obj.params.updateEpsilon, obj.params.warmStart, ...
                             obj.params.envType, obj.params.updateMethod, obj.params.tMax);
             
@@ -210,7 +210,7 @@ classdef SafetyModuleNode < handle
             %   > 0     -- sensed obstacle
             %   = 0     -- sensed free-space
             %   < 0     -- unsensed map space.
-            slamOccuMap = double(reshape(msg.Data, [numX,numY])); 
+            slamOccuMap = double(reshape(msg.Data, [numX,numY]));
 
             % Convert to convention with (+1) to be free-space and (-1) to be
             % obstacle.
@@ -240,8 +240,9 @@ classdef SafetyModuleNode < handle
                 else
                     error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
                 end
-                mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
-
+                %mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
+                mapBounds = [0, 0, obj.realWidth, obj.realHeight];
+                
                 % Crop and interpolate the raw occupancy map from SBPD or SLAM
                 % into the correct size for the computation grid.
                 obj.trueOccuMap = ...
