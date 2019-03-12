@@ -10,7 +10,7 @@ safety = SafetyModule(params.grid, params.dynSys, params.uMode, params.dMode, ..
 
 % generate cost function corresponding to initial safe set
 center = params.initSenseData{1}(1:2);
-radius = params.initSenseData{2}(2); %TODO -- is this wrong everywhere in safety module???
+radius = params.initSenseData{2}(2); 
 sensingShape = -shapeCylinder(params.grid, [3,4], center, radius);
 
 % compute the safe set.

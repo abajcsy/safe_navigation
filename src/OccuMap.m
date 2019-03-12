@@ -234,9 +234,9 @@ classdef OccuMap < handle
                     % It is assumed that the obstacle is only position
                     % dependent in this computation.
 
-                    % If this is the first computation, use a circle; 
-                    % otherwise use a camera
-                    if obj.firstCompute
+                    % If we are in simulation and this is the first computation, 
+                    % use a circle; otherwise use a camera
+                    if obj.firstCompute && ~strcmp(obj.envType, 'slam')
 
                       % Record which states we have sensed. 
                       % (+1 sensed, -1 unsensed)

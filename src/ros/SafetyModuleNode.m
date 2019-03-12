@@ -23,6 +23,8 @@ classdef SafetyModuleNode < handle
         realWidth       % (float) real width of SBPD environment.
         realHeight      % (float) real height of SBPD environment.
         firstMap        % (bool) if this is the first map we have received.
+        initSensingShape    % (array) for SLAM initial sensing region/shape
+        initData2D
         
         % Figure data.
         plotter
@@ -83,12 +85,16 @@ classdef SafetyModuleNode < handle
                 % compute grid.
                 obj.getTrueOccuMap();
             elseif strcmp(obj.params.envType, 'slam')
+                center = obj.params.initSenseData{1}(1:2);
+                radius = obj.params.initSenseData{2}(2); 
+                obj.initSensingShape = -shapeCylinder(obj.params.grid, [3,4], center, radius);
+                [~, obj.initData2D] = proj(obj.params.grid, obj.initSensingShape, [0 0 1 1], [0 0]);
+                
                 % Subscriber that listens to SLAM occupancy maps.
                 occuMapMsgType = 'nav_msgs/OccupancyGrid';
                 obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, ...
                     occuMapMsgType, @obj.slamMapCallback);
-                pause(2);
-                % TODO: WE MAY NEED TO SPIN HERE UNTIL WE GET CALLBACK...
+                pause(2); % wait for subscriber to get called
             else
                 error('SafetyModuleNode does not currently support environment: %s\n', ...
                     obj.params.envType);
@@ -112,6 +118,8 @@ classdef SafetyModuleNode < handle
             if strcmp(obj.params.envType, 'sbpd')
                 obj.map.updateMapAndCost(obj.params.initSenseData, obj.params.senseShape);
             elseif strcmp(obj.params.envType, 'slam')
+                % We need to pass in the combination of the initial radius
+                % from which we computed the safe set + the slam map.
                 obj.map.updateMapAndCost(obj.trueOccuMap, obj.params.senseShape);
             else
                 error('SafetyModuleNode does not currently support environment: %s\n', ...
@@ -249,11 +257,16 @@ classdef SafetyModuleNode < handle
                     generate_computation_grid(grid2D, obj.rawOccuMap, ...
                     obj.res, mapBounds);
 
+                % Need to add in the initial sensing circular radius of
+                % free space to the SLAM occupancy map.
+                initFreeIndicies = find(obj.initData2D >= 0);
+                obj.trueOccuMap(initFreeIndicies) = 1; 
+                
                 if ~obj.firstCompute
                     % Update the signed distance function.
                     obj.map.updateMapAndCost(obj.trueOccuMap, obj.params.senseShape);
                 else
-                    % we are still setting up parameters, and the map object
+                    % We are still setting up parameters, and the map object
                     % doesn't exist yet.
                     obj.firstCompute = false;
                 end

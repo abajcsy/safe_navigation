@@ -24,7 +24,7 @@ params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [15; 15; 0.; 0.];    % TODO: measure start location 
+params.xinit = [15; 15; 0.; 0.];    
 params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO: measure goal location
 
 %   neural network, vision-based planner      --> 'nn'
@@ -67,9 +67,9 @@ params.tMax = 50;
 
 %% Sensing Params.
 params.senseShape = 'camera';
-params.initialR = 0.5; % The initial radius of the safe region
+params.initialR = 0.6;  % The initial radius of the safe region
 params.senseFOV = pi/4; % The (half) field-of-view of the camera
-params.farPlane = 20; % The far clipping plane of the camera
+params.farPlane = 20;   % The far clipping plane of the camera
 params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
     [params.senseFOV; params.initialR; params.farPlane]};
 
