@@ -58,7 +58,6 @@ if strcmp(schemeData.uMode, 'min')
   % or negative
   v_when_det_pos = vMin;
   v_when_det_neg = vMax;
-  
   % turn rate term
   wTerm = -schemeData.dynSys.wMax*abs(deriv3_Q);
 elseif strcmp(schemeData.uMode, 'max')
@@ -68,6 +67,16 @@ elseif strcmp(schemeData.uMode, 'max')
 else
   error('Unknown uMode! Must be ''min'' or ''max''')
 end
+
+%% Modify Hamiltonian control terms based on dMode
+if strcmp(schemeData.dMode, 'min')
+  dMax_x = schemeData.dynSys.dMax(1);
+  dMax_y = schemeData.dynSys.dMax(2);
+  dTerm = -dMax_x * abs(deriv1_Q) -dMax_y * abs(deriv2_Q);
+else
+  error('Unknown uMode! Must be ''min'' or ''max''')
+end
+
 
 %% Hamiltonian control terms
 % Speed control
@@ -79,19 +88,8 @@ hamValue = (deriv1_Q.*cos(theta_Q) + deriv2_Q.*sin(theta_Q) >= 0) .* ...
 % turn rate control
 hamValue = hamValue + wTerm;
 
-%% Add disturbances if needed
-if isfield(schemeData, 'dMax')
-  dTerm = schemeData.dMax(1)*sqrt(deriv{1}.^2 + deriv{2}.^2) + ...
-    schemeData.dMax(2)*abs(deriv{3});
-  
-  if strcmp(schemeData.dMode, 'min')
-    hamValue = hamValue - dTerm;
-  elseif strcmp(schemeData.dMode, 'max')
-    hamValue = hamValue + dTerm;
-  else
-    error('Unknown dMode! Must be ''min'' or ''max''!')
-  end
-end
+% Add the effect of disturbance
+hamValue = hamValue + dTerm;
 
 %% Backward or forward reachable set
 if strcmp(schemeData.tMode, 'backward')
