@@ -191,8 +191,7 @@ classdef SafetyModule < handle
             minWith = 'minVWithL';
             
             % ------------ Compute value function ---------- % 
-            
-            if obj.firstCompute 
+            if obj.firstCompute && ~strcmp(obj.envType, 'slam')
                 % (option 1) load offline-computed infinite-horizon safe set
                 whatRepo = what('safe_navigation');
                 repo = whatRepo.path;
@@ -266,7 +265,18 @@ classdef SafetyModule < handle
 %                   obj.timeDisc, obj.schemeData, minWith, ...
 %                   firstWarmStart, firstHJIextraArgs);
             else
-                %start_t = now;
+                % The very first time we compute the safe set for SLAM
+                % we have the option of warm-starting with the initial
+                % set that we computed offline.
+                if obj.firstCompute && strcmp(obj.envType, 'slam')
+                    whatRepo = what('safe_navigation');
+                    repo = whatRepo.path;
+                    %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+                    pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SLAM_31312111.mat');
+                    load(pathToInitialVx);
+                    lxOld = dataOut(:,:,:,:,end);
+                end
+                
                 tic
                 if strcmp(obj.updateMethod, 'HJI') 
                     % Use typical HJI solver (with or without warm start).

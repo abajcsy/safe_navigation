@@ -25,6 +25,7 @@ classdef SafetyModuleNode < handle
         firstMap        % (bool) if this is the first map we have received.
         initSensingShape    % (array) for SLAM initial sensing region/shape
         initData2D
+        firstCompute
         
         % Figure data.
         plotter
@@ -55,6 +56,7 @@ classdef SafetyModuleNode < handle
             % We are receiving the first map.
             obj.firstMap = true;
             obj.rawOccuMap = [];
+            obj.firstCompute = true; % TODO: is this correct?
             
             if strcmp(obj.params.envType, 'sbpd') && obj.params.loadTrueOccuMaps 
                 % Load the saved ground-truth occupancy maps.
@@ -108,10 +110,18 @@ classdef SafetyModuleNode < handle
             
             % Create the occupancy map handler.
             % TODO: THIS MAY NOT BE SET BEFORE....
-            extraArgs.occuMap = obj.trueOccuMap; 
+            while isempty(obj.trueOccuMap)
+                fprintf('Waiting to receive occupancy map...\n');
+                pause(0.5);
+            end
+            extraArgs.occuMap = obj.trueOccuMap;
             obj.map = OccuMap(obj.params.grid, obj.params.envType, extraArgs);
             obj.plotter = Plotter(obj.params.lowEnv, obj.params.upEnv, ...
-                obj.map.boundLow, obj.map.boundUp, obj.params.envType, obj.trueOccuMap);
+                obj.map.boundLow, obj.map.boundUp, obj.params.envType, ... 
+                obj.trueOccuMap, obj.params.goalEps);
+            
+            % Map has been set up
+            obj.firstCompute = false;
             
             % Update the occupancy map and the corresponding signed
             % distance function. 
@@ -207,12 +217,7 @@ classdef SafetyModuleNode < handle
             obj.realHeight = double(numY)*double(obj.res);
             obj.realWidth = double(numX)*double(obj.res);
             obj.origin = [double(msg.Info.Origin.Position.X), double(msg.Info.Origin.Position.Y)];
-
-            fprintf('Got SLAM occupancy map message with info:\n');
-            fprintf('     realH: %f, # rows: %d\n', obj.realHeight, numY);
-            fprintf('     realW: %f, # cols: %d\n', obj.realWidth, numX);
-            fprintf('     origin: (%d, %d)\n', obj.origin(1), obj.origin(2));
-
+            
             % Grab the SLAM-generated occupancy map.
             % Convention for SLAM map values:
             %   > 0     -- sensed obstacle
@@ -239,6 +244,11 @@ classdef SafetyModuleNode < handle
             end
             
             if receivedNewMapVals 
+                fprintf('Got new SLAM occupancy map message with info:\n');
+                fprintf('     realH: %f, # rows: %d\n', obj.realHeight, numY);
+                fprintf('     realW: %f, # cols: %d\n', obj.realWidth, numX);
+                fprintf('     origin: (%d, %d)\n', obj.origin(1), obj.origin(2));
+
                 % Store the correct representation of the full SLAM map.
                 obj.rawOccuMap = slamOccuMap;
 
@@ -248,8 +258,8 @@ classdef SafetyModuleNode < handle
                 else
                     error('I am not programmed to use safety module with %D system.\n', obj.params.grid.dim);
                 end
-                %mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
-                mapBounds = [0, 0, obj.realWidth, obj.realHeight];
+                mapBounds = [obj.origin(1), obj.origin(2), obj.origin(1) + obj.realWidth, obj.origin(2) + obj.realHeight];
+                %mapBounds = [0, 0, obj.realWidth, obj.realHeight];
                 
                 % Crop and interpolate the raw occupancy map from SBPD or SLAM
                 % into the correct size for the computation grid.
@@ -265,12 +275,13 @@ classdef SafetyModuleNode < handle
                 if ~obj.firstCompute
                     % Update the signed distance function.
                     obj.map.updateMapAndCost(obj.trueOccuMap, obj.params.senseShape);
-                else
-                    % We are still setting up parameters, and the map object
-                    % doesn't exist yet.
-                    obj.firstCompute = false;
+                    % update plotting
+                    obj.plotter.updatePlot([], obj.params.xgoal, obj.safety.valueFun, ...
+                        obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], []);
                 end
             end
+            
+            
         end
         
         % Extracts ground-truth map relative to our compute grid.
