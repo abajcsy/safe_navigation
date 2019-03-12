@@ -12,7 +12,7 @@ function checkGrid(g)
 if g.dim ~= 2, error('Dimension of the problem must be 2!'); end
 
 for i = 1:g.dim
-    if g.max(i) + g.min(i), error('Domain must be [-L, L]^2!'); end
+    if abs(g.max(i) + g.min(i)) > 1e-6, error('Domain must be [-L, L]^2!'); end
 end
 
 if g.N(2) - g.N(1), error('# of grid points must be the same in each dimension!'); end

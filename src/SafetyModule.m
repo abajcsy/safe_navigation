@@ -229,7 +229,7 @@ classdef SafetyModule < handle
                             error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
                         end
-                    elseif stcmp(obj.envType, 'slam')
+                    elseif strcmp(obj.envType, 'slam')
                         error('You need to compute the initial SLAM safe set!');
                     else
                         error('You must recompute initial Vx for env type: %s', obj.envType);
