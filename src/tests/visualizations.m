@@ -5,45 +5,60 @@ clf
 %   HJI, localQ
 method = 'HJI';
 warm = false;
+planner = 'rrt';
 sensor = 'lidar';
+envType = 'hand';
 
 %% Grab the data from both local updates.
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
-% Load the compute grid.
-% load(strcat(path, 'grid.mat'));
+
+% filename = method;
+% if warm
+%     filename = strcat(filename, 'warm');
+% end
+% filename = strcat(filename, '_', planner, '_', sensor, '_', envType, '.mat');
+% filePath = strcat(path, filename);
+% load(filePath);
+
 % if strcmp(method, 'HJI')
 %     if warm
 %         title('Warm Start HJI-VI', 'Interpreter','latex', 'fontsize',16);
-%         filename = strcat('HJIwarm', sensor, '_dawkins.mat');
-%         filePath = strcat(path, filename);
-%         load(filePath);
 %         color = [0.1,0.1,1.0];
 %         params = dubinsWarmCameraExp1();
 %     else
 %         title('HJI-VI', 'Interpreter','latex', 'fontsize',16);
 %         filename = strcat('HJI', sensor, '_dawkins.mat');
-%         filePath = strcat(path, filename);
-%         load(filePath);
 %         color = [0,0,0];
 %         params = dubinsHJICameraExp1();
 %     end
 % elseif strcmp(method, 'localQ')
 %     title('Local Update Algorithm', 'Interpreter','latex', 'fontsize',16);
-%     filename = strcat('localQwarm', sensor, '_dawkins.mat');
-%     filePath = strcat(path, filename);
-%     load(filePath);
 %     color = [1.0,0.1,0.1];
 %     params = dubinsLocalQCameraExp1();
 % else
 %     error('Unsupported method type.');
 % end
 
-filename = strcat('localQwarm_rrt_camera_hand_D20195411_150336.mat');
+HJI_rrt_lidar_filename = 'HJI_rrt_lidar_hand.mat';
+HJIwarm_rrt_lidar_filename = 'HJIwarm_rrt_lidar_hand.mat';
+localQ_rrt_lidar_filename = 'localQwarm_rrt_lidar_hand.mat';
+
+HJI_rrt_camera_filename = 'HJI_rrt_camera_hand.mat';
+HJIwarm_rrt_camera_filename = 'HJIwarm_rrt_camera_hand.mat';
+localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
+
+% Choose which file we want to visualize.
+filename = HJI_rrt_camera_filename;
+% @car3DLocalQCameraRRT, ...
+% @car3DWarmCameraRRT, ...
+% @car3DHJICameraRRT, ...
+% @car3DLocalQLidarRRT, ...
+% @car3DWarmLidarRRT, ...
+% @car3DHJILidarRRT};
+params = car3DHJICameraRRT();
+
 filePath = strcat(path, filename);
 load(filePath);
-color = [1.0,0.1,0.1];
-params = car3DLocalQCameraRRT();
-
 grid = params.grid;
 valueFuns = valueFunCellArr;
 

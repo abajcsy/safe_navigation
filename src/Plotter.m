@@ -97,15 +97,15 @@ classdef Plotter < handle
                 end
 
                 visSet = true;
-                obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
+                %obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
             end
             
             % Visualize environment 
             obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(gMap, sensingMap);
-            obj.plotTraj(path);
+            %obj.senseh = obj.plotSensing(gMap, sensingMap);
+            %obj.plotTraj(path);
             obj.carh = obj.plotCar(x, usedUOpt);
             %obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
 
