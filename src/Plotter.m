@@ -56,11 +56,13 @@ classdef Plotter < handle
             % Delete old plots
             if ~obj.firstPlot
                 delete(obj.senseh);
-                %delete(obj.carh{1});
                 delete(obj.carh{2});
                 if ~isempty(obj.vxh)
                     delete(obj.vxh);
                 end
+                %if ~isempty(obj.envh)
+                %    delete(obj.envh);
+                %end
             else
                 obj.figh = figure(1);
                 obj.firstPlot = false;
@@ -84,7 +86,7 @@ classdef Plotter < handle
             extraArgs.edgeColor = [1,0,0];
 
             % If there is a value function to visualize, do so.
-            if ~isempty(valueFun)
+            if ~isempty(valueFun) & ~isempty(x)
                 if length(x) == 3
                     extraArgs.theta = x(3);
                     funcToPlot = valueFun(:,:,:,end);
@@ -101,12 +103,16 @@ classdef Plotter < handle
             end
             
             % Visualize environment 
-            obj.envh = obj.plotEnvironment(gMap);
+            %obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
             obj.senseh = obj.plotSensing(gMap, sensingMap);
-            obj.plotTraj(path);
-            obj.carh = obj.plotCar(x, usedUOpt);
+            if ~isempty(path)
+                obj.plotTraj(path);
+            end
+            if ~isempty(usedUOpt)
+                obj.carh = obj.plotCar(x, usedUOpt);
+            end
             %obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
 
         end
@@ -157,6 +163,9 @@ classdef Plotter < handle
                         'FaceColor', [0.9,0.9,0.9], 'EdgeColor', [0.5,0.5,0.5]); 
                 end
             elseif strcmp(obj.envType, 'sbpd')
+                e = contourf(grid2D.xs{1}, grid2D.xs{2}, -obj.obstacles, [0 0]);
+            elseif strcmp(obj.envType, 'slam')
+                % TODO: correct?
                 e = contourf(grid2D.xs{1}, grid2D.xs{2}, -obj.obstacles, [0 0]);
             else
                 error('Plotting does not support %s environments right now.', obj.envType);

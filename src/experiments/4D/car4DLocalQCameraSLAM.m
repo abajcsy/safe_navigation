@@ -2,8 +2,8 @@ function params = car4DLocalQCameraSLAM()
 %% Environment Params.
 % Setup environment bounds.
 
-params.lowEnv = [13; 10]; 
-params.upEnv = [31.8; 28.8]; 
+params.lowEnv = [-1; -2]; 
+params.upEnv = [6; 5]; 
 
 % Environment types include:
 %   hand-coded obstacles        --> 'hand'
@@ -24,7 +24,7 @@ params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [15; 15; 0.; 0.];    
+params.xinit = [0; 0; 0.; 0.];    
 params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO: measure goal location
 
 %   neural network, vision-based planner      --> 'nn'
@@ -63,7 +63,7 @@ params.uMode = 'max';
 params.dMode = [];  % we don't want to compute with disturbance.
 
 % Time horizon to compute BRT for.
-params.tMax = 50;
+params.tMax = 5;
 
 %% Sensing Params.
 params.senseShape = 'camera';
