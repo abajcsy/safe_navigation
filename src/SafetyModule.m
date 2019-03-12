@@ -194,72 +194,72 @@ classdef SafetyModule < handle
             
             if obj.firstCompute 
                 % (option 1) load offline-computed infinite-horizon safe set
-                whatRepo = what('safe_navigation');
-                repo = whatRepo.path;
-                %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
-                if obj.grid.dim == 3
-                    if strcmp(obj.envType, 'hand') 
-                        % if we are doing 3D system, we are doing the same
-                        % simulated environment --> can use this initial Vx
-                        pathToInitialVx = strcat(repo, '/initial_sets/vx3D_hand_withd_313121.mat');
-                    else
-                        error('You must recompute initial Vx for grid shape: %d, %d, %d', ...
-                                obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3));
-                    end
-                elseif obj.grid.dim == 4
-                    if strcmp(obj.envType, 'sbpd')
-                        % if we are doing 4D simulation, it's in the
-                        % stanford building data set environment.
-                        if isequal(obj.grid.shape, [31 31 21 11])
-                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_31312111.mat'); 
-                        elseif isequal(obj.grid.shape, [41 41 11 11])
-                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_41411111.mat'); 
-                        elseif isequal(obj.grid.shape, [41 41 21 11])
-                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_41412111.mat'); 
-                        else
-                            error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
-                                obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
-                        end
-                    elseif strcmp(obj.envType, 'hand')
-                        % if we are doing 4D hand-designed environment,
-                        % load pre-mapped safe set.
-                        if isequal(obj.grid.shape, [31 31 21 11])
-                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_hand_31312111.mat');
-                        else
-                            error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
-                                obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
-                        end
-                    elseif strcmp(obj.envType, 'slam')
-                        error('You need to compute the initial SLAM safe set!');
-                    else
-                        error('You must recompute initial Vx for env type: %s', obj.envType);
-                    end
-                else
-                    error('We only support computation for 3D or 4D currently!');
-                end
-                load(pathToInitialVx);
-                total_compute_t = 0;
+%                 whatRepo = what('safe_navigation');
+%                 repo = whatRepo.path;
+%                 %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+%                 if obj.grid.dim == 3
+%                     if strcmp(obj.envType, 'hand') 
+%                         % if we are doing 3D system, we are doing the same
+%                         % simulated environment --> can use this initial Vx
+%                         pathToInitialVx = strcat(repo, '/initial_sets/vx3D_hand_withd_313121.mat');
+%                     else
+%                         error('You must recompute initial Vx for grid shape: %d, %d, %d', ...
+%                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3));
+%                     end
+%                 elseif obj.grid.dim == 4
+%                     if strcmp(obj.envType, 'sbpd')
+%                         % if we are doing 4D simulation, it's in the
+%                         % stanford building data set environment.
+%                         if isequal(obj.grid.shape, [31 31 21 11])
+%                             pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_31312111.mat'); 
+%                         elseif isequal(obj.grid.shape, [41 41 11 11])
+%                             pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_41411111.mat'); 
+%                         elseif isequal(obj.grid.shape, [41 41 21 11])
+%                             pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SBPD_41412111.mat'); 
+%                         else
+%                             error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
+%                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
+%                         end
+%                     elseif strcmp(obj.envType, 'hand')
+%                         % if we are doing 4D hand-designed environment,
+%                         % load pre-mapped safe set.
+%                         if isequal(obj.grid.shape, [31 31 21 11])
+%                             pathToInitialVx = strcat(repo, '/initial_sets/vx4D_hand_31312111.mat');
+%                         else
+%                             error('You must recompute initial Vx for grid shape: %d, %d, %d, %d', ...
+%                                 obj.grid.shape(1), obj.grid.shape(2), obj.grid.shape(3), obj.grid.shape(4));
+%                         end
+%                     elseif strcmp(obj.envType, 'slam')
+%                         error('You need to compute the initial SLAM safe set!');
+%                     else
+%                         error('You must recompute initial Vx for env type: %s', obj.envType);
+%                     end
+%                 else
+%                     error('We only support computation for 3D or 4D currently!');
+%                 end
+%                 load(pathToInitialVx);
+%                 total_compute_t = 0;
                 
                 % (option 2) run the full, standard Vx computation
-%                 firstHJIextraArgs = obj.HJIextraArgs;
-%                 firstHJIextraArgs.stopConverge = 1;
-%                 firstHJIextraArgs.convergeThreshold = 0.01;
-%                 if obj.grid.dim == 3
-%                     firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0];
-%                     firstHJIextraArgs.visualize.plotData.projpt = [0];
-%                 elseif obj.grid.dim == 4
-%                     firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
-%                     firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
-%                 else
-%                     error('Unsure what states to project for visualization for %dD system.', ...
-%                         obj.grid.dim);
-%                 end
-%                 firstHJIextraArgs.visualize.valueSet = 1;
-%                 firstWarmStart = false;
-%                 [dataOut, tau, extraOuts] = ...
-%                 HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
-%                   obj.timeDisc, obj.schemeData, minWith, ...
-%                   firstWarmStart, firstHJIextraArgs);
+                firstHJIextraArgs = obj.HJIextraArgs;
+                firstHJIextraArgs.stopConverge = 1;
+                firstHJIextraArgs.convergeThreshold = 0.01;
+                if obj.grid.dim == 3
+                    firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0];
+                    firstHJIextraArgs.visualize.plotData.projpt = [0];
+                elseif obj.grid.dim == 4
+                    firstHJIextraArgs.visualize.plotData.plotDims = [1 1 0 0];
+                    firstHJIextraArgs.visualize.plotData.projpt = [0 0.5];
+                else
+                    error('Unsure what states to project for visualization for %dD system.', ...
+                        obj.grid.dim);
+                end
+                firstHJIextraArgs.visualize.valueSet = 1;
+                firstWarmStart = false;
+                [dataOut, tau, extraOuts] = ...
+                HJIPDE_solve_warm(data0, lxOld, obj.lCurr, ...
+                  obj.timeDisc, obj.schemeData, minWith, ...
+                  firstWarmStart, firstHJIextraArgs);
             else
                 %start_t = now;
                 tic

@@ -1,11 +1,9 @@
 function params = car4DLocalQCameraSLAM()
 %% Environment Params.
 % Setup environment bounds.
-sideLength = 17; % side length of the safety occupancy map
-slamMapMinX = -15; % min x value of the SLAM map
-slamMapMinY = -15; % min y value of the SLAM Map
-params.lowEnv = [13; 10]; % [8.8; 0];
-params.upEnv = [31.8; 28.8]; % [28.8; 20]; 
+
+params.lowEnv = [13; 10]; 
+params.upEnv = [31.8; 28.8]; 
 
 % Environment types include:
 %   hand-coded obstacles        --> 'hand'
@@ -26,8 +24,8 @@ params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
-params.xinit = [0.; 0.; 0.; 0.];
-params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO:measure goal location
+params.xinit = [15; 15; 0.; 0.];    % TODO: measure start location 
+params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO: measure goal location
 
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
