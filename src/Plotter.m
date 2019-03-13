@@ -86,7 +86,7 @@ classdef Plotter < handle
             extraArgs.edgeColor = [1,0,0];
 
             % If there is a value function to visualize, do so.
-            if ~isempty(valueFun) & ~isempty(x)
+            if ~isempty(valueFun) && ~isempty(x)
                 if length(x) == 3
                     extraArgs.theta = x(3);
                     funcToPlot = valueFun(:,:,:,end);
