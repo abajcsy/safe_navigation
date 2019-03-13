@@ -1,4 +1,5 @@
 %% Visualizes stuff in a pretty way.
+clf
 
 %% Choose which method you wanna visualize.
 %   HJI, localQ
@@ -47,14 +48,14 @@ HJIwarm_rrt_camera_filename = 'HJIwarm_rrt_camera_hand.mat';
 localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
 
 % Choose which file we want to visualize.
-filename = HJIwarm_rrt_camera_filename;
+filename = HJI_rrt_lidar_filename;
 % @car3DLocalQCameraRRT, ...
 % @car3DWarmCameraRRT, ...
 % @car3DHJICameraRRT, ...
 % @car3DLocalQLidarRRT, ...
 % @car3DWarmLidarRRT, ...
 % @car3DHJILidarRRT};
-params = car3DWarmCameraRRT();
+params = car3DHJILidarRRT();
 
 filePath = strcat(path, filename);
 load(filePath);

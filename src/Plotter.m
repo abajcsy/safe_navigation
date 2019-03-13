@@ -78,7 +78,7 @@ classdef Plotter < handle
                 set(gca,'YTick',[obj.lowEnv(2) obj.upEnv(2)]);
                 widthMeters = abs(obj.lowEnv(1) - obj.upEnv(1));
                 heightMeters = abs(obj.lowEnv(2) - obj.upEnv(2));
-                set(gcf, 'Position',  [100, 100, widthMeters*100*0.7, heightMeters*100*0.7])
+                set(gcf, 'Position',  [100, 100, widthMeters*100*0.6, heightMeters*100*0.6])
                 axis tight;
             end
             
@@ -106,9 +106,9 @@ classdef Plotter < handle
             obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(gMap, sensingMap);
+            %obj.senseh = obj.plotSensing(gMap, sensingMap);
             if ~isempty(path)
-                obj.plotTraj(path);
+                %obj.plotTraj(path);
             end
             if ~isempty(usedUOpt)
                 obj.carh = obj.plotCar(x, usedUOpt);
@@ -160,7 +160,7 @@ classdef Plotter < handle
                     obsCoord = [lowObs(1), lowObs(2), width, height];
                     %e = rectangle('Position', obsCoord, 'Linewidth', 2.0, 'LineStyle', '--'); 
                     e = rectangle('Position', obsCoord, ...
-                        'FaceColor', [0.9,0.9,0.9], 'EdgeColor', [0.5,0.5,0.5]); 
+                        'FaceColor', [0.5,0.5,0.5], 'EdgeColor', [0.2,0.2,0.2]); 
                 end
             elseif strcmp(obj.envType, 'sbpd')
                 e = contourf(grid2D.xs{1}, grid2D.xs{2}, -obj.obstacles, [0 0]);
@@ -301,24 +301,17 @@ classdef Plotter < handle
         % Ouput:
         %   h   - handle for figure
         function h = plotSensing(obj, grid, signed_distance_map)
-%             unsensedIndicies = find(signed_distance_map < 0);
-%             signed_distance_map(unsensedIndicies) = 0;
-%             newIm = imdilate(signed_distance_map, true(3)) - signed_distance_map;
-%             idxs = find(newIm == 1);
-%             xvals = grid.xs{1}(idxs);
-%             yvals = grid.xs{2}(idxs);
-%             p = polyshape(xvals, yvals);
-%             [xvals, yvals] = poly2cw(p.Vertices(:,1),p.Vertices(:,2));
-%             %plot(p);
-%             h = fill(xvals,yvals,'m', ...
-%                 'FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
             
-            posIdx = find(signed_distance_map > 0);
-            h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
-                'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
+            [c, h]= contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0,0]);
+            x = c(1,2:end);
+            y = c(2,2:end);
+            delete(h);
+            h = fill(x,y,[0,0.2,1],'FaceAlpha',0.3, 'EdgeColor', 'none');
             
-            %s = contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0, 0], 'FaceColor',[1,1,1], 'EdgeColor', [1,1,1]);
-            %h = fill(s(1,2:end),s(2,2:end),'m','FaceColor',[0,0.2,1], 'FaceAlpha',0.3, 'EdgeColor', [1,1,1]);
+            %posIdx = find(signed_distance_map > 0);
+            %h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
+            %    'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
+            
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
             ylim([obj.lowEnv(2) obj.upEnv(2)]);

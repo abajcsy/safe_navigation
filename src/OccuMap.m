@@ -5,6 +5,7 @@ classdef OccuMap < handle
         grid            % (obj) Computation grid struct
         envType         % (string) Environment type
         lReal           % (float arr) Cost function representing TRUE environment
+        lBoundary       % (floar arr) Boundary obstacle for computaion. 
         boundLow        % (x,y) lower corner of boundary obstacle (for numerics)
         boundUp         % (x,y) upper corner of boundary obstacle (for numerics)
         firstCompute    % (bool) flag to see if this is the first time we have done computation
@@ -105,19 +106,19 @@ classdef OccuMap < handle
                 obj.boundUp = [obj.grid.max(1)-offsetX, obj.grid.max(2)-offsetY, obj.grid.max(3)];
                 % NOTE: need to negate the default shape function to make sure
                 %       compute region is assigned (+) and boundary obstacle is (-)
-                lBoundary = -shapeRectangleByCorners(obj.grid,obj.boundLow,obj.boundUp);
+                obj.lBoundary = -shapeRectangleByCorners(obj.grid,obj.boundLow,obj.boundUp);
             elseif obj.grid.dim == 4
                 obj.boundLow = [obj.grid.min(1)+offsetX, obj.grid.min(2)+offsetY];
                 obj.boundUp = [obj.grid.max(1)-offsetX, obj.grid.max(2)-offsetY];
                 [g2D, ~] = proj(obj.grid, obj.grid.xs{1}, [0 0 1 1], [0 0]);
-                lBoundary = -shapeRectangleByCorners(g2D,obj.boundLow,obj.boundUp);
-                lBoundary = repmat(lBoundary, 1, 1, obj.grid.N(3), obj.grid.N(4));
+                obj.lBoundary = -shapeRectangleByCorners(g2D,obj.boundLow,obj.boundUp);
+                obj.lBoundary = repmat(obj.lBoundary, 1, 1, obj.grid.N(3), obj.grid.N(4));
             else
                 error('Cannot construct bounds for %dD system!', obj.grid.dim);
             end
             
             % Incorporate boundary obstacle into the ground-truth obstacle
-            obj.lReal = shapeUnion(obj.lReal, lBoundary);
+            obj.lReal = shapeUnion(obj.lReal, obj.lBoundary);
         end
         
         %% Based on sensing, update occupancy grids and signed distances.
