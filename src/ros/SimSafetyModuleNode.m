@@ -1,5 +1,5 @@
-classdef SafetyModuleNode < handle
-    %SAFETYMODULENODE Encapsulates all the safety computations 
+classdef SimSafetyModuleNode < handle
+    %SIMSAFETYMODULENODE Encapsulates all the safety computations 
     % and verification of the neural network plans with ROS communication.
     
     properties
@@ -33,7 +33,7 @@ classdef SafetyModuleNode < handle
     
     methods
         %% Constructor
-        function obj = SafetyModuleNode()
+        function obj = SimSafetyModuleNode()
             clf
             rmpath(genpath('/home/somilb/Documents/MATLAB/helperOC/'));
             addpath(genpath('/home/somilb/Documents/MATLAB/helperOC_dev/'));
