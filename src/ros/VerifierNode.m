@@ -10,6 +10,7 @@ classdef VerifierNode < handle
         
         params      % (struct) maintains all the information about experiment we are running.
         valueFun    % (ND array) most recent value function encoding the safe set.
+        deriv       % (ND array) represents gradients for most recent valueFun
     end
     
     methods
@@ -26,6 +27,7 @@ classdef VerifierNode < handle
             
             % Most recent value function from safety updater.
             obj.valueFun = [];
+            obj.deriv = [];
 
             % If we are running SLAM, we are using the turtlebot, 
             % so we need to set the ROS master uri to the turtlebot.
@@ -72,7 +74,7 @@ classdef VerifierNode < handle
             if isempty(obj.valueFun)
                 % we haven't gotten first safe set from the safety updater
                 % so we can't verify plans yet.
-                fprintf('Have not received first safe set...');
+                fprintf('Have not received first safe set...\n');
                 return;
             end
             
@@ -92,20 +94,22 @@ classdef VerifierNode < handle
             xplan = x0;
             appliedUOpt = false;
             
-            % just for visualization, store planned states.
-            planPath = {xplan};
-            for i=1:length(controls)
-                % (JUST FOR VISUALIZATION) simulate fwd with plan's
-                % control.
-                uplan = controls(i).U; 
-                obj.params.dynSys.updateState(uplan, obj.params.dt, xplan);
-                xplan = obj.params.dynSys.x;
-                planPath{end+1} = xplan;
-            end
+%             % just for visualization, store planned states.
+%             planPath = {xplan};
+%             for i=1:length(controls)
+%                 % (JUST FOR VISUALIZATION) simulate fwd with plan's
+%                 % control.
+%                 uplan = controls(i).U; 
+%                 obj.params.dynSys.updateState(uplan, obj.params.dt, xplan);
+%                 xplan = obj.params.dynSys.x;
+%                 planPath{end+1} = xplan;
+%             end
             
             % How close to zero does the spatial derivative have to be
             % to be considered = 0?
             gradZeroTol = 0.01;
+            
+            fprintf('Verifying plan...\n');
             
             for i=1:length(controls) 
                 if appliedUOpt
@@ -137,17 +141,6 @@ classdef VerifierNode < handle
                 % control)
                 obj.params.dynSys.updateState(u, obj.params.dt, xcurr);
                 xcurr = obj.params.dynSys.x;
-                
-                % update plotting
-                
-                % TODO -- need to add the proper things here.
-                gfmm = []; %obj.map.gFMM;
-                occu_map_safe = []; %obj.map.occupancy_map_safety;
-                obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.valueFun, ...
-                    obj.params.grid, gfmm, occu_map_safe, planPath, appliedUOpt);
-                
-                % TODO -- consider taking this pause out for speed.
-                pause(obj.params.dt);
             end
             
             % construct verified trajectory message
@@ -155,6 +148,8 @@ classdef VerifierNode < handle
             
             % publish out the verified trajectory
             send(obj.verifiedPub, verifiedMsg);
+            
+            fprintf('Sent verified plan!\n');
         end
         
         %% Unpacks most recent safe set and stores it.
@@ -166,7 +161,14 @@ classdef VerifierNode < handle
             dim = msg.Dim;          %  dimension of system for which safe set was computed
             N = msg.N;              % discretization for each dim: e.g. N = [31, 31, 21] for 3D system. 
             values = double(msg.Values); % flattened 1D value function
-            obj.valueFun = reshape(values, N);
+            if dim == 4
+                obj.valueFun = reshape(values, [N(1), N(2), N(3), N(4)]);
+            else
+                error('Verifier node cannot accept a %dD safe set!\n', dim);
+            end
+            
+            % compute the corresponding gradients and store them.
+            obj.deriv = computeGradients(obj.params.grid, obj.valueFun);
         end
         
         %% Converts from array to trajectory message
@@ -198,9 +200,8 @@ classdef VerifierNode < handle
             % If the value is close to zero, we are close to the safety
             % boundary.
             if value < tol 
-                deriv = computeGradients(obj.params.grid, vx);
                 % value of the derivative at that particular state
-                current_deriv = eval_u(obj.params.grid, deriv, x);
+                current_deriv = eval_u(obj.params.grid, obj.deriv, x);
                 % NOTE: need all 5 arguments (including NaN's) to get 
                 % correct optimal control!
                 uOpt = obj.params.dynSys.optCtrl(NaN, x, current_deriv, obj.params.uMode, NaN); 
@@ -218,9 +219,8 @@ classdef VerifierNode < handle
         %% Gets the optimal control to apply at state x.
         function uOpt = getSafetyControl(obj, x)
             vx = obj.valueFun;
-            deriv = computeGradients(obj.params.grid, vx);
             % value of the derivative at that particular state
-            current_deriv = eval_u(obj.params.grid, deriv, x);
+            current_deriv = eval_u(obj.params.grid, obj.deriv, x);
             % NOTE: need all 5 arguments (including NaN's) to get 
             % correct optimal control!
             uOpt = obj.params.dynSys.optCtrl(NaN, x, current_deriv, obj.params.uMode, NaN);

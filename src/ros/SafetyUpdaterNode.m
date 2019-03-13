@@ -5,6 +5,7 @@ classdef SafetyUpdaterNode < handle
     properties
         % Subscribers and publishers.
         occuMapSub
+        odomSub
         safetyPub
         
         % All the info about our experimental setup.
@@ -25,6 +26,11 @@ classdef SafetyUpdaterNode < handle
         initSensingShape    % (array) for SLAM initial sensing region/shape
         initData2D
         firstCompute
+        
+        
+        % State of robot
+        currState
+        currSafeSetMsg
         
         % Figure data.
         plotter
@@ -58,6 +64,7 @@ classdef SafetyUpdaterNode < handle
             obj.rawOccuMap = [];
             obj.trueOccuMap = [];
             obj.firstCompute = true; % TODO: is this correct?
+            obj.currState = obj.params.xinit;
             
             % Setup the initial sensing shape.
             center = obj.params.initSenseData{1}(1:2);
@@ -107,10 +114,6 @@ classdef SafetyUpdaterNode < handle
                 error('Safety Updater Node does not support %dD grids\n',  obj.params.grid.dim);
             end
             
-            % Publish out the initial safe set.
-            safeSetMsg = obj.toSafeSetMsg(currSafeSet);
-            send(obj.safetyPub, safeSetMsg);
-            
             % Update the plotting.
             obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, obj.safety.valueFun, ...
                 obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
@@ -118,10 +121,16 @@ classdef SafetyUpdaterNode < handle
             % Setup ROS pub/sub for trajectories to verify.
             obj.registerCallbacks();
             
+            % Publish out the initial safe set.
+            safeSetMsg = obj.toSafeSetMsg(currSafeSet);
+            %send(obj.safetyPub, safeSetMsg);
+            obj.currSafeSetMsg = safeSetMsg;
+            
             % Spin and let everything go.
             rate = rosrate(100);
             reset(rate);
             while true
+                send(obj.safetyPub, obj.currSafeSetMsg);
                 waitfor(rate);
             end
         end
@@ -132,6 +141,12 @@ classdef SafetyUpdaterNode < handle
             safeMsgType = 'safe_navigation_msgs/SafeSet';
             safeSetTopicName = '/safe_set';
             obj.safetyPub = rospublisher(safeSetTopicName, safeMsgType);
+            
+            odomMsgType = 'nav_msgs/Odometry';
+            odomTopicName = '/odom';
+            obj.odomSub = rossubscriber(odomTopicName, ...
+                odomMsgType, @obj.odomCallback);
+            pause(1); % wait for subscriber to get called
         end
         
         %% Converts ND value function into ROS message.
@@ -139,11 +154,32 @@ classdef SafetyUpdaterNode < handle
             % Note: we assume that the value function that was 3D was
             % flattened by doing reshape(arrVx, [1,prod(N)]) so that it can
             % be reconstructed by doing reshape(flatVx, N)
-            
             msg = rosmessage('safe_navigation_msgs/SafeSet');
-            msg.N = obj.params.N;
+            msg.N = obj.params.grid.shape;
             msg.Dim = obj.params.grid.dim;
-            msg.Values = reshape(valueFun, [1,prod(obj.params.N)]); 
+            msg.Values = reshape(valueFun, [1,prod(obj.params.grid.shape)]); 
+            
+            fprintf('Created new Safe Set message to send!\n');
+        end
+        
+        %% Records the current state of the robot from odometry topic.
+        % Used for plotting.
+        function odomCallback(obj, ~, msg)
+            x = msg.Pose.Pose.Position.X;
+            y = msg.Pose.Pose.Position.Y;
+            % convert from quaternion to angle.
+            quat = [msg.Pose.Pose.Orientation.X, msg.Pose.Pose.Orientation.Y, ...
+                msg.Pose.Pose.Orientation.Z, msg.Pose.Pose.Orientation.W];
+            eulerAngle = quat2eul(quat);
+            theta = wrapToPi(eulerAngle(3));
+            vel = msg.Twist.Twist.Linear.X;
+            
+            obj.currState = [x;y;theta;vel];
+            
+            % Update the plotting for where the car is right now.
+            delete(obj.plotter.carh{2});
+            carh = obj.plotter.plotCar(obj.currState, false);
+            obj.plotter.carh = carh;
         end
                 
         %% Grabs the most recent SLAM occupancy map and converts it into 
@@ -210,13 +246,14 @@ classdef SafetyUpdaterNode < handle
                 initFreeIndicies = find(obj.initData2D >= 0);
                 obj.trueOccuMap(initFreeIndicies) = 1; 
                 
-                % Add in the 1-grid-cell-sized boundary obstacle into the
-                % slam map for numerics.
-                [~, boundaryData2D] = proj(obj.params.grid, obj.lBoundary, [0 0 1 1], [0 0]);
-                boundaryIndicies = find(boundaryData2D < 0);
-                obj.trueOccuMap(boundaryIndicies) = -1; 
-                
                 if ~obj.firstCompute
+                    
+                    % Add in the 1-grid-cell-sized boundary obstacle into the
+                    % slam map for numerics.
+                    [~, boundaryData2D] = proj(obj.params.grid, obj.map.lBoundary, [0 0 1 1], [0 0]);
+                    boundaryIndicies = find(boundaryData2D < 0);
+                    obj.trueOccuMap(boundaryIndicies) = -1; 
+
                     % Update the signed distance function.
                     obj.map.updateMapAndCost(obj.trueOccuMap, obj.params.senseShape);
                     
@@ -225,11 +262,12 @@ classdef SafetyUpdaterNode < handle
                     currSafeSet = obj.safety.valueFun(:,:,:,:,end);
 
                     % Convert and send out message containing safe set.
-                    safeSetMsg = obj.toSafetyMsg(currSafeSet);
-                    send(obj.safetyPub, safeSetMsg);
+                    safeSetMsg = obj.toSafeSetMsg(currSafeSet);
+                    %send(obj.safetyPub, safeSetMsg);
+                    obj.currSafeSetMsg = safeSetMsg;
                     
                     % update plotting
-                    obj.plotter.updatePlot([], obj.params.xgoal, obj.safety.valueFun, ...
+                    obj.plotter.updatePlot(obj.currState, obj.params.xgoal, obj.safety.valueFun, ...
                         obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], []);
                 end
             end

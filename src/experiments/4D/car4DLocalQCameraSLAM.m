@@ -82,6 +82,6 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.05;
+params.safetyTol = 0.1;
 
 end
