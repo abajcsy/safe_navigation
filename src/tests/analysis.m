@@ -52,13 +52,13 @@ HJIwarm_rrt_camera_filename = 'HJIwarm_rrt_camera_hand.mat';
 localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
 
 %% Choose which file we want to analyze and what is the ground truth.
-filename = HJI_rrt_lidar_filename; 
+filename = HJIwarm_rrt_lidar_filename; 
 groundTruthFilename = HJI_rrt_lidar_filename;
 
 % load all the files
 filePath = strcat(path, filename);
 load(filePath);
-params = car3DHJILidarRRT();       % NOTE: have to change this too!
+params = car3DWarmLidarRRT();       % NOTE: have to change this too!
 
 %% Compute avg num states updated
 totalPerStep = [];
@@ -89,12 +89,14 @@ gtValueFuns = valueFunCellArr;
 % Compute how many conservative states we had at each step through env.
 numConservStates = howConservative(otherValueFuns, gtValueFuns, grid, conservEpsilon); 
 fprintf("avg num conservative states: %f\n", mean(numConservStates));
+fprintf("percent conservative states: %f\n", mean(numConservStates)/prod(grid.N)*100);
 
 %% Checks how conservative the other value functions are wrt ground truth
 function numConservStates = howConservative(otherValueFuns, gtValueFuns, grid, epsilon)
     numConservStates = [];
-    for i=1:length(otherValueFuns)
-        localFun = otherValueFuns{i}
+    numVxToCompare = 60;
+    for i=1:numVxToCompare
+        localFun = otherValueFuns{i};
         gtFun = gtValueFuns{i};
 
         % We want indicies to be empty (for local update to be more

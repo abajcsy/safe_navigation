@@ -1,5 +1,4 @@
 %% Visualizes stuff in a pretty way.
-clf
 
 %% Choose which method you wanna visualize.
 %   HJI, localQ
@@ -48,14 +47,14 @@ HJIwarm_rrt_camera_filename = 'HJIwarm_rrt_camera_hand.mat';
 localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
 
 % Choose which file we want to visualize.
-filename = HJI_rrt_camera_filename;
+filename = HJIwarm_rrt_camera_filename;
 % @car3DLocalQCameraRRT, ...
 % @car3DWarmCameraRRT, ...
 % @car3DHJICameraRRT, ...
 % @car3DLocalQLidarRRT, ...
 % @car3DWarmLidarRRT, ...
 % @car3DHJILidarRRT};
-params = car3DHJICameraRRT();
+params = car3DWarmCameraRRT();
 
 filePath = strcat(path, filename);
 load(filePath);
@@ -80,6 +79,9 @@ for i=1:length(states)
         % plot value function
         currFun = valueFuns{idx};
         idx = idx + 1;
+        if idx > length(updateTimeArr)
+            idx = length(updateTimeArr);
+        end
     end
     
     % grab important variables.
