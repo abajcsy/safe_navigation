@@ -99,7 +99,7 @@ classdef Plotter < handle
                 end
 
                 visSet = true;
-                %obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
+                obj.vxh = obj.plotFuncLevelSet(g, funcToPlot, visSet, extraArgs);
             end
             
             % Visualize environment 

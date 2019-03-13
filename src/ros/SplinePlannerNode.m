@@ -11,6 +11,8 @@ classdef SplinePlannerNode < handle
     methods
         %% Constructor.
         function obj = SplinePlannerNode()
+            setenv('ROS_MASTER_URI', 'http://localhost:11311');
+            
             % Create a new node.
             rosinit 
             

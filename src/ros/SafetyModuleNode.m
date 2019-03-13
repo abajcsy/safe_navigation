@@ -48,6 +48,8 @@ classdef SafetyModuleNode < handle
             % so we need to set the ROS master uri to the turtlebot.
             if strcmp(obj.params.envType, 'slam')
                 setenv('ROS_MASTER_URI','http://128.32.38.83:11311');
+            else
+                setenv('ROS_MASTER_URI', 'http://localhost:11311');
             end
             
             % Create a new node.
