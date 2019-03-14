@@ -39,6 +39,7 @@ path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 %     error('Unsupported method type.');
 % end
 
+% -------- RRT --------- %
 HJI_rrt_lidar_filename = 'HJI_rrt_lidar_hand.mat';
 HJIwarm_rrt_lidar_filename = 'HJIwarm_rrt_lidar_hand.mat';
 localQ_rrt_lidar_filename = 'localQwarm_rrt_lidar_hand.mat';
@@ -47,15 +48,30 @@ HJI_rrt_camera_filename = 'HJI_rrt_camera_hand.mat';
 HJIwarm_rrt_camera_filename = 'HJIwarm_rrt_camera_hand.mat';
 localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
 
+% -------- Spline -------- %
+HJI_spline_lidar_filename = 'HJI_spline_lidar_hand.mat';
+HJIwarm_spline_lidar_filename = 'HJIwarm_spline_lidar_hand.mat';
+localQ_spline_lidar_filename = 'localQwarm_spline_lidar_hand.mat';
+
+HJI_spline_camera_filename = 'HJI_spline_camera_hand.mat';
+HJIwarm_spline_camera_filename = 'HJIwarm_spline_camera_hand.mat';
+localQ_spline_camera_filename = 'localQwarm_spline_camera_hand.mat';
+
 % Choose which file we want to visualize.
-filename = HJI_rrt_lidar_filename;
+filename = HJI_spline_camera_filename;
 % @car3DLocalQCameraRRT, ...
 % @car3DWarmCameraRRT, ...
 % @car3DHJICameraRRT, ...
 % @car3DLocalQLidarRRT, ...
 % @car3DWarmLidarRRT, ...
 % @car3DHJILidarRRT};
-params = car3DHJILidarRRT();
+% {@car3DLocalQLidarSpline, ...
+% @car3DWarmLidarSpline, ...
+% @car3DHJILidarSpline, ...
+% @car3DLocalQCameraSpline, ...
+% @car3DWarmCameraSpline, ...
+% @car3DHJICameraSpline};
+params = car3DHJICameraSpline();
 
 filePath = strcat(path, filename);
 load(filePath);
@@ -63,7 +79,6 @@ grid = params.grid;
 valueFuns = valueFunCellArr;
 
 %% Visualize
-
 offsetX = (grid.max(1) - grid.min(1))/grid.N(1);
 offsetY = (grid.max(2) - grid.min(2))/grid.N(2);
 

@@ -13,9 +13,9 @@ clear all
 
 %% Choose which method you wanna analyze.
 %   HJI, localQ
-method = 'localQ';
-warm = true;
-sensor = 'lidar';
+% method = 'localQ';
+% warm = true;
+% sensor = 'lidar';
 
 %% Grab the data.
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
@@ -64,13 +64,13 @@ localQ_spline_camera_filename = 'localQwarm_spline_camera_hand.mat';
 
 
 %% Choose which file we want to analyze and what is the ground truth.
-filename = localQ_spline_camera_filename; 
-groundTruthFilename = HJI_spline_camera_filename;
+filename = localQ_rrt_lidar_filename; 
+groundTruthFilename = HJI_rrt_lidar_filename;
 
 % load all the files
 filePath = strcat(path, filename);
 load(filePath);
-params = car3DLocalQCameraSpline();       % NOTE: have to change this too!
+params = car3DLocalQLidarRRT();       % NOTE: have to change this too!
 
 %% Compute avg num states updated
 totalPerStep = [];
