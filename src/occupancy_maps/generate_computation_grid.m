@@ -13,8 +13,7 @@ function occupancy_grid_trimmed = generate_computation_grid(grid, occupancy_func
 %                               occpancy grid.
 % 
 % Outputs:
-%  trimmed_occcupancy_map    - Trimmed occupancy function defined over the
-%                                grid.
+%  trimmed_occcupancy_map    - Trimmed occupancy function defined over the%                                grid.
 
 
 % Crop the grid
@@ -37,7 +36,8 @@ g = processGrid(g);
 signed_distance_map = compute_fmm_map(g, occupancy_grid_trimmed); 
 signed_distance_trimmed = interp2(g.xs{1}', g.xs{2}', signed_distance_map', ...
                                 grid.xs{1}, grid.xs{2});
-safety_threshold = 0.05; % As Andrea suggested
+%safety_threshold = 0.05;   % Tuned for Stanford building dataset (SBPD)
+safety_threshold = 0.23;    % Tuned for SLAM
 occupancy_grid_trimmed = sign(signed_distance_trimmed - safety_threshold);
 
 %contourf(grid.xs{1}, grid.xs{2}, -sign(occupancy_grid_trimmed), [0 0], 'r');

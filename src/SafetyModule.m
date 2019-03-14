@@ -103,6 +103,7 @@ classdef SafetyModule < handle
             % since we have a finite compute grid, we may not want to 
             % trust values near the boundary of grid
             obj.HJIextraArgs.ignoreBoundary = 0; 
+            obj.HJIextraArgs.quiet = true;
             
             % Convergence information
             if strcmp(obj.updateMethod, 'HJI')

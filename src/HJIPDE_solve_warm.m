@@ -211,7 +211,11 @@ clns = repmat({':'}, 1, gDim);
 %% Extract the information from extraargs
 % Quiet mode
 if isfield(extraArgs, 'quiet') && extraArgs.quiet
-    fprintf('HJIPDE_solve running in quiet mode...\n')
+    if warmStart
+        fprintf('HJIPDE_solve_warm=True running in quiet mode...\n')
+    else
+        fprintf('HJIPDE_solve_warm=False running in quiet mode...\n')
+    end
     quiet = true;
 end
 

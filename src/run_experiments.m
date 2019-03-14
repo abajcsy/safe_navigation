@@ -30,7 +30,7 @@ function run_experiments()
                         @car3DWarmCameraSpline, ...
                         @car3DHJICameraSpline};
                    
-    experiments = {@car3DLocalQLidarSpline};
+    experiments = rrtExperiments;
     
     % Simulate each experiment.
     for i=1:length(experiments)
@@ -86,7 +86,7 @@ function runExperiment(experimentFun)
         planner = SplinePlannerNode();
         
         % Replan. 
-        ucurr = [0,0];
+        ucurr = [1,0];
         [path, pathCtrls, newpath] = planner.replan(params.xinit, ...
             ucurr,map.occupancy_map_plan,params.xgoal);
         
@@ -224,7 +224,7 @@ function runExperiment(experimentFun)
                 map.grid, map.gFMM, map.occupancy_map_safety, path, usedUOpt);
             
             % Pause based on timestep.
-            pause(params.dt);
+            %pause(params.dt);
         end
     end
 

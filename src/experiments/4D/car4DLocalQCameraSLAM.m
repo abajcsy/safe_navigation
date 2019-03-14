@@ -2,8 +2,16 @@ function params = car4DLocalQCameraSLAM()
 %% Environment Params.
 % Setup environment bounds.
 
-params.lowEnv = [-1; -2]; 
-params.upEnv = [6; 5]; 
+% experiment in the bay
+lowEnvBay = [-1; -2]; 
+upEnvBay = [6; 5]; 
+
+% experiment in hall
+lowEnvHall = [-1; -4];
+upEnvHall = [7; 4];
+
+params.lowEnv = lowEnvHall; 
+params.upEnv = upEnvHall;
 
 % Environment types include:
 %   hand-coded obstacles        --> 'hand'
@@ -24,8 +32,11 @@ params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
+xgoalBay = [4.9; 4.26; 0.; 0.];
+xgoalHall = [6; 1; 0.; 0.];
+
 params.xinit = [0; 0; 0.; 0.];    
-params.xgoal = [4.9; 4.26; 0.; 0.]; % TODO: measure goal location
+params.xgoal =  xgoalHall;
 
 %   neural network, vision-based planner      --> 'nn'
 params.plannerName = 'nn';
@@ -33,8 +44,8 @@ params.loadTrueOccuMaps = false; % if we can load in ground-truth occupancy maps
 params.goalEps = 0.3; % threshold for when we are considered close enough to goal.
 
 %% Dynamical System Params.
-params.wMax = 1.1;              % maxangular control
-params.aRange = [-0.4, 0.4];    % acceleration control range
+params.wMax = 0.7;              % maxangular control
+params.aRange = [-0.6, 0.6];    % acceleration control range
 params.vRange = [0.0, 0.6];     % speed range
 
 % Define dynamic system. 
@@ -63,7 +74,7 @@ params.uMode = 'max';
 params.dMode = [];  % we don't want to compute with disturbance.
 
 % Time horizon to compute BRT for.
-params.tMax = 5;
+params.tMax = 2;
 
 %% Sensing Params.
 params.senseShape = 'camera';
@@ -82,6 +93,5 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.1;
-
+params.safetyTol = 0.2;
 end
