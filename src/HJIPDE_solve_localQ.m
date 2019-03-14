@@ -121,7 +121,7 @@ clns = repmat({':'}, 1, gDim);
 %% Extract the information from extraargs
 % Quiet mode
 if isfield(extraArgs, 'quiet') && extraArgs.quiet
-    fprintf('HJIPDE_solve running in quiet mode...\n')
+    fprintf('HJIPDE_solve_localQ running in quiet mode...\n')
     quiet = true;
 end
 
@@ -850,8 +850,8 @@ for i = istart:length(tau)
     while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
         %fprintf('\n');
         [sz,~] = size(Q);
-        fprintf('Q size: %f\n', sz);
-        fprintf('\n');
+        %fprintf('Q size: %f\n', sz);
+        %fprintf('\n');
         
         % Record the current Q size.
         extraOuts.QSizes = [extraOuts.QSizes, sz];

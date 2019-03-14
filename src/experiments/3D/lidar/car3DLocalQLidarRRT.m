@@ -23,7 +23,7 @@ params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
 params.xinit = [2.0; 2.5; pi/2];
-params.xgoal = [8.5; 2.5; -pi/2];
+params.xgoal = [8.5; 3.0; -pi/2];
 
 %   hand-engineered trajectory      --> 'hand'
 %   rapidly-exploring random-tree   --> 'rrt'

@@ -103,12 +103,12 @@ classdef Plotter < handle
             end
             
             % Visualize environment 
-            %obj.envh = obj.plotEnvironment(gMap);
+            obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
             obj.senseh = obj.plotSensing(gMap, sensingMap);
             if ~isempty(path)
-                %obj.plotTraj(path);
+                obj.plotTraj(path);
             end
             if ~isempty(usedUOpt)
                 obj.carh = obj.plotCar(x, usedUOpt);
