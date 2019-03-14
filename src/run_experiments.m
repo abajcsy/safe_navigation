@@ -30,7 +30,7 @@ function run_experiments()
                         @car3DWarmCameraSpline, ...
                         @car3DHJICameraSpline};
                    
-    experiments = {@car3DLocalQCameraSpline};
+    experiments = rrtExperiments;
     
     % Simulate each experiment.
     for i=1:length(experiments)
