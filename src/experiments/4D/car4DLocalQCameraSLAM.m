@@ -33,7 +33,7 @@ params.loadTrueOccuMaps = false; % if we can load in ground-truth occupancy maps
 params.goalEps = 0.3; % threshold for when we are considered close enough to goal.
 
 %% Dynamical System Params.
-params.wMax = 1.1;              % maxangular control
+params.wMax = 0.7;              % maxangular control
 params.aRange = [-0.4, 0.4];    % acceleration control range
 params.vRange = [0.0, 0.6];     % speed range
 
@@ -63,7 +63,7 @@ params.uMode = 'max';
 params.dMode = [];  % we don't want to compute with disturbance.
 
 % Time horizon to compute BRT for.
-params.tMax = 5;
+params.tMax = 2;
 
 %% Sensing Params.
 params.senseShape = 'camera';
@@ -82,6 +82,6 @@ params.planFreq = 10;
 params.safetyFreq = 10;
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.1;
+params.safetyTol = 0.2;
 
 end

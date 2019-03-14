@@ -56,6 +56,7 @@ classdef VisualizationNode < handle
             obj.figh = figure(1);
             
             % Visualize goal region.
+            hold on
             c = [0.1,0.8,0.5,0.5];
             pos = [obj.params.xgoal(1)-obj.params.goalEps, obj.params.xgoal(2)-obj.params.goalEps, ...
                 obj.params.goalEps*2, obj.params.goalEps*2];
@@ -81,6 +82,9 @@ classdef VisualizationNode < handle
             % Create a new node.
             rosinit 
             
+            % Create subscribers.
+            obj.registerCallbacks()
+            
             % Spin and let everything go.
             rate = rosrate(100);
             reset(rate);
@@ -101,7 +105,7 @@ classdef VisualizationNode < handle
             % Subscriber for current safe set.
             safeMsgType = 'safe_navigation_msgs/SafeSet';
             safeSetTopicName = '/safe_set';
-            obj.safeSetSub = rospublisher(safeSetTopicName, safeMsgType, @obj.safeSetCallback);
+            obj.safeSetSub = rossubscriber(safeSetTopicName, safeMsgType, @obj.safeSetCallback);
             pause(1); % wait for subscriber to get called
            
             % Subscriber that listens to planned trajectory
@@ -130,6 +134,38 @@ classdef VisualizationNode < handle
                 delete(obj.carh{2});
             end
             obj.carh = obj.plotCar(obj.currState, false);
+
+            % If there is a value function to visualize, do so.
+            if ~isempty(obj.currSafeSet) && ~isempty(obj.currState)
+                visSet = true;
+                if length(obj.currState) == 3
+                    extraArgs.theta = obj.currState(3);
+                elseif length(obj.currState) == 4
+                    extraArgs.theta = obj.currState(3);
+                    extraArgs.vel = obj.currState(4);
+                else
+                    error('I cannot visualize a %dD system!', length(obj.currState));
+                end
+
+                if ~isempty(obj.vxh)
+                    delete(obj.vxh);
+                end
+                obj.vxh = obj.plotFuncLevelSet(obj.params.grid, obj.currSafeSet, visSet, extraArgs);
+                
+                % If the current state is on the boundary, then 
+                % change the plotting to reflect that.
+                [~, onBoundary, ~] = ...
+                    obj.checkAndGetSafetyControl(obj.currState, obj.params.safetyTol);
+                
+                if onBoundary
+                    % Update the plotting for where the car is right now.
+                    if ~isempty(obj.carh)
+                        delete(obj.carh{2});
+                    end
+                    obj.carh = obj.plotCar(obj.currState, true);
+                end
+            end
+            
         end
         
         %% Safe set callback
@@ -145,37 +181,6 @@ classdef VisualizationNode < handle
             
             % compute the corresponding gradients and store them.
             obj.currDeriv = computeGradients(obj.params.grid, obj.currSafeSet);
-            
-            % If there is a value function to visualize, do so.
-            if ~isempty(obj.currSafeSet) && ~isempty(obj.currState)
-                visSet = true;
-                if length(x) == 3
-                    extraArgs.theta = x(3);
-                elseif length(x) == 4
-                    extraArgs.theta = x(3);
-                    extraArgs.vel = x(4);
-                else
-                    error('I cannot visualize a %dD system!', length(x));
-                end
-
-                if ~isempty(obj.vxh)
-                    delete(obj.vxh);
-                end
-                obj.vxh = obj.plotFuncLevelSet(obj.params.grid, obj.currSafeSet, visSet, extraArgs);
-                
-                % If the current state is on the boundary, then 
-                % change the plotting to reflect that.
-                [~, onBoundary, ~] = ...
-                    checkAndGetSafetyControl(obj.currState, obj.params.safetyTol);
-                
-                if onBoundary
-                    % Update the plotting for where the car is right now.
-                    if ~isempty(obj.carh)
-                        delete(obj.carh{2});
-                    end
-                    obj.carh = obj.plotCar(obj.currState, true);
-                end
-            end
         end
         
         %% Plan callback
@@ -215,6 +220,7 @@ classdef VisualizationNode < handle
             % value function.
             vx = obj.currSafeSet;
             value = eval_u(obj.params.grid, vx, x);
+            fprintf('tol: %f, value: %f\n', tol, value);
             
             % If the value is close to zero, we are close to the safety
             % boundary.
@@ -320,7 +326,7 @@ classdef VisualizationNode < handle
             % BELOW zero.
             if visSet
                 visExtraArgs.LineWidth = 2.0;
-                h = visSetIm(gPlot, dataPlot, edgeColor, 0, visExtraArgs);
+                h = visSetIm(gPlot, dataPlot, edgeColor, 0:0.05:obj.params.safetyTol, visExtraArgs);
                 %[~, h] = contourf(gPlot.xs{1}, gPlot.xs{2}, dataPlot, 0:0.1:5);
             else
                 alpha = 0.5;

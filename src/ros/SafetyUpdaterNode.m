@@ -27,13 +27,12 @@ classdef SafetyUpdaterNode < handle
         initData2D
         firstCompute
         
-        
         % State of robot
         currState
         currSafeSetMsg
         
         % Figure data.
-        plotter
+        %plotter
     end
     
     methods
@@ -96,9 +95,9 @@ classdef SafetyUpdaterNode < handle
             % Setup occupancy map handler.
             extraArgs.occuMap = obj.trueOccuMap;
             obj.map = OccuMap(obj.params.grid, obj.params.envType, extraArgs);
-            obj.plotter = Plotter(obj.params.lowEnv, obj.params.upEnv, ...
-                obj.map.boundLow, obj.map.boundUp, obj.params.envType, ... 
-                obj.trueOccuMap, obj.params.goalEps);
+            %obj.plotter = Plotter(obj.params.lowEnv, obj.params.upEnv, ...
+            %    obj.map.boundLow, obj.map.boundUp, obj.params.envType, ... 
+            %    obj.trueOccuMap, obj.params.goalEps);
             
             % Update the occupancy map and the corresponding signed
             % distance function. 
@@ -115,8 +114,8 @@ classdef SafetyUpdaterNode < handle
             end
             
             % Update the plotting.
-            obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, obj.safety.valueFun, ...
-                obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
+            %obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, obj.safety.valueFun, ...
+            %    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
             
             % Setup ROS pub/sub for trajectories to verify.
             obj.registerCallbacks();
@@ -157,7 +156,7 @@ classdef SafetyUpdaterNode < handle
             msg = rosmessage('safe_navigation_msgs/SafeSet');
             msg.N = obj.params.grid.shape;
             msg.Dim = obj.params.grid.dim;
-            msg.Values = reshape(valueFun, [1,prod(obj.params.grid.shape)]); 
+            msg.Values = valueFun(:); %reshape(valueFun, [1,prod(obj.params.grid.shape)]); 
             
             fprintf('Created new Safe Set message to send!\n');
         end
@@ -177,9 +176,9 @@ classdef SafetyUpdaterNode < handle
             obj.currState = [x;y;theta;vel];
             
             % Update the plotting for where the car is right now.
-            delete(obj.plotter.carh{2});
-            carh = obj.plotter.plotCar(obj.currState, false);
-            obj.plotter.carh = carh;
+            %delete(obj.plotter.carh{2});
+            %carh = obj.plotter.plotCar(obj.currState, false);
+            %obj.plotter.carh = carh;
         end
                 
         %% Grabs the most recent SLAM occupancy map and converts it into 
@@ -267,8 +266,8 @@ classdef SafetyUpdaterNode < handle
                     obj.currSafeSetMsg = safeSetMsg;
                     
                     % update plotting
-                    obj.plotter.updatePlot(obj.currState, obj.params.xgoal, obj.safety.valueFun, ...
-                        obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], []);
+                    %obj.plotter.updatePlot(obj.currState, obj.params.xgoal, obj.safety.valueFun, ...
+                    %    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], []);
                 end
             end
             

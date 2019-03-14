@@ -109,7 +109,7 @@ classdef VerifierNode < handle
             % to be considered = 0?
             gradZeroTol = 0.01;
             
-            fprintf('Verifying plan...\n');
+            %fprintf('Verifying plan...\n');
             
             for i=1:length(controls) 
                 if appliedUOpt
@@ -117,6 +117,7 @@ classdef VerifierNode < handle
                     % plan's sequence of controls is now invalid, so 
                     % we just use the safety control from here on.
                     u = obj.getSafetyControl(xcurr);
+                    %fprintf('usafe: [%f, %f]\n', u(1), u(2));
                 else
                     % grab planner's current control.
                     u = controls(i).U; 
@@ -131,6 +132,7 @@ classdef VerifierNode < handle
                         %u = uOpt.*(abs(deriv) > gradZeroTol) + u.*(abs(deriv) < gradZeroTol);
                         u = uOpt;
                         appliedUOpt = true;
+                        %fprintf('usafe: [%f, %f]\n', u(1), u(2));
                     end
                 end
 
@@ -194,26 +196,38 @@ classdef VerifierNode < handle
         function [uOpt, onBoundary, current_deriv] = checkAndGetSafetyControl(obj, x, tol)
             % Grab the value at state x from the most recent converged 
             % value function.
+            %fprintf('------------------\n');
+            %tic;
             vx = obj.valueFun;
             value = eval_u(obj.params.grid, vx, x);
+            %t1 = toc;
             
             % If the value is close to zero, we are close to the safety
             % boundary.
             if value < tol 
                 % value of the derivative at that particular state
                 current_deriv = eval_u(obj.params.grid, obj.deriv, x);
+                %t2 = toc;
                 % NOTE: need all 5 arguments (including NaN's) to get 
                 % correct optimal control!
                 uOpt = obj.params.dynSys.optCtrl(NaN, x, current_deriv, obj.params.uMode, NaN); 
+                %t3 = toc;
                 onBoundary = true;
                 if iscell(uOpt)
                     uOpt = cell2mat(uOpt);
                 end
+
+                %fprintf('deriv computation: %f\n', t2-t1);
+                %fprintf('optCtrl computation: %f\n', t3-t2);
             else
                 current_deriv = [0.0;0.0;0.0;0.0];
                 uOpt = zeros(length(x), 1);
                 onBoundary = false;
             end
+            %t4 = toc;
+            
+            %fprintf('value computation: %f\n', t1);
+            %fprintf('overall computation: %f\n', t4);
         end
         
         %% Gets the optimal control to apply at state x.
