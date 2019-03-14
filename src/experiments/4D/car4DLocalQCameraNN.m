@@ -83,4 +83,24 @@ params.safetyFreq = 10;
 % How close to the boundary we need to be to apply safety control.
 params.safetyTol = 0.1;
 
+%% Data Saving Params. 
+% If we want to save the sequence of value functions, compute times, etc..
+params.saveOutputData = true;
+
+% Create filename if we want to save things out.
+% Naming convention:
+%   [updateMethod][warm][planner][sensing][environment][dimension][date].mat
+if params.saveOutputData
+    if params.warmStart
+        name = strcat(params.updateMethod, 'warm');
+    else
+        name = params.updateMethod;
+    end
+    name = strcat(name, '_', params.plannerName);
+    name = strcat(name, '_', params.senseShape);
+    name = strcat(name, '_', params.envType);
+    name = strcat(name, '_', params.dynSys.nx, 'D');
+    name = strcat(name, '_safety', string(params.useSafety), '_');
+    params.filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
+end
 end

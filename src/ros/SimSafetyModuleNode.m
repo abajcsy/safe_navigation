@@ -10,6 +10,8 @@ classdef SimSafetyModuleNode < handle
         
         % All the info about our experimental setup.
         params
+        states
+        paths
         
         % Safety data.
         safety
@@ -41,8 +43,8 @@ classdef SimSafetyModuleNode < handle
             addpath(genpath('/home/somilb/Documents/Projects/safe_navigation/'));
             
             % Load up all the experimental parameters.
-            %obj.params = car4DLocalQCameraNN();    % run inside of SBPD
-            obj.params = car4DLocalQCameraSLAM();   % run SLAM environment
+            obj.params = car4DLocalQCameraNN();    % run inside of SBPD
+            %obj.params = car4DLocalQCameraSLAM();   % run SLAM environment
             
             % If we are running SLAM, we are using the turtlebot, 
             % so we need to set the ROS master uri to the turtlebot.
@@ -59,6 +61,8 @@ classdef SimSafetyModuleNode < handle
             obj.firstMap = true;
             obj.rawOccuMap = [];
             obj.firstCompute = true; % TODO: is this correct?
+            obj.states = {};
+            obj.paths = {};
             
             if strcmp(obj.params.envType, 'sbpd') && obj.params.loadTrueOccuMaps 
                 % Load the saved ground-truth occupancy maps.
@@ -104,11 +108,13 @@ classdef SimSafetyModuleNode < handle
                     obj.params.envType);
             end
             
-            % Setup safety module object and compute first set.
-            obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
-                            obj.params.uMode, obj.params.dMode, obj.params.dt, ...
-                            obj.params.updateEpsilon, obj.params.warmStart, ...
-                            obj.params.envType, obj.params.updateMethod, obj.params.tMax);
+            if obj.params.useSafety
+                % Setup safety module object and compute first set.
+                obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
+                                obj.params.uMode, obj.params.dMode, obj.params.dt, ...
+                                obj.params.updateEpsilon, obj.params.warmStart, ...
+                                obj.params.envType, obj.params.updateMethod, obj.params.tMax);
+            end
             
             % Create the occupancy map handler.
             % TODO: THIS MAY NOT BE SET BEFORE....
@@ -138,12 +144,18 @@ classdef SimSafetyModuleNode < handle
                     obj.params.envType);
             end
             
-            % Compute the first avoid set based on initial safe set.
-            obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
+            if obj.params.useSafety
+                % Compute the first avoid set based on initial safe set.
+                obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
             
-            % Update the plotting.
-            obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, obj.safety.valueFun, ...
-                obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
+                % Update the plotting with safe set.
+                obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, obj.safety.valueFun, ...
+                    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
+            else
+                % Update the plotting.
+                obj.plotter.updatePlot(obj.params.xinit, obj.params.xgoal, [], ...
+                    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, [], false);
+            end
             
             % Setup ROS pub/sub for trajectories to verify.
             obj.registerCallbacks();
@@ -152,7 +164,47 @@ classdef SimSafetyModuleNode < handle
             rate = rosrate(100);
             reset(rate);
             while true
+                % If we are close enough to the goal, stop simulation.
+                if obj.params.useSafety
+                    if norm(obj.params.dynSys.x(1:2) - obj.params.xgoal(1:2)) < obj.params.goalEps+0.05
+                        fprintf('Reached the goal!\n');
+                        break;
+                    end
+                else
+                    % if we didn't use safety, we know where the robot
+                    % crashes
+                    if norm(obj.params.dynSys.x(1:2) - [18.0871; 34.6039]) < 1e-3
+                        fprintf('I crashed without safety!\n');
+                        break;
+                    end
+                end
                 waitfor(rate);
+            end
+            
+            % Save out relevant data.
+            if obj.params.saveOutputData
+                safeOccuMaps = obj.map.occuMapSafeCellArr;
+                planOccuMaps = obj.map.occuMapPlanCellArr;
+                states = obj.states;
+                params = obj.params;
+                paths = obj.paths;
+                repo = what('safe_navigation');
+                savePath = strcat(repo.path, '/data/', obj.params.filename);
+
+                % Save out safety analysis metrics if we were computing safe sets.
+                if obj.params.useSafety
+                    valueFunCellArr = obj.safety.valueFunCellArr; 
+                    lxCellArr = obj.safety.lxCellArr; 
+                    QSizeCellArr = obj.safety.QSizeCellArr;
+                    solnTimes = obj.safety.solnTimes;
+                    updateTimeArr = obj.safety.updateTimeArr;
+                    
+                    save(savePath, 'valueFunCellArr', 'lxCellArr', 'QSizeCellArr', ...
+                        'solnTimes', 'safeOccuMaps', 'planOccuMaps', 'updateTimeArr', ...
+                        'states', 'paths', 'params');
+                else
+                    save(savePath, 'safeOccuMaps', 'planOccuMaps', 'states', 'paths', 'params');
+                end
             end
         end
         
@@ -338,61 +390,86 @@ classdef SimSafetyModuleNode < handle
                 planPath{end+1} = xplan;
             end
             
+            % If we are saving, record the current plan.
+            if obj.params.saveOutputData
+                obj.paths{end+1} = planPath;
+                obj.states{end+1} = xcurr;
+            end
+            
             % How close to zero does the spatial derivative have to be
             % to be considered = 0?
             gradZeroTol = 0.01;
             
             for i=1:length(controls) 
-                if appliedUOpt
-                    % if we applied safety controller, then the 
-                    % plan's sequence of controls is now invalid, so 
-                    % we just use the safety control from here on.
-                    u = obj.safety.getSafetyControl(xcurr);
-                else
-                    % grab planner's current control.
-                    u = controls(i).U; 
+                if obj.params.useSafety
+                    if appliedUOpt
+                        % if we applied safety controller, then the 
+                        % plan's sequence of controls is now invalid, so 
+                        % we just use the safety control from here on.
+                        u = obj.safety.getSafetyControl(xcurr);
+                    else
+                        % grab planner's current control.
+                        u = controls(i).U; 
+
+                        % check the safety of the state we reach by applying control
+                        [uOpt, onBoundary, deriv] = ...
+                            obj.safety.checkAndGetSafetyControl(xcurr, obj.params.safetyTol);
+                        % extract just the theta and velocity derivative;
+                        deriv = deriv(3:4);
+                        % if state we reach is unsafe
+                        if onBoundary
+                            %u = uOpt.*(abs(deriv) > gradZeroTol) + u.*(abs(deriv) < gradZeroTol);
+                            u = uOpt;
+                            appliedUOpt = true;
+                        end
+                    end
+
+                    % Get the new sensing region.
+                    if strcmp(obj.params.envType, 'sbpd') && strcmp(obj.params.senseShape, 'camera')
+                        senseData = {[xcurr(1);xcurr(2);xcurr(3)], ...
+                          [obj.params.senseFOV; obj.params.initialR; obj.params.farPlane]};
+
+                        % update the occupancy map based on the current state
+                        % in simulation.
+                        obj.map.updateMapAndCost(senseData, obj.params.senseShape);
+                    end 
+                    %elseif strcmp(obj.params.envType, 'slam') && strcmp(obj.params.senseShape, 'camera')
+                    %    senseData = obj.trueOccuMap;
+                    %else
+                    %    error('Right now, SafetyModuleNode cannot use a %s in a %s environment\n', ...
+                    %      obj.params.senseShape, obj.params.envType);
+                    %end  
+
+                    % modify verified control sequence.
+                    verifiedU{end+1} = u;
+
+                    % simulate the trajectory forward (applying safe or planned
+                    % control)
+                    obj.params.dynSys.updateState(u, obj.params.dt, xcurr);
+                    xcurr = obj.params.dynSys.x;
                     
-                    % check the safety of the state we reach by applying control
-                    [uOpt, onBoundary, deriv] = ...
-                        obj.safety.checkAndGetSafetyControl(xcurr, obj.params.safetyTol);
-                    % extract just the theta and velocity derivative;
-                    deriv = deriv(3:4);
-                    % if state we reach is unsafe
-                    if onBoundary
-                        %u = uOpt.*(abs(deriv) > gradZeroTol) + u.*(abs(deriv) < gradZeroTol);
-                        u = uOpt;
-                        appliedUOpt = true;
+                    % save out current state
+                    if obj.params.saveOutputData
+                        obj.states{end+1} = xcurr;
+                    end
+
+                    % update plotting
+                    obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.safety.valueFun, ...
+                        obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
+                else
+                    % save out current state
+                    if obj.params.saveOutputData
+                        % grab planner's current control.
+                        u = controls(i).U; 
+                        verifiedU{end+1} = u;
+                        obj.params.dynSys.updateState(u, obj.params.dt, xcurr);
+                        xcurr = obj.params.dynSys.x;
+                        obj.states{end+1} = xcurr;
+                        
+                        obj.plotter.updatePlot(xcurr, obj.params.xgoal, [], ...
+                            obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
                     end
                 end
-                
-                % Get the new sensing region.
-                if strcmp(obj.params.envType, 'sbpd') && strcmp(obj.params.senseShape, 'camera')
-                    senseData = {[xcurr(1);xcurr(2);xcurr(3)], ...
-                      [obj.params.senseFOV; obj.params.initialR; obj.params.farPlane]};
-                  
-                    % update the occupancy map based on the current state
-                    % in simulation.
-                    obj.map.updateMapAndCost(senseData, obj.params.senseShape);
-                end 
-                %elseif strcmp(obj.params.envType, 'slam') && strcmp(obj.params.senseShape, 'camera')
-                %    senseData = obj.trueOccuMap;
-                %else
-                %    error('Right now, SafetyModuleNode cannot use a %s in a %s environment\n', ...
-                %      obj.params.senseShape, obj.params.envType);
-                %end  
-                
-
-                % modify verified control sequence.
-                verifiedU{end+1} = u;
-                
-            	% simulate the trajectory forward (applying safe or planned
-                % control)
-                obj.params.dynSys.updateState(u, obj.params.dt, xcurr);
-                xcurr = obj.params.dynSys.x;
-                
-                % update plotting
-                obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.safety.valueFun, ...
-                    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
                 pause(obj.params.dt);
             end
             
@@ -402,15 +479,21 @@ classdef SimSafetyModuleNode < handle
             % publish out the verified trajectory
             send(obj.verifiedPub, verifiedMsg);
             
-            % update the safe set based on the occupancy map the 
-            % robot will see assuming it will execute (exactly) the 
-            % verified control sequence
-            currTime = 1; % TODO: this is wrong, but doesn't really matter.
-            obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
-            
-            % update plotting after value function is updated
-            obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.safety.valueFun, ...
-                obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
+            if obj.params.useSafety
+                % update the safe set based on the occupancy map the 
+                % robot will see assuming it will execute (exactly) the 
+                % verified control sequence
+                currTime = 1; % TODO: this is wrong, but doesn't really matter.
+                obj.safety.computeAvoidSet(obj.map.signed_dist_safety, 1);
+                
+                % update plotting after value function is updated
+                obj.plotter.updatePlot(xcurr, obj.params.xgoal, obj.safety.valueFun, ...
+                    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
+            else
+                % update just info about robot and plan.
+                obj.plotter.updatePlot(xcurr, obj.params.xgoal, [], ...
+                    obj.map.grid, obj.map.gFMM, obj.map.occupancy_map_safety, planPath, appliedUOpt);
+            end
         end
         
     end
