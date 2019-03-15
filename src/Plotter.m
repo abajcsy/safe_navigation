@@ -106,7 +106,7 @@ classdef Plotter < handle
             obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(gMap, sensingMap);
+            %obj.senseh = obj.plotSensing(gMap, sensingMap);
             if ~isempty(path)
                 obj.plotTraj(path);
             end
@@ -304,15 +304,15 @@ classdef Plotter < handle
         %   h   - handle for figure
         function h = plotSensing(obj, grid, signed_distance_map)
             
-            %[c, h]= contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0,0]);
-            %x = c(1,2:end);
-            %y = c(2,2:end);
-            %delete(h);
-            %h = fill(x,y,[0,0.2,1],'FaceAlpha',0.3, 'EdgeColor', 'none');
+            [c, h]= contourf(grid.xs{1}, grid.xs{2}, signed_distance_map, [0,0]);
+            x = c(1,2:end);
+            y = c(2,2:end);
+            delete(h);
+            h = fill(x,y,[0,0.2,1],'FaceAlpha',0.3, 'EdgeColor', 'none');
             
-            posIdx = find(signed_distance_map > 0);
-            h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
-                'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
+%             posIdx = find(signed_distance_map > 0);
+%             h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
+%                 'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
             
             % Setup the figure axes to represent the entire environment
             xlim([obj.lowEnv(1) obj.upEnv(1)]);
