@@ -16,7 +16,7 @@ traj_path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data_traj/';
 %% Grab file and params.
 
 % Load traj.
-filename = safe_traj;
+filename = unsafe_traj;
 filePath = strcat(traj_path, filename);
 load(filePath);
 params = car4DLocalQCameraNN();
@@ -33,6 +33,8 @@ end
 load(filePath);
 
 orange = [242./255., 160./255., 29./255.];
+turquoise = [0, 166, 204]/255.;
+
 % extract points where safe control was applied.
 safeCtrl_indicies = find(appliedUOpt == true);
 xSafeCtrl = xtraj(safeCtrl_indicies);
@@ -56,12 +58,12 @@ ylim([params.lowEnv(2) params.upEnv(2)]);
 e = contourf(grid2D.xs{1}, grid2D.xs{2}, -occuMap, [0 0]);
 colormap gray
  
-h = plot(xtraj, ytraj, '-', 'Color', orange, 'LineWidth', 3); 
+h = plot(xtraj, ytraj, '-', 'Color', turquoise, 'LineWidth', 3); 
 % Plot points where safety was applied.
 plot(xSafeCtrl, ySafeCtrl, 'ro', 'MarkerSize', 3,'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r');
 
 % Plot the car
-plotCar([xtraj(1);ytraj(1);thetatraj(1)], [183, 91, 0]/255.);
+plotCar([xtraj(1);ytraj(1);thetatraj(1)], [0, 108, 140]/255.);
 plotCar([xtraj(end);ytraj(end);thetatraj(end)], 'k');
 
 set(gca,'TickLabelInterpreter','latex')

@@ -3,19 +3,18 @@ clf
 clear all
 
 % Data.
-localQ_spline_camera_filename = 'localQwarm_spline_camera_hand.mat';
-traj_filename = 'localQwarm_spline_camera_hand_traj.mat';
+localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
+traj_filename = 'localQwarm_rrt_camera_hand_traj.mat';
 traj_path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data_traj/';
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 
 % Grab the parameters and traj.
-params = car3DLocalQCameraSpline();      
+params = car3DLocalQCameraRRT();      
 filePath = strcat(traj_path, traj_filename);
 load(filePath);
 
-
 % Grab the data.
-filePath = strcat(path, localQ_spline_camera_filename);
+filePath = strcat(path, localQ_rrt_camera_filename);
 load(filePath);
 
 %% Plot.
@@ -28,8 +27,11 @@ rectangle('Position',pos,'Curvature',1.0,'FaceColor',c,'LineStyle','none');
 scatter(params.xgoal(1),params.xgoal(2),[],[0.0,0.8,0.5],'filled');
 
 % Setup the figure axes to represent the entire environment
-xlim([params.lowEnv(1) params.upEnv(1)]);
-ylim([params.lowEnv(2) params.upEnv(2)]);
+%xlim([params.lowEnv(1) params.upEnv(1)]);
+%ylim([params.lowEnv(2) params.upEnv(2)]);
+
+xlim([params.lowEnv(1) 5]);
+ylim([params.lowEnv(2) 5]);
 
 set(gca,'TickLabelInterpreter','latex')
 set(gcf, 'Color', 'w');
@@ -55,31 +57,31 @@ end
 %% Plot car and sensing during part of traj.
 [grid2D, ~] = proj(params.grid, valueFunCellArr{1}, [0 0 1], 0);
 
-carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0,0,0]};
-alphaSeq = [0.1, 0.15, 0.2, 0.25, 1.0]; 
+carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0.1,0.1,0.1], [0,0,0]};
+alphaSeq = [0.1, 0.2, 0.3, 0.6, 0.7, 1.0]; %[0.1, 0.15, 0.2, 0.25, 0.3, 1.0]; 
 
 % how frequently to plot everything
-plotFreq = 70;
-plotHoriz = 350; %400;  %length(xtraj)
+plotFreq = 30;
+plotHoriz = 200; %400;  %length(xtraj)
 idx = 1;
 colorIdx = 1;
+fillC = [132, 134, 255]/255.; %'b';
 for i=1:plotHoriz
     currT = updateTimeArr(idx);
     xcurr = states{i};
     
-    if mod(i,plotFreq) == 0       
-
+    if mod(i,plotFreq) == 0 || i == 2      
         % plot sensing.
         sensingFun = safeOccuMaps{i};
         [c, h]= contourf(grid2D.xs{1}, grid2D.xs{2}, sensingFun, [0,0]);
         x = c(1,2:end);
         y = c(2,2:end);
         delete(h);
-        if i == 5
-            fillC = [0,0.2,1];
-        else
-            fillC = [140, 185, 255]/255.;
-        end
+%         if i == 5
+%             fillC = [0,0.2,1];
+%         else
+%             fillC = [140, 185, 255]/255.;
+%         end
         h = fill(x,y,fillC,'FaceAlpha',alphaSeq(colorIdx), 'EdgeColor', 'none');
         
         % plot car and sensing

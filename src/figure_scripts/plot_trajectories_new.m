@@ -45,6 +45,7 @@ for i=1:length(experiments)
     green = [22./255., 191./255., 121./255.];
     lightPurple = [171./255., 134./255., 206./255.];
     purple = [109./255., 71./255., 198./255.]; 
+    pinkPurple = [116, 50, 147]/255.;
     orange = [242./255., 160./255., 29./255.];
     
     powderBlue = [146, 170, 232]/255.;
@@ -60,11 +61,12 @@ for i=1:length(experiments)
     lidar_ytraj = ytraj;
     lidar_thetatraj = thetatraj;
     lidar_appliedUOpt = appliedUOpt;
-    lidar_color = turquoise;
+
     % extract points where safe control was applied.
     li_safe_indicies = find(lidar_appliedUOpt == true);
     lidar_xSafe = lidar_xtraj(li_safe_indicies);
     lidar_ySafe = lidar_ytraj(li_safe_indicies);
+    lidar_thetaSafe = lidar_thetatraj(li_safe_indicies);
 
     % Load Camera.
     filenameR = curr_files{2}; 
@@ -74,11 +76,15 @@ for i=1:length(experiments)
     camera_ytraj = ytraj;
     camera_thetatraj = thetatraj;
     camera_appliedUOpt = appliedUOpt;
-    camera_color = orange;
     % extract points where safe control was applied.
     cam_safe_indicies = find(camera_appliedUOpt == true);
     camera_xSafe = camera_xtraj(cam_safe_indicies);
     camera_ySafe = camera_ytraj(cam_safe_indicies);
+    camera_thetaSafe = camera_thetatraj(cam_safe_indicies);
+    
+    %% Choose colors
+    lidar_color = pinkPurple; %purple;
+    camera_color = turquoise;
 
     %% Create subplot and environment.
     subplot(3,2,i); 
@@ -135,25 +141,73 @@ for i=1:length(experiments)
     box on
 
     %% Plot Lidar.
-    %lih = plot(lidar_xtraj, lidar_ytraj, '-', 'Color', lidar_color, 'LineWidth', 3); 
-    % Plot points where safety was applied.
-    %plot(lidar_xSafe, lidar_ySafe, 'ro', 'MarkerSize', 3,'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r');
-    % Plot car at final point
-    step = 100;
+    step = 60;
     num = floor(length(lidar_xtraj)/step);
     alphavals = linspace(0.1, 1, num);
+    idx = 1;
     for i=1:step:length(lidar_xtraj)
-        lih = plotCar([lidar_xtraj(i); lidar_ytraj(i); lidar_thetatraj(i)], purple, alphavals(i));
+        
+        % Check if state is on safety boundary
+        xcurr = [lidar_xtraj(i); lidar_ytraj(i); lidar_thetatraj(i)];
+        onBoundary = lidar_appliedUOpt(i);
+        
+        % If on boundary, color red.
+        c = lidar_color;
+        if onBoundary
+            c = 'r';
+        end
+        
+        % Plot the car.
+        lih = plotCar(xcurr, c, alphavals(idx));
+        idx = idx + 1;
+        if idx > length(alphavals)
+            idx = length(alphavals);
+        end
+    end
+    
+    % plot all the safe states for lidar.
+    for i=1:length(lidar_xSafe)
+        % Plot the car.
+        xcurr = [lidar_xSafe(i); lidar_ySafe(i); lidar_thetaSafe(i)];
+        lih = plotCar(xcurr, 'r', 1.0);
     end
     
     %% Plot Camera.
-    %camh = plot(camera_xtraj, camera_ytraj, '-', 'Color', camera_color, 'LineWidth', 3);
-    % Plot points where safety was applied.
-    %plot(camera_xSafe, camera_ySafe, 'ro', 'MarkerSize', 3,'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r');
-    % Plot car at final point
-    %plotCar(obj, [rrt_xtraj(end); rrt_ytraj(end); rrt_thetatraj(end)]);
+    num = floor(length(lidar_xtraj)/step);
+    alphavals = linspace(0.1, 1, num);
+    idx = 1;
     for i=1:step:length(camera_xtraj)
-        camh = plotCar([camera_xtraj(i); camera_ytraj(i); camera_thetatraj(i)], lightPurple, i/length(camera_xtraj));
+        % Check if state is on safety boundary
+        xcurr = [camera_xtraj(i); camera_ytraj(i); camera_thetatraj(i)];
+        onBoundary = camera_appliedUOpt(i);
+        
+        % If on boundary, color red.
+        c = camera_color;
+        if onBoundary
+            c = 'r';
+        end
+       
+        % Plot the car.
+        camh = plotCar([camera_xtraj(i); camera_ytraj(i); camera_thetatraj(i)], c, alphavals(idx));
+        idx = idx + 1;
+        if idx > length(alphavals)
+            idx = length(alphavals);
+        end
+    end
+    
+    step = 15;
+    num = floor(length(camera_xSafe)/step);
+    alphavals = linspace(0.01, 1, num);
+    idx = 1;
+    % plot all the safe states for lidar.
+    for i=1:step:length(camera_xSafe)
+        % Plot the car.
+        xcurr = [camera_xSafe(i); camera_ySafe(i); camera_thetaSafe(i)];
+        lih = plotCar(xcurr, 'r', alphavals(idx));
+        idx = idx + 1;
+        if idx > length(alphavals)
+            idx = length(alphavals);
+        end
     end
 
     %% Plot environment.
@@ -169,11 +223,37 @@ for i=1:length(experiments)
     end
 end
 
-%lih_bar = plot([0,0], [1,1], '-', 'Color', lidar_color, 'LineWidth', 3);
-%camh_bar = plot([0,0], [1,1], '-', 'Color', camera_color, 'LineWidth', 3);
-%legend([lih_bar camh_bar],{'LiDAR','Camera'}, 'Interpreter','latex', 'fontsize', 10, 'Orientation','horizontal', 'Position', [0.5 0 0.1 0.05]);
-legend([lih camh],{'LiDAR','Camera'}, 'Interpreter','latex', 'fontsize', 10, 'Orientation','horizontal', 'Position', [0.5 0 0.1 0.05]);
+lih_bar = plot([0,0], [1,1], '-', 'Color', lidar_color, 'LineWidth', 3);
+camh_bar = plot([0,0], [1,1], '-', 'Color', camera_color, 'LineWidth', 3);
+legend([lih_bar camh_bar],{'LiDAR','Camera'}, 'Interpreter','latex', 'fontsize', 10, 'Orientation','horizontal', 'Position', [0.5 0 0.1 0.05]);
+%legend([lih camh],{'LiDAR','Camera'}, 'Interpreter','latex', 'fontsize', 10, 'Orientation','horizontal', 'Position', [0.5 0 0.1 0.05]);
 legend boxoff 
+
+%% Checks if state x is at the safety boundary. If it is, returns
+%  the optimal safety control to take. 
+function [uOpt, onBoundary] = checkAndGetSafetyControl(x, dynSys, grid, vx, uMode, tol)
+    % Grab the value at state x from the most recent converged 
+    % value function.
+    value = eval_u(grid, vx, x);
+
+    % If the value is close to zero, we are close to the safety
+    % boundary.
+    if value < tol 
+        deriv = computeGradients(grid, vx);
+        % value of the derivative at that particular state
+        current_deriv = eval_u(grid, deriv, x);
+        % NOTE: need all 5 arguments (including NaN's) to get 
+        % correct optimal control!
+        uOpt = dynSys.optCtrl(NaN, x, current_deriv, uMode, NaN); 
+        onBoundary = true;
+        if iscell(uOpt)
+            uOpt = cell2mat(uOpt);
+        end
+    else
+        uOpt = zeros(length(x), 1);
+        onBoundary = false;
+    end
+end
 
 %% Plots dubins car point and heading.
 % Inputs:
@@ -181,9 +261,8 @@ legend boxoff
 % Ouput:
 %   c   - handle for figure
 function c = plotCar(x, carColor, alpha)
-    c{1} = plot(x(1), x(2), 'o','MarkerSize', 2, ...
-        'MarkerEdgeColor', carColor, 'MarkerFaceColor', carColor);
-    c{1}.Color(4) = alpha;
+    c{1} = scatter(x(1), x(2), 10, ...
+        'MarkerEdgeColor', carColor, 'MarkerFaceColor', carColor, 'MarkerEdgeAlpha', alpha, 'MarkerFaceAlpha', alpha);
 
     % Plot heading.
     center = x(1:2);
@@ -195,7 +274,7 @@ function c = plotCar(x, carColor, alpha)
         % Heading pt.
         hpt = [0.5; 0];
         hptRot = R*hpt + center;
-        p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'Color', carColor, 'LineWidth', 1);
-        c{2} = p2;
+        c{2} = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'Color', carColor, 'LineWidth', 1);
+        c{2}.Color(4) = alpha;
     end
 end

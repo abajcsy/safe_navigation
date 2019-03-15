@@ -3,18 +3,18 @@ clf
 clear all
 
 % Data.
-localQ_spline_camera_filename = 'localQwarm_spline_camera_hand.mat';
-traj_filename = 'localQwarm_spline_camera_hand_traj.mat';
+localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
+traj_filename = 'localQwarm_rrt_camera_hand_traj.mat';
 traj_path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data_traj/';
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 
 % Grab the parameters and traj.
-params = car3DLocalQCameraSpline();      
+params = car3DLocalQCameraRRT();      
 filePath = strcat(traj_path, traj_filename);
 load(filePath);
 
 % Grab the data.
-filePath = strcat(path, localQ_spline_camera_filename);
+filePath = strcat(path, localQ_rrt_camera_filename);
 load(filePath);
 
 %% Plot.
@@ -27,8 +27,11 @@ rectangle('Position',pos,'Curvature',1.0,'FaceColor',c,'LineStyle','none');
 scatter(params.xgoal(1),params.xgoal(2),[],[0.0,0.8,0.5],'filled');
 
 % Setup the figure axes to represent the entire environment
-xlim([params.lowEnv(1) params.upEnv(1)]);
-ylim([params.lowEnv(2) params.upEnv(2)]);
+% xlim([params.lowEnv(1) params.upEnv(1)]);
+% ylim([params.lowEnv(2) params.upEnv(2)]);
+
+xlim([params.lowEnv(1) 5]);
+ylim([params.lowEnv(2) 5]);
 
 set(gca,'TickLabelInterpreter','latex')
 set(gcf, 'Color', 'w');
@@ -59,7 +62,7 @@ alphaSeq = [0.1, 0.15, 0.2, 0.25, 1.0];
 
 % indicies of timesteps to show occupancy maps for.
 prevIdx = 280;
-nextIdx = 350;
+nextIdx = 180;
 xprev = states{prevIdx};
 xnext = states{nextIdx};
 

@@ -62,10 +62,11 @@ carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0,0,
 alphaSeq = [0.1, 0.15, 0.2, 0.25, 1.0]; 
 
 % indicies of timesteps to show occupancy maps for.
-prevIdx = 10; %280;
-nextIdx = 40; %350;
+prevIdx = 180; %280;
+nextIdx = 180; %350;
 xprev = states{prevIdx};
 xnext = states{nextIdx};
+colormap gray
     
 % grab occupancy maps at each state.
 % prevOccuMap = safeOccuMaps{prevIdx};
@@ -105,6 +106,62 @@ yn = cn(2,2:end);
 % plot car
 %plotCar(xprev, [0.8,0.8,0.8]);
 %plotCar(xnext, [0.4,0.4,0.4]);
+
+%% Plot Safe Set.
+% indicies of timesteps to show occupancy maps for.
+prevIdx = 280;
+nextIdx = 180;
+xprev = states{prevIdx};
+xnext = states{nextIdx};
+
+% grab cost functions at each state.
+prevCostIdx = find(updateTimeArr == (prevIdx+1));
+nextCostIdx = find(updateTimeArr == (nextIdx+1));
+prevVx = valueFunCellArr{prevCostIdx};
+nextVx = valueFunCellArr{nextCostIdx};
+
+[~, prevMap] = proj(params.grid, prevVx, [0 0 1], xprev(3)); 
+[~, nextMap] = proj(params.grid, nextVx, [0 0 1], xnext(3)); 
+%[cp, hp] = contour(grid2D.xs{1}, grid2D.xs{2}, -prevMap, [0,0], 'r', 'LineWidth', 2.);
+[cn, hn] = contour(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0], 'r', 'LineWidth', 2.);
+
+% plot car
+%plotCar(xprev, [0.5,0.5,0.5]);
+plotCar(xnext, 'k');
+
+% get safety control.
+uOpt = getSafetyControl(params.grid, params.dynSys, params.uMode, xnext, nextVx);
+
+% simulate it being applied now.
+d = [0;0;0];
+for i=1:10
+    params.dynSys.updateState(uOpt, params.dt, xnext, d);
+    xnext = params.dynSys.x;
+end
+plotCar(params.dynSys.x, 'r');
+
+%% Plot sequence of staes
+carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0.1,0.1,0.1], [0,0,0]};
+alphaSeq = [0.1, 0.2, 0.3, 0.6, 0.7, 1.0]; %[0.1, 0.15, 0.2, 0.25, 0.3, 1.0]; 
+
+% how frequently to plot everything
+plotFreq = 30;
+plotHoriz = 200; %400;  %length(xtraj)
+idx = 1;
+colorIdx = 1;
+fillC = [132, 134, 255]/255.; %'b';
+for i=1:plotHoriz
+    currT = updateTimeArr(idx);
+    xcurr = states{i};
+    
+    if mod(i,plotFreq) == 0 || i == 2      
+        % plot car and sensing
+        carColor = carColorSeq{colorIdx};
+        plotCar(xcurr, carColor);
+        
+        colorIdx = colorIdx+1;
+    end
+end
 
 %% Plots dubins car point and heading.
 % Inputs:
@@ -146,4 +203,14 @@ function plotSensing(grid, signed_distance_map)
 %     posIdx = find(signed_distance_map > 0);
 %     h = scatter(grid.xs{1}(posIdx),grid.xs{2}(posIdx), 30, ...
 %         'MarkerFaceColor', [0,0.2,1], 'MarkerFaceAlpha', 0.3, 'MarkerEdgeColor', 'none');
+end
+
+%% Gets optimal control.
+function uOpt = getSafetyControl(grid, dynSys, uMode, x, vx)
+    deriv = computeGradients(grid, vx);
+    % value of the derivative at that particular state
+    current_deriv = eval_u(grid, deriv, x);
+    % NOTE: need all 5 arguments (including NaN's) to get 
+    % correct optimal control!
+    uOpt = dynSys.optCtrl(NaN, x, current_deriv, uMode, NaN);
 end

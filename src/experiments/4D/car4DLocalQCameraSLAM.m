@@ -37,7 +37,7 @@ params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
 xgoalBay = [4.9; 4.26; 0.; 0.];
-xgoalHall = [6; 1; 0.; 0.];
+xgoalHall = [2; -3.5; 0.; 0.];
 
 params.xinit = [0; 0; 0.; 0.];    
 params.xgoal =  xgoalHall;

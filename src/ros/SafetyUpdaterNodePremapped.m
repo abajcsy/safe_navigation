@@ -51,6 +51,7 @@ classdef SafetyUpdaterNodePremapped < handle
             % If we are running SLAM, we are using the turtlebot, 
             % so we need to set the ROS master uri to the turtlebot.
             setenv('ROS_MASTER_URI','http://128.32.38.83:11311');
+            %setenv('ROS_MASTER_URI', 'http://localhost:11311');
             
             % Create a new node.
             rosinit 
