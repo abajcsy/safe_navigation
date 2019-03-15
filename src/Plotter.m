@@ -106,7 +106,7 @@ classdef Plotter < handle
             obj.envh = obj.plotEnvironment(gMap);
                 
             % Note: we just grab a slice of signed_dist at any theta
-            obj.senseh = obj.plotSensing(gMap, sensingMap);
+            %obj.senseh = obj.plotSensing(gMap, sensingMap);
             if ~isempty(path)
                 obj.plotTraj(path);
             end
