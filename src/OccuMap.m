@@ -138,7 +138,7 @@ classdef OccuMap < handle
             % Construct cost function for region outside sensing radius
             % or 'known' environment.
             
-            if strcmp(obj.envType, 'slam')
+            if false %strcmp(obj.envType, 'slam')
                 % If we are using SLAM to produce the occupancy map, 
                 % we have direct measurements of the most recent occupancy
                 % map that we have sensed and can use for safety.
@@ -237,7 +237,7 @@ classdef OccuMap < handle
 
                     % If we are in simulation and this is the first computation, 
                     % use a circle; otherwise use a camera
-                    if obj.firstCompute && ~strcmp(obj.envType, 'slam')
+                    if obj.firstCompute %&& ~strcmp(obj.envType, 'slam')
 
                       % Record which states we have sensed. 
                       % (+1 sensed, -1 unsensed)

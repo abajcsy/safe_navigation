@@ -1,4 +1,4 @@
-classdef SafetyUpdaterNode < handle
+classdef SafetyUpdaterNodeLive < handle
     %SAFETYUPDATENODE Encapsulates all the safety computations 
     % and verification of the neural network plans with ROS communication.
     
@@ -37,7 +37,7 @@ classdef SafetyUpdaterNode < handle
     
     methods
         %% Constructor
-        function obj = SafetyUpdaterNode()
+        function obj = SafetyUpdaterNodeLive()
             clf
             rmpath(genpath('/home/somilb/Documents/MATLAB/helperOC/'));
             addpath(genpath('/home/somilb/Documents/MATLAB/helperOC_dev/'));
@@ -73,6 +73,8 @@ classdef SafetyUpdaterNode < handle
 
             % Subscriber that listens to SLAM occupancy maps.
             occuMapMsgType = 'nav_msgs/OccupancyGrid';
+            %obj.occuMapSub = robotics.ros.Subscriber(obj.params.occuMapTopicName, ...
+            %    occuMapMsgType, @obj.slamMapCallback,'BufferSize',1);
             obj.occuMapSub = rossubscriber(obj.params.occuMapTopicName, ...
                 occuMapMsgType, @obj.slamMapCallback);
             pause(1); % wait for subscriber to get called
@@ -81,7 +83,8 @@ classdef SafetyUpdaterNode < handle
             obj.safety = SafetyModule(obj.params.grid, obj.params.dynSys, ...
                             obj.params.uMode, obj.params.dMode, obj.params.dt, ...
                             obj.params.updateEpsilon, obj.params.warmStart, ...
-                            obj.params.envType, obj.params.updateMethod, obj.params.tMax);
+                            obj.params.envType, obj.params.updateMethod, ...
+                            obj.params.tMax, obj.params.initialR);
             
             % Spin and make sure we get the first SLAM map. 
             while isempty(obj.trueOccuMap)
