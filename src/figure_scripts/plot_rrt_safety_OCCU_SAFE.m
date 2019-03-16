@@ -18,6 +18,7 @@ filePath = strcat(path, localQ_rrt_camera_filename);
 load(filePath);
 
 %% Plot.
+f = figure(1);
 hold on
 
 % visualize goal region.
@@ -37,10 +38,8 @@ ylim([params.lowEnv(2) 5]);
 set(gca,'TickLabelInterpreter','latex')
 set(gcf, 'Color', 'w');
 % setup size of figure and tick mark stuff.
-set(gca,'XTick',[params.lowEnv(1) params.upEnv(1)]);
-set(gca,'YTick',[params.lowEnv(2) params.upEnv(2)]);
-xlabel('$p_x$', 'Interpreter','latex', 'fontsize', 12);
-ylabel('$p_y$', 'Interpreter','latex', 'fontsize', 12);
+set(gca,'XTick',[]);
+set(gca,'YTick',[]);
 box on
 
 % %% Plot environment.
@@ -123,24 +122,24 @@ nextVx = valueFunCellArr{nextCostIdx};
 [~, prevMap] = proj(params.grid, prevVx, [0 0 1], xprev(3)); 
 [~, nextMap] = proj(params.grid, nextVx, [0 0 1], xnext(3)); 
 %[cp, hp] = contour(grid2D.xs{1}, grid2D.xs{2}, -prevMap, [0,0], 'r', 'LineWidth', 2.);
-[cn, hn] = contour(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0], 'r', 'LineWidth', 2.);
+[cn, hn] = contour(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0], 'r', 'LineWidth', 3.);
 
 % plot car
 %plotCar(xprev, [0.5,0.5,0.5]);
-plotCar(xnext, 'k');
+% plotCar(xnext, 'k');
 
 % get safety control.
 uOpt = getSafetyControl(params.grid, params.dynSys, params.uMode, xnext, nextVx);
 
 % simulate it being applied now.
-d = [0;0;0];
-for i=1:10
-    params.dynSys.updateState(uOpt, params.dt, xnext, d);
-    xnext = params.dynSys.x;
-end
-plotCar(params.dynSys.x, 'r');
+% d = [0;0;0];
+% for i=1:10
+%     params.dynSys.updateState(uOpt, params.dt, xnext, d);
+%     xnext = params.dynSys.x;
+% end
+% plotCar(params.dynSys.x, 'r');
 
-%% Plot sequence of staes
+%% Plot sequence of states
 carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0.1,0.1,0.1], [0,0,0]};
 alphaSeq = [0.1, 0.2, 0.3, 0.6, 0.7, 1.0]; %[0.1, 0.15, 0.2, 0.25, 0.3, 1.0]; 
 
@@ -160,8 +159,21 @@ for i=1:plotHoriz
         plotCar(xcurr, carColor);
         
         colorIdx = colorIdx+1;
+        if colorIdx > length(carColorSeq)
+            colorIdx = length(carColorSeq);
+        end
     end
 end
+
+widthMeters = abs(params.lowEnv(1) - 5);
+heightMeters = abs(params.lowEnv(2) - 5);
+set(gcf, 'Position',  0.9*[100, 100, widthMeters*100*0.6, heightMeters*100*0.6])
+
+% Save the figure
+saveas(f, './hybrid_ws/src/safe_navigation/imgs/rrt_occu_safe.png')
+saveas(f, './hybrid_ws/src/safe_navigation/imgs/rrt_occu_safe.fig')
+saveas(f, './hybrid_ws/src/safe_navigation/imgs/rrt_occu_safe.pdf')
+
 
 %% Plots dubins car point and heading.
 % Inputs:
@@ -180,7 +192,7 @@ function c = plotCar(x, carColor)
         R = [cos(x(3)) -sin(x(3)); 
              sin(x(3)) cos(x(3))];
         % Heading pt.
-        hpt = [0.5; 0];
+        hpt = [0.3; 0];
         hptRot = R*hpt + center;
         p2 = plot([center(1) hptRot(1)], [center(2) hptRot(2)], 'Color', carColor, 'LineWidth', 1.5);
         c{2} = p2;
