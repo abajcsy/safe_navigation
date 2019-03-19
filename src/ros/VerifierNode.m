@@ -25,6 +25,13 @@ classdef VerifierNode < handle
             % Load up all the experimental parameters for SLAM environment.
             obj.params = car4DLocalQCameraSLAM();   
             
+            % HACK -- normalize by vehicle position
+%             vehiclePos = [2.1;2.1];
+%             obj.params.lowEnv = obj.params.lowEnv - vehiclePos(1:2);
+%             obj.params.upEnv = obj.params.upEnv - vehiclePos(1:2);
+%             obj.params.grid.xs{1} = obj.params.grid.xs{1} - vehiclePos(1);
+%             obj.params.grid.xs{2} = obj.params.grid.xs{2} - vehiclePos(2);
+            
             % Most recent value function from safety updater.
             obj.valueFun = [];
             obj.deriv = [];
@@ -145,7 +152,7 @@ classdef VerifierNode < handle
                         deriv = deriv(3:4);
                         % if state we reach is unsafe
                         if onBoundary
-                            u = ucOpt.*(abs(deriv) > gradZeroTol) + u.*(abs(deriv) < gradZeroTol);
+                            u = uOpt.*(abs(deriv) > gradZeroTol) + u.*(abs(deriv) < gradZeroTol);
                             %if (abs(deriv) < gradZeroTol)
                             %    u = 0.0*u;
                             %    appliedZero = true;

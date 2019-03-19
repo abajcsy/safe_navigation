@@ -41,6 +41,13 @@ classdef VisualizationNode < handle
             % Load up all the experimental parameters.
             obj.params = car4DLocalQCameraSLAM();   % run SLAM environment
             
+            % HACK -- normalize by vehicle position
+            %vehiclePos = [2.1;2.1];
+            %obj.params.lowEnv = obj.params.lowEnv - vehiclePos(1:2);
+            %obj.params.upEnv = obj.params.upEnv - vehiclePos(1:2);
+            %obj.params.grid.xs{1} = obj.params.grid.xs{1} - vehiclePos(1);
+            %obj.params.grid.xs{2} = obj.params.grid.xs{2} - vehiclePos(2);
+            
             % Initialize internal vars.
             obj.currState = [];
             obj.currMap = [];
@@ -113,7 +120,13 @@ classdef VisualizationNode < handle
             obj.planSub = rossubscriber(obj.params.planTopicName, planMsgType, @obj.planCallback);
             pause(1); % wait for subscriber to get called
         end
-        
+       
+        function savePlot(obj, prefix)
+          currTime = datestr(now, 'dd-mm-yyyy-HH:MM:SS:FFF');
+          filename = strcat('img/', currTime, '_', prefix, '.png');
+          saveas(obj.figh, filename);
+        end
+ 
         %% Odometry callback
         function odomCallback(obj, ~, msg)
             x = msg.Pose.Pose.Position.X;
@@ -165,7 +178,6 @@ classdef VisualizationNode < handle
                     obj.carh = obj.plotCar(obj.currState, true);
                 end
             end
-            
         end
         
         %% Safe set callback
@@ -181,6 +193,7 @@ classdef VisualizationNode < handle
             
             % compute the corresponding gradients and store them.
             obj.currDeriv = computeGradients(obj.params.grid, obj.currSafeSet);
+            %obj.savePlot('safeset');
         end
         
         %% Plan callback
@@ -211,7 +224,7 @@ classdef VisualizationNode < handle
             
             % Plot the most recent trajectory.
             obj.plotTraj(planPath);
-        end
+          end
         
         %% Checks if state x is at the safety boundary. If it is, returns
         %  the optimal safety control to take. 
@@ -326,7 +339,7 @@ classdef VisualizationNode < handle
             % BELOW zero.
             if visSet
                 visExtraArgs.LineWidth = 2.0;
-                h = visSetIm(gPlot, dataPlot, edgeColor, 0:0.05:obj.params.safetyTol, visExtraArgs);
+                h = visSetIm(gPlot, dataPlot, edgeColor, 0:0.1:obj.params.safetyTol, visExtraArgs);
                 %[~, h] = contourf(gPlot.xs{1}, gPlot.xs{2}, dataPlot, 0:0.1:5);
             else
                 alpha = 0.5;
@@ -337,7 +350,7 @@ classdef VisualizationNode < handle
             colormap(flipud(cmap));
             xlabel('$p_x$', 'Interpreter','latex');
             ylabel('$p_y$', 'Interpreter','latex');
-            %grid off
+            grid on
             set(gca,'TickLength',[0 0]);
         end
         

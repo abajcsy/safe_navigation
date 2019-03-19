@@ -3,18 +3,18 @@ clf
 clear all
 
 % Data.
-localQ_spline_camera_filename = 'localQwarm_spline_camera_hand.mat';
-traj_filename = 'localQwarm_spline_camera_hand_traj.mat';
+localQ_rrt_camera_filename = 'localQwarm_rrt_camera_hand.mat';
+traj_filename = 'localQwarm_rrt_camera_hand_traj.mat';
 traj_path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data_traj/';
 path = '/home/abajcsy/hybrid_ws/src/safe_navigation/data/';
 
 % Grab the parameters and traj.
-params = car3DLocalQCameraSpline();      
+params = car3DLocalQCameraRRT();      
 filePath = strcat(traj_path, traj_filename);
 load(filePath);
 
 % Grab the data.
-filePath = strcat(path, localQ_spline_camera_filename);
+filePath = strcat(path, localQ_rrt_camera_filename);
 load(filePath);
 
 %% Plot.
@@ -27,8 +27,12 @@ hold on
 % scatter(params.xgoal(1),params.xgoal(2),[],[0.0,0.8,0.5],'filled');
 
 % Setup the figure axes to represent the entire environment
-xlim([params.lowEnv(1) params.upEnv(1)]);
-ylim([params.lowEnv(2) params.upEnv(2)]);
+% xlim([params.lowEnv(1) params.upEnv(1)]);
+% ylim([params.lowEnv(2) params.upEnv(2)]);
+
+
+xlim([params.lowEnv(1) 5]);
+ylim([params.lowEnv(2) 5]);
 
 set(gca,'TickLabelInterpreter','latex')
 set(gcf, 'Color', 'w');
@@ -58,8 +62,8 @@ carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0,0,
 alphaSeq = [0.1, 0.15, 0.2, 0.25, 1.0]; 
 
 % indicies of timesteps to show occupancy maps for.
-prevIdx = 280;
-nextIdx = 350;
+prevIdx = 10; %280;
+nextIdx = 40; %350;
 xprev = states{prevIdx};
 xnext = states{nextIdx};
     
@@ -82,25 +86,25 @@ rose = [186, 147, 147]/255.;
 steelblue = [124, 139, 158]/255.
 brightblue = [61, 177, 255]/255.
 mutedblue = [78, 122, 153]/255.;
-set(gca,'Color', mutedblue);
+%set(gca,'Color', mutedblue);
+
+% prev map
+[cp, hp] = contourf(grid2D.xs{1}, grid2D.xs{2}, -prevMap, [0, 0]);
+xp = cp(1,2:end);
+yp = cp(2,2:end);
+%delete(hp);
+%hp = fill(xp,yp,[1,1,1],'FaceAlpha',1, 'EdgeColor', 'none');
 
 % next map
 [cn, hn] = contourf(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0]);
 xn = cn(1,2:end);
 yn = cn(2,2:end);
-delete(hn);
-hn = fill(xn,yn,brightblue,'FaceAlpha',1, 'EdgeColor', 'none');
-
-% prev map
-[cp, hp] = contourf(grid2D.xs{1}, grid2D.xs{2}, -prevMap, [0, Inf]);
-xp = cp(1,2:end);
-yp = cp(2,2:end);
-delete(hp);
-hp = fill(xp,yp,[1,1,1],'FaceAlpha',1, 'EdgeColor', 'none');
+%delete(hn);
+%hn = fill(xn,yn,brightblue,'FaceAlpha',1, 'EdgeColor', 'none');
 
 % plot car
-plotCar(xprev, brightblue);
-plotCar(xnext, mutedblue);
+%plotCar(xprev, [0.8,0.8,0.8]);
+%plotCar(xnext, [0.4,0.4,0.4]);
 
 %% Plots dubins car point and heading.
 % Inputs:

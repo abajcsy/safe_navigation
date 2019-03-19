@@ -10,8 +10,12 @@ upEnvBay = [6; 5];
 lowEnvHall = [-1; -4];
 upEnvHall = [7; 4];
 
-params.lowEnv = lowEnvHall; 
-params.upEnv = upEnvHall;
+% runningEx experiment
+runExLowEnv = [0; -3] - [2.;2.]; %-[2.5;2.4]+[-0.8; 0.4];
+runExUpEnv = [8; 5] - [2.;2.]; %-[2.5;2.4]+[-0.8; 0.4];
+
+params.lowEnv = runExLowEnv;    %lowEnvHall; 
+params.upEnv = runExUpEnv;      %upEnvHall;
 
 % Environment types include:
 %   hand-coded obstacles        --> 'hand'
@@ -26,14 +30,14 @@ params.planTopicName = '/planned_traj';
 
 %% Grid Params.
 gridLow = [params.lowEnv;-pi;-0.1];
-gridUp = [params.upEnv;pi;0.7];
-N = [31;31;21;11]; 
+gridUp = [params.upEnv;pi;0.3];
+N = [31;31;21;5]; 
 params.pdDims = 3;
 params.grid = createGrid(gridLow, gridUp, N, params.pdDims);
 
 %% Planning Params.
 xgoalBay = [4.9; 4.26; 0.; 0.];
-xgoalHall = [6; 1; 0.; 0.];
+xgoalHall = [2; -3.5; 0.; 0.];
 
 params.xinit = [0; 0; 0.; 0.];    
 params.xgoal =  xgoalHall;
@@ -44,9 +48,9 @@ params.loadTrueOccuMaps = false; % if we can load in ground-truth occupancy maps
 params.goalEps = 0.3; % threshold for when we are considered close enough to goal.
 
 %% Dynamical System Params.
-params.wMax = 0.7;              % maxangular control
+params.wMax = 1.1;              % maxangular control
 params.aRange = [-0.6, 0.6];    % acceleration control range
-params.vRange = [0.0, 0.6];     % speed range
+params.vRange = [0.0, 0.2];     % speed range
 
 % Define dynamic system. 
 params.dynSys = Plane4D(params.xinit, params.wMax, params.aRange, params.vRange);
@@ -74,11 +78,11 @@ params.uMode = 'max';
 params.dMode = [];  % we don't want to compute with disturbance.
 
 % Time horizon to compute BRT for.
-params.tMax = 2;
+params.tMax = 0.5;
 
 %% Sensing Params.
 params.senseShape = 'camera';
-params.initialR = 0.6;  % The initial radius of the safe region
+params.initialR = 1.5;  % The initial radius of the safe region. Current options: 0.6, 1.5, 2
 params.senseFOV = pi/4; % The (half) field-of-view of the camera
 params.farPlane = 20;   % The far clipping plane of the camera
 params.initSenseData = {[params.xinit(1);params.xinit(2);params.xinit(3)], ...
@@ -90,8 +94,8 @@ params.dt = 0.05;
 
 % Variables for determining when to replan & reupdate safe set.
 params.planFreq = 10;
-params.safetyFreq = 10;
+params.safetyFreq = 2; % (in seconds)
 
 % How close to the boundary we need to be to apply safety control.
-params.safetyTol = 0.2;
+params.safetyTol = 0.3;
 end

@@ -30,7 +30,7 @@ function run_experiments()
                         @car3DWarmCameraSpline, ...
                         @car3DHJICameraSpline};
                    
-    experiments = rrtExperiments;
+    experiments = {@car4DLocalQCameraNN};
     
     % Simulate each experiment.
     for i=1:length(experiments)
@@ -58,7 +58,7 @@ function runExperiment(experimentFun)
         % Setup safety module object and compute first set.
         safety = SafetyModule(params.grid, params.dynSys, params.uMode, params.dMode, ...
             params.dt, params.updateEpsilon, params.warmStart, params.envType, ...
-            params.updateMethod, params.tMax);
+            params.updateMethod, params.tMax, params.initialR);
 
         % Compute the first avoid set based on current sensing.
         safety.computeAvoidSet(map.signed_dist_safety, 1);

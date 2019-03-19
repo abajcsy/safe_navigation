@@ -19,7 +19,8 @@ classdef SafetyModule < handle
         % Cost function representation
         lCurr           % (float arr) Current cost function representation
                         %             (constructed from measurements)
-                        
+        initR 
+        
         % Value function computation information
         valueFun        % (float arr) Stores most recent converged value function 
         timeDisc        % (float arr) Discretized time vector          
@@ -44,7 +45,7 @@ classdef SafetyModule < handle
         %% Constructor. 
         % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
         function obj = SafetyModule(grid, dynSys, uMode, dMode, dt, ...
-                updateEpsilon, warmStart, envType, updateMethod, tMax)
+                updateEpsilon, warmStart, envType, updateMethod, tMax, initR)
             % Setup computation grid.
             obj.grid = grid;
             
@@ -52,6 +53,7 @@ classdef SafetyModule < handle
             obj.updateEpsilon = updateEpsilon;
             obj.computeTimes = [];
             obj.envType = envType;
+            obj.initR = initR;
             
             % Store the current estimate of the cost function (from
             % sensing).
@@ -151,7 +153,7 @@ classdef SafetyModule < handle
             
             % ------------- CONSTRUCT l(x) ----------- %
             lxOld = obj.lCurr;
-            if isempty(obj.lCurr) || strcmp(obj.envType, 'slam')
+            if isempty(obj.lCurr) %|| strcmp(obj.envType, 'slam')
                 % SLAM always gives us the full history of what the system 
                 % has seen to be free, so just record that corresponding
                 % signed distance function.
@@ -272,10 +274,34 @@ classdef SafetyModule < handle
                 if obj.firstCompute && strcmp(obj.envType, 'slam')
                     whatRepo = what('safe_navigation');
                     repo = whatRepo.path;
-                    %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
-                    pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SLAM_31312111.mat');
-                    load(pathToInitialVx);
-                    lxOld = dataOut(:,:,:,:,end);
+                    if isequal(obj.grid.shape, [31 31 21 11])
+                        if obj.initR == 0.6
+                            %repo = '/Users/somil/Documents/Research/Projects/safe_navigation/safe_navigation';
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SLAM_31312111_initR06.mat');
+                            load(pathToInitialVx);
+                            lxOld = dataOut(:,:,:,:,end);
+                        elseif obj.initR == 1.5
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SLAM_31312111_initR15.mat');
+                            load(pathToInitialVx);
+                            lxOld = dataOut(:,:,:,:,end);
+                        elseif obj.initR == 2
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SLAM_31312111_initR2.mat');
+                            load(pathToInitialVx);
+                            lxOld = dataOut(:,:,:,:,end);
+                        else
+                            error('Do not have safe set for SLAM corresponding to your init radius and grid shape.\n');
+                        end
+                    elseif isequal(obj.grid.shape, [31 31 21 5])
+                        if obj.initR == 1.5
+                            pathToInitialVx = strcat(repo, '/initial_sets/vx4D_SLAM_3131215_initR15.mat');
+                            load(pathToInitialVx);
+                            lxOld = dataOut(:,:,:,:,end);
+                        else
+                            error('Do not have safe set for SLAM corresponding to your init radius and grid shape.\n');
+                        end
+                    else
+                        error('Do not have safe set for SLAM corresponding to your init radius and grid shape.\n');
+                    end
                 end
                 
                 tic
