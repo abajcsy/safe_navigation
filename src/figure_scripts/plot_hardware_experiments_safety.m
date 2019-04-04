@@ -72,20 +72,20 @@ cSafe = plotCar(state, 'k', 1, false);
 colormap gray;
 
 %% Plot shit.
-xlim([-0.5 2]);
-ylim([-2 1]);
+%xlim([-0.5 2]);
+%ylim([-2 1]);
 set(gca,'TickLabelInterpreter','latex')
 set(gcf, 'Color', 'w');
 set(gca,'XTick',[ ]);
 set(gca,'YTick',[ ]);
 box on
 
-set(gcf, 'Position',  [100, 100, 2.5*100*0.6, 3*100*0.6])
+%set(gcf, 'Position',  [100, 100, 2.5*100*0.6, 3*100*0.6])
 
 % Save the figure
-saveas(f, './hybrid_ws/src/safe_navigation/imgs/slam_safe_set.png')
-saveas(f, './hybrid_ws/src/safe_navigation/imgs/slam_safe_set.fig')
-saveas(f, './hybrid_ws/src/safe_navigation/imgs/slam_safe_set.pdf')
+%saveas(f, './hybrid_ws/src/safe_navigation/imgs/slam_safe_set.png')
+%saveas(f, './hybrid_ws/src/safe_navigation/imgs/slam_safe_set.fig')
+%saveas(f, './hybrid_ws/src/safe_navigation/imgs/slam_safe_set.pdf')
 
 %% Plots dubins car point and heading.
 % Inputs:
