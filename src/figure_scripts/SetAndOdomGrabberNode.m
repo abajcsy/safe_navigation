@@ -36,10 +36,10 @@ classdef SetAndOdomGrabberNode < handle
             obj.stateCellArr = {};
             obj.setCellArr = {};
             
-            obj.odomFreq = 5;
+            obj.odomFreq = 0;
             obj.prevOdomTime = rostime('now');
 
-            obj.setFreq = 5;
+            obj.setFreq = 0;
             obj.prevSetTime = rostime('now');
 
             % Create subscribers.
@@ -47,11 +47,12 @@ classdef SetAndOdomGrabberNode < handle
             
             startTime = rostime('now');
             totalTime = 15;
+            elapsedTime = 0;
             
             % Spin and let everything go.
             rate = rosrate(100);
             reset(rate);
-            while true
+            while elapsedTime < totalTime
                 waitfor(rate);
                 currTime = rostime('now');
                 elapsedTime = seconds(currTime) - seconds(startTime);

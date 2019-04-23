@@ -12,7 +12,7 @@ function grab_slam_map()
     % compute grid.
     trueOccuMap = getTrueOccuMap(rawOccuMap, params.grid, origin, res, realWidth, realHeight);
 
-    filename = 'resizedSLAMTrueOccuMap5.mat';
+    filename = 'resizedSLAMTrueOccuMap_023.mat';
     filePath = strcat(repo.path, '/data/', filename);  
     save(filePath, 'trueOccuMap');
 end
