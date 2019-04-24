@@ -4,11 +4,11 @@ clear all
 
 % Load params.
 params = car3DLocalQCameraSpline();
-%params = car3DLocalQLidarSpline();
+%params = car4DLocalQCameraRRT();
 
 % Load the safe sets.
 load('/home/abajcsy/hybrid_ws/src/safe_navigation/data/localQwarm_spline_camera_hand.mat');
-%load('/home/abajcsy/hybrid_ws/src/safe_navigation/data/localQwarm_spline_lidar_hand.mat');
+%load('/home/abajcsy/hybrid_ws/src/safe_navigation/data/localQwarm_rrt_camera_4D_hand.mat');
 
 %% Colors.
 lightGreyBlue = [152, 158, 170]/255.;     
@@ -17,22 +17,27 @@ brightBlue = [0, 88, 255]/255.;
 
 lightGreyRed = [183, 130, 130]/255.;    
 darkGreyRed = [135, 97, 107]/255.;   
-brightRed = [234, 0, 62]/255.;      
+brightRed = [234, 0, 62]/255.;   
+trueRed = [255, 0, 0]/255.;
 
 lightGreyPurple = [181, 156, 186]/255.;
 darkGreyPurple = [118, 100, 122]/255.;
 brightPurple = [212, 0, 255]/255.;
+
+lightGreyOrange = [242, 208, 162]/255.;
+darkGreyOrange = [191, 156, 109]/255.;
+brightOrange = [255, 148, 0]/255.;
 
 mediumGrey = [132, 132, 132]/255.;
 darkGrey = [73, 73, 73]/255.;
 
 nextLxColor = mediumGrey;
 nextLxOutline = darkGrey; 
-nextVxColor = brightRed;
+nextVxColor = trueRed; 
 nextStateIdx = 22;
 nextVxIdx = 3;
 
-initVxColor = brightBlue;
+initVxColor = brightOrange;
 initStateIdx = 12;
 initVxIdx = 2;
 
@@ -45,24 +50,41 @@ hold on
 % Plot the (initial) value function.
 %seth = visSetIm(initGrid2D, initData2D, initVxColor, 0, extraArgs);
 
-% Grab 2D slice of the next value function.
+% Grab the value function and state.
 state = states{nextStateIdx};
 nextValueFun = valueFunCellArr{nextVxIdx};
-[nextGrid2D, nextData2D] = proj(params.grid, nextValueFun, [0 0 1], [state(3)]);
-
-% Get 2D slice of the initial cost function. 
 initState = states{initStateIdx};
 initLx = lxCellArr{initVxIdx};
-[initGrid, init_obs] = proj(params.grid, initLx, [0 0 1], initState(3));
-
-% Get 2D slice of the next cost function. 
 nextLx = lxCellArr{nextVxIdx};
-[nextGrid, next_belief_obstacle] = proj(params.grid, nextLx, [0 0 1], state(3));
+
+if params.dynSys.nx == 3
+    % Grab 2D slice of the next value function.
+    [nextGrid2D, nextData2D] = proj(params.grid, nextValueFun, [0 0 1], [state(3)]);
+
+    % Get 2D slice of the initial cost function. 
+    [initGrid, init_obs] = proj(params.grid, initLx, [0 0 1], initState(3));
+
+    % Get 2D slice of the next cost function. 
+    [nextGrid, next_belief_obstacle] = proj(params.grid, nextLx, [0 0 1], state(3));
+elseif params.dynSys.nx == 4
+    % Grab 2D slice of the next value function.
+    [nextGrid2D, nextData2D] = proj(params.grid, nextValueFun, [0 0 1 1], [state(3), state(4)]);
+
+    % Get 2D slice of the initial cost function. 
+    [initGrid, init_obs] = proj(params.grid, initLx, [0 0 1 1], [initState(3), initState(4)]);
+
+    % Get 2D slice of the next cost function. 
+    [nextGrid, next_belief_obstacle] = proj(params.grid, nextLx, [0 0 1 1], [state(3), state(4)]);
+else
+	error('I cannot run visualizations with a %dD system!', params.dynSys.nx);
+end
 
 % Plot new belief obstacle.
 [c, h]= contourf(nextGrid2D.xs{1}, nextGrid2D.xs{2}, -next_belief_obstacle, [0,0], ...
     'linecolor', nextLxOutline, 'linewidth', 1.5);
 colormap(nextLxColor);
+
+carh = plotCar(state, 'k', 1, false, []);
 
 % Plotting stuff.
 xlim([params.lowEnv(1) params.upEnv(1)]);
@@ -90,8 +112,15 @@ HJIextraArgs.ignoreBoundary = 0;
 HJIextraArgs.quiet = true;
 HJIextraArgs.stopConverge = 0;
 HJIextraArgs.targets = lx;
-schemeData.hamFunc = @dubins3Dham_localQ;
-schemeData.partialFunc = @dubins3Dpartial_localQ;
+if params.dynSys.nx == 3
+    schemeData.hamFunc = @dubins3Dham_localQ;
+    schemeData.partialFunc = @dubins3Dpartial_localQ;
+elseif params.dynSys.nx == 4
+    schemeData.hamFunc = @plane4Dham_localQ;
+    schemeData.partialFunc = @plane4Dpartial_localQ;
+else
+	error('I cannot run visualizations with a %dD system!', params.dynSys.nx);
+end
                     
 % Solve.
 [data, tau, extraOuts] = ...

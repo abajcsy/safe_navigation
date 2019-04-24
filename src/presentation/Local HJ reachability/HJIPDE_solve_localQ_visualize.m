@@ -775,9 +775,9 @@ end
 hold on
 numValueFuns = 73;
 ii = 1;
-colorR = linspace(initVxColor(1), nextVxColor(1), numValueFuns);
-colorG = linspace(initVxColor(2), nextVxColor(2), numValueFuns);
-colorB = linspace(initVxColor(3), nextVxColor(3), numValueFuns);
+colorR = linspace(initVxColor(1), nextVxColor(1), numValueFuns+1);
+colorG = linspace(initVxColor(2), nextVxColor(2), numValueFuns+1);
+colorB = linspace(initVxColor(3), nextVxColor(3), numValueFuns+1);
 currColor = [colorR(ii), colorG(ii), colorB(ii)];
 
 % plot local Q algorithm
@@ -1566,11 +1566,14 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
     ax0, ax1, ax2, seth, vout)
     
     % which theta slice to visualize everything at.
-    thetaVis = pi/4; %xcurr(3);
+    thetaVis = 0; %xcurr(3);
+    if length(xcurr) == 4
+        velVis = xcurr(4);
+    end
     
     if isempty(vout)
         path = '/home/abajcsy/hybrid_ws/src/safe_navigation/src/presentation/Local HJ reachability/';
-        name = strcat('localQ', num2str(thetaVis), '.avi');
+        name = strcat('localQ', num2str(length(xcurr)), 'D', num2str(thetaVis), '.avi');
         videoFilename = strcat(path, name);
         vout = VideoWriter(videoFilename,'Motion JPEG AVI');
         vout.Quality = 100;
@@ -1578,6 +1581,7 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
         vout.open;
     end
     figure(3);
+    
     if ~isempty(ax0) 
         delete(ax0);
     end
@@ -1610,8 +1614,13 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
     neighGrid(neighbors) = 1;
 
     % Project to 2D.
-    [gN, dN] = proj(schemeData.grid, neighGrid, [0 0 1], [0]); 
-    [gQ, dQ] = proj(schemeData.grid, qGrid, [0 0 1], [0]); 
+    if length(xcurr) == 3
+        [gN, dN] = proj(schemeData.grid, neighGrid, [0 0 1], [0]); 
+        [gQ, dQ] = proj(schemeData.grid, qGrid, [0 0 1], [0]); 
+    elseif length(xcurr) == 4
+        [gN, dN] = proj(schemeData.grid, neighGrid, [0 0 1 1], [0, 0]); 
+        [gQ, dQ] = proj(schemeData.grid, qGrid, [0 0 1 1], [0, 0]); 
+    end
 
     % Create finer grid.
     grid_size = [121,121]; 
@@ -1658,7 +1667,11 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
     seth = axes;
     levels = [-10:0.4:10];
     vxBoundaryColor = vxColor*(1 - 0.4);
-    [grid2D, data2D] = proj(schemeData.grid, data0, [0 0 1], thetaVis);
+    if length(xcurr) == 3
+        [grid2D, data2D] = proj(schemeData.grid, data0, [0 0 1], thetaVis);
+    elseif length(xcurr) == 4
+        [grid2D, data2D] = proj(schemeData.grid, data0, [0 0 1 1], [thetaVis, velVis]);
+    end
     contourf(seth, grid2D.xs{1}, grid2D.xs{2}, data2D, levels, ...
         'linecolor', vxBoundaryColor, 'linewidth', 1.5, 'linestyle', 'none');
     rCol = linspace(vxColor(1), 1, 100)';
@@ -1671,8 +1684,9 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
     % Plot Q's boundary.
     ax0 = axes;
     shade_factor = 0.5;
-    color = vxColor*(1 - shade_factor);
-    color = [255, 117, 117]/255.;
+    %color = vxColor*(1 - shade_factor);
+    %color = [255, 117, 117]/255.;
+    color = [119, 214, 255]/255.; %[22, 196, 255]/255.;
     [c, qh] = contour(ax0, g.xs{1}, g.xs{2}, interp_dQ, [0,0], ...
         'color', color, 'linewidth', 2.5, 'linestyle', ':');
     colormap(ax0, color);
@@ -1682,22 +1696,23 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
     hold on
     ax0 = axes;
     shade_factor = 0.5;
-    color = vxColor*(1 - shade_factor);
-    color = [1,0,0];
+    %color = vxColor*(1 - shade_factor);
+    %color = [1,0,0];
+    color = [0, 178, 255]/255.;
     [c, nh] = contour(ax0, g.xs{1}, g.xs{2}, interp_dN, [0,0], ...
         'color', color, 'linewidth', 2.5, 'linestyle', ':');
     ax0.Visible = 'off';
 
     % Plot boundary of initial belief obstacle.
     ax2 = axes;
-    obsColor = [0.7,0.7,0.7];
+    obsColor = [198, 177, 117]/255.; %[0.7,0.7,0.7];
     [c, oh]= contour(ax2, nextGrid.xs{1}, nextGrid.xs{2}, -initObs, [0,0], ...
         'color', obsColor, 'linewidth', 1.2);
     ax2.Visible = 'off';
     
     % Plot boundary of new belief obstacle.
     ax2 = axes;
-    obsColor = [0.5,0.5,0.5];
+    obsColor = [147, 103, 103]/255.; %[0.5,0.5,0.5];
     [c, oh]= contour(ax2, nextGrid.xs{1}, nextGrid.xs{2}, -nextObs, [0,0], ...
         'color', obsColor, 'linewidth', 1.2);
     ax2.Visible = 'off';

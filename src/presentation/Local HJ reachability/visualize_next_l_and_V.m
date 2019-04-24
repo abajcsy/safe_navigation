@@ -3,8 +3,6 @@ clf
 clear all
 
 % Load params.
-%params = car4DLocalQCameraSLAM();
-%params = car3DLocalQLidarRRT();
 params = car3DLocalQCameraSpline();
 
 % Load the safe sets.
@@ -18,21 +16,27 @@ brightBlue = [0, 88, 255]/255.;
 lightGreyRed = [183, 130, 130]/255.;    
 darkGreyRed = [135, 97, 107]/255.;   
 brightRed = [234, 0, 62]/255.;      
+trueRed = [255, 0, 0]/255.;
 
 lightGreyPurple = [181, 156, 186]/255.;
 darkGreyPurple = [118, 100, 122]/255.;
 brightPurple = [212, 0, 255]/255.;
 
+lightGreyOrange = [242, 208, 162]/255.;
+darkGreyOrange = [191, 156, 109]/255.;
+brightOrange = [255, 148, 0]/255.;
+
 mediumGrey = [132, 132, 132]/255.;
 darkGrey = [73, 73, 73]/255.;
+darkGreyRed = [124, 81, 81]/255.;
 
 nextLxColor = mediumGrey;
-nextLxOutline = darkGrey; 
-nextVxColor = brightRed;
+nextLxOutline = darkGreyRed; 
+nextVxColor = trueRed;
 nextStateIdx = 22;
 nextVxIdx = 3;
 
-initVxColor = brightBlue;
+initVxColor = brightOrange;
 initStateIdx = 12;
 initVxIdx = 2;
 
@@ -64,10 +68,11 @@ initLx = lxCellArr{initVxIdx};
 initState = states{initStateIdx};
 [initGrid2D, init_obs] = proj(params.grid, initLx, [0 0 1], initState(3));
 
-% Plot the new belief obstacle & value function.
+% Plot the old belief obstacle.
 extraArgs.LineWidth = 2;
+color = [198, 177, 117]/255.;
 [c, h]= contour(initGrid2D.xs{1}, initGrid2D.xs{2}, -init_obs, [0,0], ...
-    'linecolor', [0.7,0.7,0.7], 'linewidth', 1.5);
+    'linecolor', color, 'linewidth', 1.5);
 
 % Get new cost function. 
 nextLx = lxCellArr{nextVxIdx};
@@ -82,11 +87,11 @@ colormap(nextLxColor);
 % Plot the (initial) value function.
 initValueFun = valueFunCellArr{initVxIdx};
 [initGrid2D, initData2D] = proj(params.grid, initValueFun, [0 0 1], states{initStateIdx}(3));
-%seth = visSetIm(initGrid2D, initData2D, initVxColor, 0, extraArgs);
+seth = visSetIm(initGrid2D, initData2D, initVxColor, 0, extraArgs);
 
 % Plot the (next) value function.
-extraArgs.LineWidth = 3;
-nsh = visSetIm(nextGrid2D, nextData2D, nextVxColor, 0, extraArgs);
+%extraArgs.LineWidth = 3;
+%nsh = visSetIm(nextGrid2D, nextData2D, nextVxColor, 0, extraArgs);
 
 % Plotting stuff.
 xlim([params.lowEnv(1) params.upEnv(1)]);

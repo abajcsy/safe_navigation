@@ -3,12 +3,12 @@ clf
 clear all
 
 % Load params.
-%params = car3DLocalQLidarRRT();
 params = car3DLocalQCameraSpline();
+%params = car4DLocalQCameraRRT();
 
 % Load the safe sets.
 load('/home/abajcsy/hybrid_ws/src/safe_navigation/data/localQwarm_spline_camera_hand.mat');
-%load('/home/abajcsy/hybrid_ws/src/safe_navigation/data/localQwarm_rrt_lidar_hand.mat');
+%load('/home/abajcsy/hybrid_ws/src/safe_navigation/data/localQwarm_rrt_camera_4D_hand.mat');
 
 %% Colors.
 lightGreyBlue = [152, 158, 170]/255.;     
@@ -17,45 +17,60 @@ brightBlue = [0, 88, 255]/255.;
 
 lightGreyRed = [183, 130, 130]/255.;    
 darkGreyRed = [135, 97, 107]/255.;   
-brightRed = [234, 0, 62]/255.;      
+brightRed = [234, 0, 62]/255.;   
+trueRed = [255, 0, 0]/255.;
 
 lightGreyPurple = [181, 156, 186]/255.;
 darkGreyPurple = [118, 100, 122]/255.;
 brightPurple = [212, 0, 255]/255.;
 
+lightGreyOrange = [173, 161, 135]/255.;
+darkGreyOrange = [127, 98, 34]/255.;
+brightOrange = [255, 148, 0]/255.;
+
 mediumGrey = [132, 132, 132]/255.;
 darkGrey = [73, 73, 73]/255.;
 
 initLxColor = mediumGrey; %lightGreyRed;
-initLxOutline = darkGrey;
-initVxColor = brightBlue;
+initLxOutline = darkGreyOrange;
+initVxColor = brightOrange;
 initStateIdx = 12;
 initVxIdx = 2;
 
 %% ---------- Initial state setup. ----------- %%
 f1 = figure(1);
+set(f1, 'position', [0,0,970,728]); 
+clf
 hold on 
 % Plotting stuff.
 xlim([params.lowEnv(1) params.upEnv(1)]);
 ylim([params.lowEnv(2) params.upEnv(2)]);
-xlabel('$p_x$', 'Interpreter', 'latex', 'fontsize', 20);
-ylabel('$p_y$', 'Interpreter', 'latex', 'fontsize', 20);
+xlabel('$p_x$', 'Interpreter', 'latex', 'fontsize', 30);
+ylabel('$p_y$', 'Interpreter', 'latex', 'fontsize', 30);
 xticks([]);
 yticks([]);
 
 state = states{initStateIdx}; 
 initValueFun = valueFunCellArr{initVxIdx}; 
+initLx = lxCellArr{initVxIdx};
 
 % Plot the car.
 carh = [];
 plotCar(state, 'k', 1.0, false, carh);
 
-% Grab 2D slice of the initial value function.
-[initGrid2D, initData2D] = proj(params.grid, initValueFun, [0 0 1], state(3));
-
-% Grab the initial belief obstacle.
-initLx = lxCellArr{initVxIdx};
-[initGrid, init_belief_obstacle] = proj(params.grid, initLx, [0 0 1], state(3));
+if params.dynSys.nx == 3
+    % Grab 2D slice of the initial value function.
+    [initGrid2D, initData2D] = proj(params.grid, initValueFun, [0 0 1], state(3));
+    
+    % Grab the initial belief obstacle.
+    [initGrid, init_belief_obstacle] = proj(params.grid, initLx, [0 0 1], state(3));
+elseif params.dynSys.nx == 4
+    % Grab 2D slice of the initial value function.
+    [initGrid2D, initData2D] = proj(params.grid, initValueFun, [0 0 1 1], [state(3), state(4)]);
+    
+    % Grab the initial belief obstacle.
+    [initGrid, init_belief_obstacle] = proj(params.grid, initLx, [0 0 1 1], [state(3), state(4)]);
+end
 
 % Plot the sensing region.
 % sensing_region = safeOccuMaps{initStateIdx};
