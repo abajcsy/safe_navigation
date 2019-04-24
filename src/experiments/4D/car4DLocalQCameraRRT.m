@@ -95,7 +95,7 @@ params.visualize = true;
 
 %% Data Saving Params. 
 % If we want to save the sequence of value functions, compute times, etc..
-params.saveOutputData = false;
+params.saveOutputData = true;
 
 % Create filename if we want to save things out.
 % Naming convention:
@@ -107,7 +107,7 @@ if params.saveOutputData
         name = params.updateMethod;
     end
     name = strcat(name, params.senseShape);
-    name = strcat(name, params.dynSys.nx, 'D');
+    name = strcat(name, num2str(params.dynSys.nx), 'D');
     params.filename = strcat(name, datestr(now,'YYYYMMDD_hhmmss'),'.mat');
 end
 end
