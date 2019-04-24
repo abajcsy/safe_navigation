@@ -30,7 +30,7 @@ function run_experiments()
                         @car3DWarmCameraSpline, ...
                         @car3DHJICameraSpline};
                    
-    experiments = {@car4DLocalQCameraNN};
+    experiments = {@car4DLocalQCameraRRT};
     
     % Simulate each experiment.
     for i=1:length(experiments)
@@ -163,8 +163,12 @@ function runExperiment(experimentFun)
             end
         end
 
-        % Grab random disturbance. 
-        d = params.dynSys.uniformDstb();
+        % Grab random disturbance if we are in 3D case. 
+        if params.dynSys.nx == 3
+            d = params.dynSys.uniformDstb();
+        else
+            d = zeros(params.dynSys.nd, 1);
+        end
         
         % Apply control to dynamics.
         params.dynSys.updateState(u, params.dt, params.dynSys.x, d);
