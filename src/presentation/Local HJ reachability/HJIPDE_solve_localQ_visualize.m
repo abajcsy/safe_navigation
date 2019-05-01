@@ -1566,7 +1566,7 @@ function [ax0, ax1, ax2, seth, vout] = plotLocalQ(data0, xcurr, vxColor, ...
     ax0, ax1, ax2, seth, vout)
     
     % which theta slice to visualize everything at.
-    thetaVis = 0; %xcurr(3);
+    thetaVis = pi/2; %xcurr(3);
     if length(xcurr) == 4
         velVis = xcurr(4);
     end
