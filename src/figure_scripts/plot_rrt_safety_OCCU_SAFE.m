@@ -21,134 +21,90 @@ load(filePath);
 f = figure(1);
 hold on
 
-% visualize goal region.
-% c = [0.1,0.8,0.5,0.5];
-% pos = [params.xgoal(1)-params.goalEps, params.xgoal(2)-params.goalEps, params.goalEps*2, params.goalEps*2];
-% rectangle('Position',pos,'Curvature',1.0,'FaceColor',c,'LineStyle','none');
-% scatter(params.xgoal(1),params.xgoal(2),[],[0.0,0.8,0.5],'filled');
-
-% Setup the figure axes to represent the entire environment
-% xlim([params.lowEnv(1) params.upEnv(1)]);
-% ylim([params.lowEnv(2) params.upEnv(2)]);
-
-
+% Setup size of figure and tick mark stuff.
 xlim([params.lowEnv(1) 5]);
 ylim([params.lowEnv(2) 5]);
-
 set(gca,'TickLabelInterpreter','latex')
 set(gcf, 'Color', 'w');
-% setup size of figure and tick mark stuff.
 set(gca,'XTick',[]);
 set(gca,'YTick',[]);
 box on
 
-% %% Plot environment.
-% for i=1:length(params.obstacles)
-%     lowObs = params.obstacles{i}{1};
-%     upObs = params.obstacles{i}{2};
-%     width = upObs(1) - lowObs(1);
-%     height = upObs(2) - lowObs(2);
-%     obsCoord = [lowObs(1), lowObs(2), width, height];
-%     %e = rectangle('Position', obsCoord, 'Linewidth', 2.0, 'LineStyle', '--'); 
-%     e = rectangle('Position', obsCoord, ...
-%         'FaceColor', [0.5,0.5,0.5], 'EdgeColor', [0.4,0.4,0.4]); 
-% end
-
 %% Plot car and sensing during part of traj.
 [grid2D, ~] = proj(params.grid, valueFunCellArr{1}, [0 0 1], 0);
 
-carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0,0,0]};
-alphaSeq = [0.1, 0.15, 0.2, 0.25, 1.0]; 
-
-% indicies of timesteps to show occupancy maps for.
-prevIdx = 180; %280;
-nextIdx = 180; %350;
-xprev = states{prevIdx};
+% Indicies of timesteps to show occupancy maps for.
+nextIdx = 180; 
 xnext = states{nextIdx};
-colormap gray
     
-% grab occupancy maps at each state.
-% prevOccuMap = safeOccuMaps{prevIdx};
-% nextOccuMap = safeOccuMaps{nextIdx};
-% [cp, hp] = contourf(grid2D.xs{1}, grid2D.xs{2}, -prevOccuMap, [0,0]);
-% [cn, hn] = contourf(grid2D.xs{1}, grid2D.xs{2}, -nextOccuMap, [0,0]);
+% Create the belief map up till this point.
+% nextCostIdx = find(updateTimeArr == (nextIdx+1));
+% nextLx = lxCellArr{1};
+% for i=2:nextCostIdx
+%     currLx = lxCellArr{i};
+%     nextLx = max(currLx, nextLx);
+% end
+% [~, nextMap] = proj(params.grid, nextLx, [0 0 1], 0); 
 
-% grab cost functions at each state.
-prevCostIdx = find(updateTimeArr == (prevIdx+1));
-nextCostIdx = find(updateTimeArr == (nextIdx+1));
-prevLx = lxCellArr{prevCostIdx};
-nextLx = lxCellArr{nextCostIdx};
+nextMap = safeOccuMaps{1};
+for i=2:nextIdx
+    currMap = safeOccuMaps{i};
+    nextMap = max(currMap, nextMap);
+end
 
-[~, prevMap] = proj(params.grid, prevLx, [0 0 1], 0); 
-[~, nextMap] = proj(params.grid, nextLx, [0 0 1], 0); 
-
-rose = [186, 147, 147]/255.;
-steelblue = [124, 139, 158]/255.
-brightblue = [61, 177, 255]/255.
-mutedblue = [78, 122, 153]/255.;
-%set(gca,'Color', mutedblue);
-
-% prev map
-[cp, hp] = contourf(grid2D.xs{1}, grid2D.xs{2}, -prevMap, [0, 0]);
-xp = cp(1,2:end);
-yp = cp(2,2:end);
-%delete(hp);
-%hp = fill(xp,yp,[1,1,1],'FaceAlpha',1, 'EdgeColor', 'none');
-
-% next map
-[cn, hn] = contourf(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0]);
-xn = cn(1,2:end);
-yn = cn(2,2:end);
-%delete(hn);
-%hn = fill(xn,yn,brightblue,'FaceAlpha',1, 'EdgeColor', 'none');
-
-% plot car
-%plotCar(xprev, [0.8,0.8,0.8]);
-%plotCar(xnext, [0.4,0.4,0.4]);
+% Plot obstacle map.
+colormap gray
+[cn, ~] = contourf(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0]);
 
 %% Plot Safe Set.
-% indicies of timesteps to show occupancy maps for.
-prevIdx = 280;
-nextIdx = 180;
-xprev = states{prevIdx};
-xnext = states{nextIdx};
 
-% grab cost functions at each state.
-prevCostIdx = find(updateTimeArr == (prevIdx+1));
-nextCostIdx = find(updateTimeArr == (nextIdx+1));
-prevVx = valueFunCellArr{prevCostIdx};
-nextVx = valueFunCellArr{nextCostIdx};
+% Next value function function.
+% nextCostIdx = find(updateTimeArr == (nextIdx+1));
+% nextVx = valueFunCellArr{nextCostIdx};
+lxOld = [];
+lCurr = repmat(nextMap, 1, 1, params.grid.N(3));
 
-[~, prevMap] = proj(params.grid, prevVx, [0 0 1], xprev(3)); 
-[~, nextMap] = proj(params.grid, nextVx, [0 0 1], xnext(3)); 
-%[cp, hp] = contour(grid2D.xs{1}, grid2D.xs{2}, -prevMap, [0,0], 'r', 'LineWidth', 2.);
-[cn, hn] = contour(grid2D.xs{1}, grid2D.xs{2}, -nextMap, [0,0], 'r', 'LineWidth', 3.);
+% Put grid and dynamic systems into schemeData.
+schemeData.grid = params.grid;
+schemeData.dynSys = params.dynSys;
+schemeData.accuracy = 'high'; % Set accuracy.
+schemeData.uMode = params.uMode;
+schemeData.dMode = params.dMode;
+timeDisc = 0:params.dt:params.tMax; 
 
-% plot car
-%plotCar(xprev, [0.5,0.5,0.5]);
-% plotCar(xnext, 'k');
+firstHJIextraArgs.ignoreBoundary = 0; 
+firstHJIextraArgs.quiet = true;
+firstHJIextraArgs.stopConverge = 1;
+firstHJIextraArgs.convergeThreshold = params.updateEpsilon;
+firstHJIextraArgs.targets = lCurr;
+data0 = lCurr;
+firstWarmStart = false;
+minWith = 'minVWithL';
 
-% get safety control.
-uOpt = getSafetyControl(params.grid, params.dynSys, params.uMode, xnext, nextVx);
+% Solve. 
+[dataOut, tau, extraOuts] = ...
+HJIPDE_solve_warm(data0, lxOld, lCurr, ...
+  timeDisc, schemeData, minWith, ...
+  firstWarmStart, firstHJIextraArgs);
 
-% simulate it being applied now.
-% d = [0;0;0];
-% for i=1:10
-%     params.dynSys.updateState(uOpt, params.dt, xnext, d);
-%     xnext = params.dynSys.x;
-% end
-% plotCar(params.dynSys.x, 'r');
+% Project and plot.
+nextVx = dataOut(:,:,:,end);
+[~, nextVxMap] = proj(params.grid, nextVx, [0 0 1], xnext(3)); 
+[cn, hn] = contour(grid2D.xs{1}, grid2D.xs{2}, -nextVxMap, [0,0], 'r', 'LineWidth', 3.);
+
+% Get safety control.
+%uOpt = getSafetyControl(params.grid, params.dynSys, params.uMode, xnext, nextVx);
 
 %% Plot sequence of states
 carColorSeq = {[0.9,0.9,0.9], [0.7,0.7,0.7], [0.5,0.5,0.5], [0.2,0.2,0.2], [0.1,0.1,0.1], [0,0,0]};
 alphaSeq = [0.1, 0.2, 0.3, 0.6, 0.7, 1.0]; %[0.1, 0.15, 0.2, 0.25, 0.3, 1.0]; 
 
-% how frequently to plot everything
+% How frequently to plot everything
 plotFreq = 30;
-plotHoriz = 200; %400;  %length(xtraj)
+plotHoriz = 230; 
 idx = 1;
 colorIdx = 1;
-fillC = [132, 134, 255]/255.; %'b';
+fillC = [132, 134, 255]/255.; 
 for i=1:plotHoriz
     currT = updateTimeArr(idx);
     xcurr = states{i};
@@ -173,7 +129,6 @@ set(gcf, 'Position',  0.9*[100, 100, widthMeters*100*0.6, heightMeters*100*0.6])
 saveas(f, './hybrid_ws/src/safe_navigation/imgs/rrt_occu_safe.png')
 saveas(f, './hybrid_ws/src/safe_navigation/imgs/rrt_occu_safe.fig')
 saveas(f, './hybrid_ws/src/safe_navigation/imgs/rrt_occu_safe.pdf')
-
 
 %% Plots dubins car point and heading.
 % Inputs:
