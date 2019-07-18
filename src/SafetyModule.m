@@ -9,7 +9,7 @@ classdef SafetyModule < handle
     
     properties
         % Computation grid & dynamics
-        grid            % (obj) Computation grid struct
+        grid            % (obj) Computfation grid struct
         dt              % (float) Timestep in discretization
         computeTimes    % (float arr) Stores the computation times
         dynSys          % (obj) Dynamical system (dubins car)
@@ -43,7 +43,7 @@ classdef SafetyModule < handle
     
     methods
         %% Constructor. 
-        % NOTE: Assumes DubinsCar or KinVehicle2D dynamics!
+        % NOTE: Assumes DubinsCar or Plane4D dynamics!
         function obj = SafetyModule(grid, dynSys, uMode, dMode, dt, ...
                 updateEpsilon, warmStart, envType, updateMethod, tMax, initR)
             % Setup computation grid.
