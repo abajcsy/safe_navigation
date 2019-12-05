@@ -37,9 +37,9 @@ function dubins()
 compTraj = false;
 
 %% Grid
-grid_min = [-5; -5; -pi]; % Lower corner of computation domain
-grid_max = [5; 5; pi];    % Upper corner of computation domain
-N = [41; 21; 11];         % Number of grid points per dimension
+grid_min = [-10; -10; -pi]; % Lower corner of computation domain
+grid_max = [10; 10; pi];    % Upper corner of computation domain
+N = [161; 81; 11];         % Number of grid points per dimension
 pdDims = 3;               % 3rd dimension is periodic
 g = createGrid(grid_min, grid_max, N, pdDims);
 % Use "g = createGrid(grid_min, grid_max, N);" if there are no periodic
@@ -74,7 +74,7 @@ schemeData.uMode = uMode;
 schemeData.dMode = dMode;
 
 %% target set
-R = 1;
+R = 5;
 % data0 = shapeCylinder(grid,ignoreDims,center,radius)
 data0 = shapeCylinder(g, 3, [0; 0; 0], R);
 % also try shapeRectangleByCorners, shapeSphere, etc.
@@ -91,20 +91,40 @@ data0 = shapeCylinder(g, 3, [0; 0; 0], R);
 %% If you have obstacles, compute them here
 
 %% Compute value function
-
+HJIextraArgs.targets = data0;
 HJIextraArgs.visualize = true; %show plot
 HJIextraArgs.fig_num = 1; %set figure number
 HJIextraArgs.deleteLastPlot = true; %delete previous plot as you update
 
 %[data, tau, extraOuts] = ...
-% HJIPDE_solve(data0, tau, schemeData, minWith, extraArgs)
+% HJIPDE_solve_warm(data0, lxOld, lx, tau, schemeData, compMethod, warmStart, extraArgs)
 [data, tau2, ~] = ...
-  HJIPDE_solve_localQ(data0, data0, data0, tau, schemeData, 'none', HJIextraArgs);
-initial_data_m = data;
-initial_time_m = tau2;
-initial_grid_m = g;
-save(sprintf('%s.mat', mfilename), 'initial_data_m', 'initial_time_m', 'initial_grid_m');
+  HJIPDE_solve_warm(data0, [], data0, tau, schemeData, 'minVWithL', true, HJIextraArgs);
+t1_initial_data_m = data;
+t1_initial_time_m = tau2;
+t1_initial_grid_m = g;
+save(sprintf('../compare/mt1_%s.mat', mfilename), 't1_initial_data_m', 't1_initial_time_m', 't1_initial_grid_m');
 
+R = 1;
+lxOld = data0; 
+lx = shapeCylinder(g, 3, [0; 0; 0], R);
+data0 = data(:, :, :, end);
+HJIextraArgs.targets = lx;
+[data2, tau3, ~] = HJIPDE_solve_warm(data0, lxOld, lx, tau, schemeData, 'minVWithL', true, HJIextraArgs);
+t2_initial_data_m = data2;
+t2_initial_time_m = tau3;
+t2_initial_grid_m = g;
+save(sprintf('../compare/mt2_%s.mat', mfilename), 't2_initial_data_m', 't2_initial_time_m', 't2_initial_grid_m');
+
+
+% Plotting
+% (3D system) Grab slice at theta.
+figure(3)
+theta = -pi;
+[gPlot, dataPlot] = proj(g, data2(:,:,:,end), [0 0 1], theta);
+visExtraArgs.LineWidth = 2.0;
+h = visSetIm(gPlot, dataPlot, 'r', 0, visExtraArgs);
+clf;
 % Debug Outputs 
 % fprintf("Value Functions: "); 
 % for i=1:81

@@ -358,6 +358,7 @@ if (isfield(extraArgs, 'visualize') && isstruct(extraArgs.visualize))...
     % things to visualize
     if isfield(extraArgs, 'visualize') && ...
             ~isstruct(extraArgs.visualize) && extraArgs.visualize==1
+        extraArgs.visualize = {};
         extraArgs.visualize.initialValueSet = 1;
         extraArgs.visualize.valueSet = 1;
     end
