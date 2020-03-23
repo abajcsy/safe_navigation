@@ -862,7 +862,7 @@ end
 
 % Stores the sequence of Q sizes over computation time.
 extraOuts.QSizes = [];
-
+counterIters = 0;
 for i = istart:length(tau)
     if ~quiet
         fprintf('tau(i) = %f\n', tau(i))
@@ -895,9 +895,9 @@ for i = istart:length(tau)
 
     
     tNow = tau(i-1);
-    
     %% Main integration loop to get to the next tau(i)
     while tNow < tau(i) - small
+        counterIters = counterIters + 1;
         % Record the current Q size (i.e. total number of points in grid).
         sz = prod(schemeData.grid.shape);
         extraOuts.QSizes = [extraOuts.QSizes, sz];
@@ -907,7 +907,7 @@ for i = istart:length(tau)
                 strcmp(compMethod, 'maxVOverTime')
             yLast = y;
         end
-        
+
         if ~quiet
             fprintf('  Computing [%f %f]...\n', tNow, tau(i))
         end
@@ -1011,7 +1011,8 @@ for i = istart:length(tau)
             extraOuts.discountFactor = extraArgs.discountFactor;
         end
     end
-    
+    %fprintf("Total number of while loop iterations %d\n", counterIters); 
+
     % Reshape value function
     data_i = reshape(y, g.shape);
     if keepLast
@@ -1022,36 +1023,35 @@ for i = istart:length(tau)
         else
             data = cat(g.dim+1, data, reshape(y, g.shape));
         end
-        
     else
         data(clns{:}, i) = data_i;
     end
     
     
-        % If we're stopping once converged, print how much change there was in
-        % the last iteration
-        if stopConverge
-            if isfield(extraArgs,'ignoreBoundary') &&...
-                    extraArgs.ignoreBoundary
-                [gTrunc, dataNew] = truncateGrid(...
-                    g, data_i, g.min+4*g.dx, g.max-4*g.dx);
-                
-                [change, indicies] = max(abs(dataNew(:)-dataTrimmed(:)));
-                dataTrimmed = dataNew;
-                if ~quiet
-                    fprintf('Max change since last iteration: %f\n', change)
-                end
-            else
-                [change, indicies] = max(abs(y - y0(:)));
-                
-                unchangedIndicies = find(abs(y - y0(:)) > convergeThreshold);
-                Qold = Q;
-                Q = unchangedIndicies;
-                if ~quiet
-                    fprintf('Max change since last iteration: %f\n', change)
-                end
+    % If we're stopping once converged, print how much change there was in
+    % the last iteration
+    if stopConverge
+        if isfield(extraArgs,'ignoreBoundary') &&...
+                extraArgs.ignoreBoundary
+            [gTrunc, dataNew] = truncateGrid(...
+                g, data_i, g.min+4*g.dx, g.max-4*g.dx);
+
+            [change, indicies] = max(abs(dataNew(:)-dataTrimmed(:)));
+            dataTrimmed = dataNew;
+            if ~quiet
+                fprintf('Max change since last iteration: %f\n', change)
+            end
+        else
+            [change, indicies] = max(abs(y - y0(:)));
+
+            unchangedIndicies = find(abs(y - y0(:)) > convergeThreshold); %rename to uncovergedIndices
+            Qold = Q;
+            Q = unchangedIndicies;
+            if ~quiet
+                fprintf('Max change since last iteration: %f\n', change);
             end
         end
+    end
     
     %% If commanded, stop the reachable set computation once it contains
     % the initial state.
@@ -1095,6 +1095,7 @@ for i = istart:length(tau)
     else
         cond = false;
     end
+
     if stopConverge && (change < convergeThreshold || cond)
         
         if isfield(extraArgs, 'discountFactor') && ...
@@ -1293,7 +1294,6 @@ for i = istart:length(tau)
                 extraArgs.visualize.figFilename, i), '-png')
         end
     end
-    
     %% Save the results if needed
     if isfield(extraArgs, 'saveFilename')
         if mod(i, extraArgs.saveFrequency) == 0
@@ -1302,6 +1302,29 @@ for i = istart:length(tau)
         end
     end
 end
+
+fprintf("Total number of while loop iterations %d\n", counterIters);
+
+
+%% Save figures
+if isfield(extraArgs.visualize, 'save3DFig')
+    %export_fig(sprintf('%s', extraArgs.visualize.save3DFig), '-png');
+end
+
+if isfield(extraArgs.visualize, 'save2DFig') && isfield(extraArgs.visualize, 'save2DProjPt')
+    figure;
+    [gPlot, dataPlot] = proj(g, data(:,:,:,end), [0 0 1], extraArgs.visualize.save2DProjPt);
+    visExtraArgs.LineWidth = 2.0;
+    visSetIm(gPlot, dataPlot, 'r', 0, visExtraArgs); 
+    export_fig(sprintf('%s', extraArgs.visualize.save2DFig), '-png');
+end
+
+if isfield(extraArgs, 'saveFile')    
+    save(strcat(extraArgs.saveFile, '.mat'), 'data', 'tau');
+end
+
+%% Finish up
+
 
 endTime = cputime;
 if ~quiet

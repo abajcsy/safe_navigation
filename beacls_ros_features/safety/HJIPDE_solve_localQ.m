@@ -721,11 +721,11 @@ startTime = cputime;
 % Store the (linear) indicies of all the states where the new cost
 % function has changed (i.e. we sensed free-space). 
 Q = find((lxOld <= 0).*(lx > 0));
-
 % Set states in warm-started value function that are free-space
 % to have the l(x) value -- need this for V(x) to change at all (in
 % theory!)
 data0(Q) = lx(Q);
+
 % Q1 = find(lxOld <= 0);
 % data0(Q1) = lx(Q1);
 

@@ -539,11 +539,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		for (j=0; j < N; j++) {
             speed[i][j]    = speedValues[(j*N)+i];
             bdryCond[i][j] = bdryCondValues[(j*N)+i];
+            //printf("i: %d, j: %d, speed[i][j]: %lf\n",
+            //            i, j, speed[i][j]);
         }
    
     // set u to numerical infinity, except at the boundary condition
     for (i=0; i < N; i++)
 		for (j=0; j < N; j++) {
+               // printf("i: %d, j: %d, bdryCond[i][j]: %lf, u[i][j]: %lf, Alive[i][j]: %d, speed[i][j]: %lf\n",
+               //         i, j, bdryCond[i][j], u[i][j], Alive[i][j], speed[i][j]);
                 bc = bdryCond[i][j];
                 if ( bc >= 0) {
                     u[i][j] = bc;
@@ -557,9 +561,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                     Alive[i][j] = false;
                 }
                 NarrowBand[i][j] = false;
+                //printf("Updated i: %d, j: %d, bdryCond[i][j]: %lf, u[i][j]: %lf, Alive[i][j]: %d, speed[i][j]: %lf\n",
+                //        i, j, bdryCond[i][j], u[i][j], Alive[i][j], speed[i][j]);
             }
-   
-    
+   // printf("N: %d L: %lf numInfty: %lf\n", N, L, numInfty);
     // run FMM algorithm
 	runEikonal(u, bdryCond, speed, Alive, NarrowBand, N, L, numInfty);
   
