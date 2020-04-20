@@ -111,9 +111,9 @@ classdef Plotter < handle
                 obj.plotTraj(path);
             end
             if ~isempty(usedUOpt)
-                obj.carh = obj.plotCar(x, usedUOpt);
+                %obj.carh = obj.plotCar(x, usedUOpt);
             else
-                obj.carh = obj.plotCar(x, false);
+                %obj.carh = obj.plotCar(x, false);
             end
             %obj.plotBoundaryPadding(obj.boundLow, obj.boundUp);
 

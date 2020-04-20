@@ -37,9 +37,9 @@ function dubins()
 compTraj = false;
 
 %% Grid
-grid_min = [-10; -10; -pi]; % Lower corner of computation domain
-grid_max = [10; 10; pi];    % Upper corner of computation domain
-N = [161; 81; 11];         % Number of grid points per dimension
+grid_min = [-3; -3; -3]; % Lower corner of computation domain
+grid_max = [3; 3; 3];    % Upper corner of computation domain
+N = [7; 7; 10];         % Number of grid points per dimension
 pdDims = 3;               % 3rd dimension is periodic
 g = createGrid(grid_min, grid_max, N, pdDims);
 % Use "g = createGrid(grid_min, grid_max, N);" if there are no periodic
@@ -55,10 +55,12 @@ tau = t0:dt:tMax;
 %% problem parameters
 % input bounds
 speed = 1;
-wMax = 1;
+wMax =  [-1, 1];
+xinit = [-2, -2, 0];
+dMax = [0.1, 0.1, 0];
 % Define dynamic system
 % obj = DubinsCar(x, wMax, speed, dMax)
-dCar = DubinsCar([0, 0, 0], wMax, speed); %do dStep3 here
+dCar = DubinsCar(xinit, wMax, speed, dMax); %do dStep3 here
 
 
 %% Control Parameters
@@ -76,7 +78,16 @@ schemeData.dMode = dMode;
 %% target set
 R = 5;
 % data0 = shapeCylinder(grid,ignoreDims,center,radius)
-data0 = shapeCylinder(g, 3, [0; 0; 0], R);
+low_obst = {[-2, 1.5, -pi]; [-1.5, -1, -pi]; [0.5, 0.5, -pi];};
+high_obst = {[-1, 2.5, pi]; [1.5, -0.5, pi]; [1.5, 1.5, pi];};
+%data0 = shapeRectangleByCorners(grid, 
+shape = zeros(g.shape); 
+for i = 1:length(low_obst)
+    lower = low_obst{i};
+    upper = high_obst{i};
+end 
+
+
 % also try shapeRectangleByCorners, shapeSphere, etc.
 
 %% additive random noise

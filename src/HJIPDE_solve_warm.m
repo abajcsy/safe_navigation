@@ -1096,8 +1096,8 @@ for i = istart:length(tau)
         cond = false;
     end
 
-    if stopConverge && (change < convergeThreshold || cond)
-        
+    %if stopConverge && (change < convergeThreshold || cond)
+    if stopConverge && (change < convergeThreshold)
         if isfield(extraArgs, 'discountFactor') && ...
                 extraArgs.discountFactor && ...
                 isfield(extraArgs, 'discountAnneal') && ...

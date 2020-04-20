@@ -6,21 +6,22 @@ clc
 clear 
 
 %% Load the current experimental setup and all the parameters.
-params = dubinsLocalQCameraExp1();
+params = car3DWarmCameraRRT();
 
 %% Setup Obstacle Map Generator.
-map = OccuMap(params.grid, params.obstacles);
+extraArgs.obstacles = params.obstacles;
+map = OccuMap(params.grid, params.envType, extraArgs);
 
 % Compute the first occupancy map.
 map.updateMapAndCost(params.initSenseData, params.senseShape);
 
 %% Setup Safety Module.
 % Setup safety module object and compute first set.
-safety = SafetyModule(params.grid, params.dynSys, params.uMode, ...
-    params.dt, params.updateEpsilon, params.warmStart, params.inSim, params.updateMethod);
+safety = SafetyModule(params.grid, params.dynSys, params.uMode, params.dMode, ...
+    params.dt, params.updateEpsilon, params.warmStart, params.envType, params.updateMethod, params.tMax, params.initialR);
 
 % Compute the first avoid set based on current sensing.
-safety.computeAvoidSet(map.signed_dist_safety);
+safety.computeAvoidSet(map.signed_dist_safety, 1);
 
 %% Plot initial conditions, sensing, and safe set.
 
@@ -29,8 +30,8 @@ if params.visualize
     hold on
 
     % Plot environment, car, and sensing.
-    plt = Plotter(params.lowEnv, params.upEnv, params.obstacles);
-    plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, map);
+    plt = Plotter(params.lowEnv, params.upEnv, params.lowEnv, params.upEnv, params.envType, params.obstacles, params.goalEps);
+    plt.updatePlot(params.xinit, params.xgoal, safety.valueFun, params.grid, map, [], [], []);
     pause(params.dt);
 end
     
@@ -38,7 +39,7 @@ end
 if strcmp(params.plannerName, 'rrt')
     % Create RRT obj.
     planner = RRT(params.grid, map.occupancy_map_plan, params.maxIter, ...
-        params.dx, params.rrtGoalEps);
+        params.dx, params.goalEps);
     % build rrt and get optimal path
     [path, newpath] = planner.replan(params.xinit(1:2), params.xgoal(1:2));
     
@@ -106,11 +107,11 @@ for t=1:params.T
     if strcmp(params.senseShape, 'circle')
       senseData = {[x(1);x(2);x(3)], [params.senseRad; params.senseRad]};
     elseif strcmp(params.senseShape, 'camera')
-      senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR]};
+      senseData = {[x(1);x(2);x(3)], [params.senseFOV; params.initialR; params.farPlane]};
     elseif strcmp(params.senseShape, 'lidar')
       senseData = {[x(1);x(2);x(3)], [params.senseRad]};
     else
-      error('unknown sesnor type');
+      error('unknown sensor type');
     end  
     
     % Update occupancy map, cost function, and the avoid set.
@@ -123,7 +124,7 @@ for t=1:params.T
     % If need to update the safety set, do so.  
     if dtSafe >= params.safetyFreq || forceUpdate
         safety.computeAvoidSet(map.signed_dist_safety);
-        prevSafeUpdate = t;
+        prevSafeUpdate = t; 
     end
     
     % If need to update the planner, do so.
@@ -145,8 +146,7 @@ for t=1:params.T
     
     if params.visualize
         % Update plotting.
-        plt.updatePlot(x, params.xgoal, safety.valueFun, map);
-
+        %plt.updatePlot(x, params.xgoal, safety.valueFun, params.grid, map, [], [], []);
         % Pause based on timestep.
         pause(params.dt);
     end

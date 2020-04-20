@@ -5,3 +5,4 @@ bags
 *.mexmaci64
 *.mexa64
 graveyard
+*.mat
