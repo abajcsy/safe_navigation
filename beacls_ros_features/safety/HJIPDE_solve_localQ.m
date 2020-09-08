@@ -929,11 +929,10 @@ for i = istart:length(tau)
         % --- Remove states from Q where Vx has not changed enough. --- %
         % Grab the states whose value wasn't affected enough by the update.
         unchangedIndicies = find(abs(VxError) < updateEpsilon);
-        
+    
         % Remove the unchanged states from the list of states to update.
         Qold = Q;
         Q(unchangedIndicies) = [];
-        
         % ----------------------------------------------------------- %
         
         % --- Add neighbors of the states that still remain in Q. --- %
@@ -952,7 +951,7 @@ for i = istart:length(tau)
         Q = vertcat(Q, neighbors(:));
         Q = unique(Q);
         % ---------------------------------------------------------- %
-        
+        fprintf('  Q size: %d  Max Change: %.3f\n', length(Q), max(VxError));
         
         % "Mask" using obstacles
         if isfield(extraArgs, 'obstacles')
