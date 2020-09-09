@@ -847,7 +847,7 @@ for i = istart:length(tau)
     
     %% Main integration loop to get to the next tau(i)  
     % Stop updates if either converged AND have no more states to update. 
-    while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
+    while tNow < tau(i) - small && ~isempty(Q)
         %fprintf('\n');
         [sz,~] = size(Q);
         %fprintf('Q size: %f\n', sz);
@@ -951,7 +951,7 @@ for i = istart:length(tau)
         Q = vertcat(Q, neighbors(:));
         Q = unique(Q);
         % ---------------------------------------------------------- %
-        fprintf('  Q size: %d  Max Change: %.3f\n', length(Q), max(VxError));
+        fprintf('  Q size: %d  Max Change: %.6f\n', length(Q), max(VxError));
         
         % "Mask" using obstacles
         if isfield(extraArgs, 'obstacles')
@@ -1042,7 +1042,7 @@ for i = istart:length(tau)
         end
     
     % ---- If Q is empty, we need to exit the outer for-loop as well! --- %
-    if isempty(Q) || ~(~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
+    if isempty(Q)
         extraOuts.stoptau = tau(i);
         tau(i+1:end) = [];
 

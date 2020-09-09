@@ -1,8 +1,8 @@
-function dubins_car()
+function plane_localQ_1e4()
     %% Grid
     grid_min = [-5; -5; -3.1415]; % Lower corner of computation domain
     grid_max = [5; 5; 3.1415];    % Upper corner of computation domain
-    N = [51; 101; 11];         % Number of grid points per dimension
+    N = [101; 101; 81];         % Number of grid points per dimension
     pdDims = 3;               % 3rd dimension is periodic
     g = createGrid(grid_min, grid_max, N, pdDims);
 
@@ -21,7 +21,6 @@ function dubins_car()
     dCar = Plane(xinit, wMax, vrange, dMax); 
     % speed = 1;
     % obj = DubinsCar(x, wMax, speed, dMax)
-
 
     %% Control Parameters
     uMode = 'max';
@@ -43,7 +42,9 @@ function dubins_car()
     tokens = split(filepath, "/");
     cellArray = join(tokens(1:length(tokens) - 1), "/");
     base_path = cellArray{1};
-    
+    folder = sprintf('%s/../outputs/plane/localQ/1e4', base_path);
+    HJIextraArgs.convergeThreshold = 1e-4;
+
     %% Set HJIPDE hyper parameters
     HJIextraArgs.targets = data0;
     HJIextraArgs.visualize.valueSet = 1;
@@ -56,18 +57,17 @@ function dubins_car()
     HJIextraArgs.fig_num = 1; %set figure number
     HJIextraArgs.deleteLastPlot = true; %delete previous plot as you update
     HJIextraArgs.stopConverge = true;
-    HJIextraArgs.convergeThreshold = 1e-2;
     
     %% Solve and plot HJIPDE warm start initialization
     f = figure(1); clf;
     [data, ~, ~] = HJIPDE_solve_warm(data0, [], data0, tau, schemeData, 'minVWithL', true, HJIextraArgs);
-    save(sprintf("%s/../outputs/local_q_t1.mat", base_path), 'data');
-    saveas(f, sprintf('%s/../outputs/local_q_t1_HJIPDE.png', base_path));
+    save(sprintf("%s/t1.mat", folder), 'data');
+    saveas(f, sprintf('%s/t1_HJIPDE.png', folder));
     % plot zero set
     f = figure(1); clf;
     [grid2D, data2D] = proj(g, data, [0 0 1], [0]);
     h = visSetIm(grid2D, data2D, 'r');
-    saveas(f, sprintf('%s/../outputs/local_q_t1_zero_set.fig', base_path));
+    saveas(f, sprintf('%s/t1_zero_set.fig', folder));
     
     %% Solve and plot HJIPDE local Q for each shrinking radius
     for t = 2:length(R)
@@ -83,15 +83,21 @@ function dubins_car()
         schemeData.partialFunc = @dubins3Dpartial_localQ;
         
         %% Solve annd plot HJIPDE local Q per timestamp
+%         f = figure(1); clf;
+%         profile on
+%         [data, ~, ~] = HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, 'minVWithL', HJIextraArgs);
+%         profile off
+%         profile viewer
+%         profsave(profile('info'), sprintf('%s/../outputs/plane/localQ/profile_%d', base_path, t));
         f = figure(1); clf;
         [data, ~, ~] = HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, 'minVWithL', HJIextraArgs);
-        saveas(f, sprintf('%s/../outputs/local_q_t%d_HJIPDE.png', base_path, t));
-        save(sprintf('%s/../outputs/local_q_t%d.mat', base_path, t), 'data');
+        saveas(f, sprintf('%s/t%d_HJIPDE.png', folder, t));
+        save(sprintf('%s/t%d.mat', folder, t), 'data');
         % plot zero set
         f = figure(1); clf;
         [grid2D, data2D] = proj(g, data, [0 0 1], [0]);    
         visSetIm(grid2D, data2D, 'r');
         lxOld = lx;
-        saveas(f, sprintf('%s/../outputs/local_q_t%d_zero_set.png', base_path, t));
+        saveas(f, sprintf('%s/t%d_zero_set.png', folder, t));
     end 
 end
