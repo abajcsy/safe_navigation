@@ -721,11 +721,11 @@ startTime = cputime;
 % Store the (linear) indicies of all the states where the new cost
 % function has changed (i.e. we sensed free-space). 
 Q = find((lxOld <= 0).*(lx > 0));
+
 % Set states in warm-started value function that are free-space
 % to have the l(x) value -- need this for V(x) to change at all (in
 % theory!)
 data0(Q) = lx(Q);
-
 % Q1 = find(lxOld <= 0);
 % data0(Q1) = lx(Q1);
 
@@ -847,11 +847,9 @@ for i = istart:length(tau)
     
     %% Main integration loop to get to the next tau(i)  
     % Stop updates if either converged AND have no more states to update. 
-    while tNow < tau(i) - small && ~isempty(Q)
+    while tNow < tau(i) - small && ~isempty(Q) && (~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
         %fprintf('\n');
         [sz,~] = size(Q);
-        %fprintf('Q size: %f\n', sz);
-        %fprintf('\n');
         
         % Record the current Q size.
         extraOuts.QSizes = [extraOuts.QSizes, sz];
@@ -929,10 +927,11 @@ for i = istart:length(tau)
         % --- Remove states from Q where Vx has not changed enough. --- %
         % Grab the states whose value wasn't affected enough by the update.
         unchangedIndicies = find(abs(VxError) < updateEpsilon);
-    
+        
         % Remove the unchanged states from the list of states to update.
         Qold = Q;
         Q(unchangedIndicies) = [];
+        
         % ----------------------------------------------------------- %
         
         % --- Add neighbors of the states that still remain in Q. --- %
@@ -951,7 +950,7 @@ for i = istart:length(tau)
         Q = vertcat(Q, neighbors(:));
         Q = unique(Q);
         % ---------------------------------------------------------- %
-        fprintf('  Q size: %d  Max Change: %.6f\n', length(Q), max(VxError));
+        
         
         % "Mask" using obstacles
         if isfield(extraArgs, 'obstacles')
@@ -1031,18 +1030,20 @@ for i = istart:length(tau)
                 [change, indicies] = max(abs(dataNew(:)-dataTrimmed(:)));
                 dataTrimmed = dataNew;
                 if ~quiet
+                    fprintf('Q size: %f\n', sz);
                     fprintf('Max change since last iteration: %f\n', change)
                 end
             else
                 [change, indicies] = max(abs(y - y0(:)));
                 if ~quiet
+                    fprintf('Q size: %f\n', sz);
                     fprintf('Max change since last iteration: %f\n', change)
                 end
             end
         end
     
     % ---- If Q is empty, we need to exit the outer for-loop as well! --- %
-    if isempty(Q)
+    if isempty(Q) || ~(~isempty(setdiff(Q, Qold)) || ~isempty(setdiff(Qold, Q)))
         extraOuts.stoptau = tau(i);
         tau(i+1:end) = [];
 

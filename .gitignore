@@ -6,3 +6,4 @@ bags
 *.mexa64
 graveyard
 *.mat
+beacls_ros_features/outputs/

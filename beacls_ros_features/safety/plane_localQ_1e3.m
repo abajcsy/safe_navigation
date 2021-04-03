@@ -16,7 +16,7 @@ function plane_localQ_1e3()
     wMax =  1;
     xinit = [-2, -2, 0];
     vrange = [0.9, 1.1];
-    dMax = [0.0, 0.0, 0];
+    dMax = [0.1, 0.1, 0];
     % Define dynamic system
     dCar = Plane(xinit, wMax, vrange, dMax); 
     % speed = 1;
@@ -42,9 +42,10 @@ function plane_localQ_1e3()
     tokens = split(filepath, "/");
     cellArray = join(tokens(1:length(tokens) - 1), "/");
     base_path = cellArray{1};
-    folder = sprintf('%s/../outputs/plane/localQ/1e3', base_path);
+    folder = sprintf('%s/../outputs/plane_disturbance/local_q/1e2', base_path);
     
     %% Set HJIPDE hyper parameters
+    HJIextraArgs.quiet = false; 
     HJIextraArgs.targets = data0;
     HJIextraArgs.visualize.valueSet = 1;
     HJIextraArgs.visualize.initialValueSet = 1;
@@ -56,11 +57,12 @@ function plane_localQ_1e3()
     HJIextraArgs.fig_num = 1; %set figure number
     HJIextraArgs.deleteLastPlot = true; %delete previous plot as you update
     HJIextraArgs.stopConverge = true;
-    HJIextraArgs.convergeThreshold = 1e-3;
+    HJIextraArgs.convergeThreshold = 1e-2;
     
     %% Solve and plot HJIPDE warm start initialization
     f = figure(1); clf;
     [data, ~, ~] = HJIPDE_solve_warm(data0, [], data0, tau, schemeData, 'minVWithL', true, HJIextraArgs);
+    times{1} = size(data, 4); 
     save(sprintf("%s/t1.mat", folder), 'data');
     saveas(f, sprintf('%s/t1_HJIPDE.png', folder));
     % plot zero set
@@ -74,10 +76,10 @@ function plane_localQ_1e3()
         %% Set up HJIPDE solve local Q parameters
         radius = R(t);
         updateEpsilon = HJIextraArgs.convergeThreshold;
-        lx = shapeCylinder(g, 3, [0 0 -2], radius);
+        lx = shapeCylinder(g, 3, [0 0 0], radius);
         data0 = data(:, :, :, end); 
         HJIextraArgs.targets = lx;
-        HJIextraArgs.stopConverge = false;
+        HJIextraArgs.stopConverge = true;
         schemeData.accuracy = 'high';
         schemeData.hamFunc = @dubins3Dham_localQ;
         schemeData.partialFunc = @dubins3Dpartial_localQ;
@@ -99,5 +101,7 @@ function plane_localQ_1e3()
         visSetIm(grid2D, data2D, 'r');
         lxOld = lx;
         saveas(f, sprintf('%s/t%d_zero_set.png', folder, t));
+        times{t} = size(data, 4); 
     end 
+    save(sprintf('%s/time.mat', folder), 'times');
 end

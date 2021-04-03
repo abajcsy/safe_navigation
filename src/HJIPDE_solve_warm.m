@@ -934,7 +934,7 @@ for i = istart:length(tau)
             y = min(y, yLast);
         elseif strcmp(compMethod, 'maxVOverTime')
             y = max(y, yLast);
-        elseif strcmp(compMethod, 'minVWithV0')%Min with data0
+        elseif strcmp(compMethod, 'minVWithV0') %Min with data0
             y = min(y,data0(:));
         elseif strcmp(compMethod, 'maxVWithV0')
             y = max(y,data0(:));
@@ -1049,6 +1049,7 @@ for i = istart:length(tau)
             Q = unchangedIndicies;
             if ~quiet
                 fprintf('Max change since last iteration: %f\n', change);
+                fprintf('Q size %f\n', numel(Q)); 
             end
         end
     end
@@ -1096,8 +1097,7 @@ for i = istart:length(tau)
         cond = false;
     end
 
-    %if stopConverge && (change < convergeThreshold || cond)
-    if stopConverge && (change < convergeThreshold)
+    if stopConverge && (change < convergeThreshold || cond)
         if isfield(extraArgs, 'discountFactor') && ...
                 extraArgs.discountFactor && ...
                 isfield(extraArgs, 'discountAnneal') && ...

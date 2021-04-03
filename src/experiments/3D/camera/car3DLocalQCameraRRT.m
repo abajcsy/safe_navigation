@@ -48,7 +48,7 @@ params.useSafety = true;
 % What kind of update method do we want to use?
 %   typical solver                  --> 'HJI'
 %   local Q algorithm               --> 'localQ' 
-params.updateMethod = 'localQ';
+params.updateMethod = 'HJI';
 
 % If we want to warm start with prior value function.
 params.warmStart = true;
