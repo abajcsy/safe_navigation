@@ -1,8 +1,8 @@
-function plane_localQ_1e4()
+function plane_localQ()
     %% Grid
     grid_min = [-5; -5; -3.1415]; % Lower corner of computation domain
     grid_max = [5; 5; 3.1415];    % Upper corner of computation domain
-    N = [101; 101; 81];         % Number of grid points per dimension
+    N = [51; 51; 16];         % Number of grid points per dimension
     pdDims = 3;               % 3rd dimension is periodic
     g = createGrid(grid_min, grid_max, N, pdDims);
 
@@ -15,8 +15,8 @@ function plane_localQ_1e4()
     %% problem parameters
     wMax =  1;
     xinit = [-2, -2, 0];
-    vrange = [0.9, 1.1];
-    dMax = [0.0, 0.0, 0];
+    vrange = [0, 1.1];
+    dMax = [0.3, 0.3, 0];
     % Define dynamic system
     dCar = Plane(xinit, wMax, vrange, dMax); 
     % speed = 1;
@@ -42,10 +42,10 @@ function plane_localQ_1e4()
     tokens = split(filepath, "/");
     cellArray = join(tokens(1:length(tokens) - 1), "/");
     base_path = cellArray{1};
-    folder = sprintf('%s/../outputs/plane/localQ/1e4', base_path);
-    HJIextraArgs.convergeThreshold = 1e-4;
-
+    folder = sprintf('%s/../outputs/plane_local_q', base_path);
+    
     %% Set HJIPDE hyper parameters
+    HJIextraArgs.quiet = false; 
     HJIextraArgs.targets = data0;
     HJIextraArgs.visualize.valueSet = 1;
     HJIextraArgs.visualize.initialValueSet = 1;
@@ -57,10 +57,13 @@ function plane_localQ_1e4()
     HJIextraArgs.fig_num = 1; %set figure number
     HJIextraArgs.deleteLastPlot = true; %delete previous plot as you update
     HJIextraArgs.stopConverge = true;
+    HJIextraArgs.convergeThreshold = 3e-3;
     
     %% Solve and plot HJIPDE warm start initialization
+    times = zeros(length(R), 1); 
     f = figure(1); clf;
-    [data, ~, ~] = HJIPDE_solve_warm(data0, [], data0, tau, schemeData, 'minVWithL', true, HJIextraArgs);
+    [data, ~, ~] = HJIPDE_solve(data0, tau, schemeData, 'minVWithL', HJIextraArgs);
+    times(1) = size(data, 4); 
     save(sprintf("%s/t1.mat", folder), 'data');
     saveas(f, sprintf('%s/t1_HJIPDE.png', folder));
     % plot zero set
@@ -74,10 +77,10 @@ function plane_localQ_1e4()
         %% Set up HJIPDE solve local Q parameters
         radius = R(t);
         updateEpsilon = HJIextraArgs.convergeThreshold;
-        lx = shapeCylinder(g, 3, [0 0 -2], radius);
+        lx = shapeCylinder(g, 3, [0 0 0], radius);
         data0 = data(:, :, :, end); 
         HJIextraArgs.targets = lx;
-        HJIextraArgs.stopConverge = false;
+        HJIextraArgs.stopConverge = true;
         schemeData.accuracy = 'high';
         schemeData.hamFunc = @dubins3Dham_localQ;
         schemeData.partialFunc = @dubins3Dpartial_localQ;
@@ -90,14 +93,17 @@ function plane_localQ_1e4()
 %         profile viewer
 %         profsave(profile('info'), sprintf('%s/../outputs/plane/localQ/profile_%d', base_path, t));
         f = figure(1); clf;
-        [data, ~, ~] = HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, 'minVWithL', HJIextraArgs);
+        [data, ~, extraOuts] = HJIPDE_solve_localQ(data0, lxOld, lx, updateEpsilon, tau, schemeData, 'minVWithL', HJIextraArgs);
+        QSizes = extraOuts.QSizes; 
         saveas(f, sprintf('%s/t%d_HJIPDE.png', folder, t));
-        save(sprintf('%s/t%d.mat', folder, t), 'data');
+        save(sprintf('%s/t%d.mat', folder, t), 'data', 'QSizes');
         % plot zero set
         f = figure(1); clf;
         [grid2D, data2D] = proj(g, data, [0 0 1], [0]);    
         visSetIm(grid2D, data2D, 'r');
         lxOld = lx;
         saveas(f, sprintf('%s/t%d_zero_set.png', folder, t));
+        times(t) = size(data, 4); 
     end 
+    save(sprintf('%s/times.mat', folder), 'times');
 end

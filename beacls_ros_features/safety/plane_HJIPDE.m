@@ -1,4 +1,4 @@
-function plane_warm_start()
+function plane_HJIPDE()
     %% Grid
     grid_min = [-5; -5; -3.1415]; % Lower corner of computation domain
     grid_max = [5; 5; 3.1415];    % Upper corner of computation domain
@@ -40,7 +40,7 @@ function plane_warm_start()
     tokens = split(filepath, "/");
     cellArray = join(tokens(1:length(tokens) - 1), "/");
     base_path = cellArray{1};
-    folder_path = sprintf("%s/../outputs/plane_warm_start", base_path); 
+    folder_path = sprintf("%s/../outputs/plane_HJIPDE/", base_path); 
     
     %% Set HJIPDE hyper parameters
     HJIextraArgs.targets = data0;
@@ -60,7 +60,7 @@ function plane_warm_start()
     %% Solve and plot HJIPDE warm start initialization
     times = zeros(length(R), 1); 
     f = figure(1); clf;
-    [data, ~, ~] = HJIPDE_solve_warm(data0, [], data0, tau, schemeData, 'minVWithL', true, HJIextraArgs);
+    [data, ~, ~] = HJIPDE_solve(data0, tau, schemeData, 'minVWithL', HJIextraArgs);
     save(sprintf("%s/t1.mat", folder_path), 'data');
     saveas(f, sprintf("%s/t1_HJIPDE.png", folder_path));
     % plot zero set
@@ -80,8 +80,9 @@ function plane_warm_start()
         
         %% Solve annd plot HJIPDE warm per timestamp
         f = figure(1); clf;
-        [data, ~, ~] = HJIPDE_solve_warm(data0, lxOld, lx, tau, schemeData, 'minVWithL', true, HJIextraArgs);
-        %[data, ~, ~] = HJIPDE_solve_warm(lx, [], lx, tau, schemeData, 'minVWithL', true, HJIextraArgs);
+        [data, ~, ~] = HJIPDE_solve(lx, tau, schemeData, 'minVWithL', HJIextraArgs); 
+        %[data2, ~, ~] = HJIPDE_solve_warm(lx, [], lx, tau, schemeData,
+        %'minVWithL', true, HJIextraArgs); % should be the same
         save(sprintf("%s/t%d.mat", folder_path, t), 'data');
         saveas(f, sprintf("%s/t%d_HJIPDE.png", folder_path, t));
         % plot zero set
